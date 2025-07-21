@@ -1,50 +1,87 @@
-# Welcome to your Expo app 👋
+# CRMS_V2 - Class Record Management System
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A comprehensive class record management system for universities built with React Native and Expo.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Role-based Access Control**: Different access levels for Faculty, Staff, Program Chairs, and Deans
+- **Syllabi Management**: Create, edit, and manage course syllabi
+- **Student Management**: Comprehensive student record management
+- **Course Management**: Manage courses and academic programs
+- **Reports and Analytics**: Generate reports and view analytics
+- **Modern UI/UX**: Clean and intuitive user interface
 
+## Hardware Back Button Behavior
+
+The app implements custom hardware back button handling to provide a better user experience:
+
+### When Logged Out (Public Pages)
+- Hardware back button works normally, allowing users to navigate back through the app's navigation stack
+- Users can freely navigate between public pages (Home, Login, Help, etc.)
+
+### When Logged In (Authenticated Pages)
+- Hardware back button shows an "Exit App" confirmation dialog
+- Users must confirm if they want to exit the application
+- This prevents accidental logout when users intend to exit the app
+- The app will quit completely instead of logging out
+
+### Welcome Page
+- Hardware back button works normally, allowing users to navigate back if they came from another app
+
+## Technical Implementation
+
+The hardware back button handling is implemented in `app/_layout.jsx` using:
+- React Native's `BackHandler` API
+- Expo's `expo-application` for reliable app exit functionality
+- Custom utility function (`utils/appExit.js`) for better error handling and fallbacks
+
+## Getting Started
+
+1. Install dependencies:
    ```bash
    npm install
    ```
 
-2. Start the app
-
+2. Start the development server:
    ```bash
-   npx expo start
+   npm start
    ```
 
-In the output, you'll find options to open the app in a
+3. Run on your preferred platform:
+   ```bash
+   npm run android
+   npm run ios
+   npm run web
+   ```
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Dependencies
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- React Native 0.79.5
+- Expo SDK 53
+- Expo Router for navigation
+- React Native AsyncStorage for data persistence
+- Expo Application for app exit functionality
 
-## Get a fresh project
+## Project Structure
 
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+CRMS_V2/
+├── app/                    # Main application screens
+├── components/             # Reusable UI components
+├── contexts/              # React contexts (UserContext)
+├── utils/                 # Utility functions
+├── types/                 # Type definitions and sample data
+└── assets/                # Images and static assets
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Contributing
 
-## Learn more
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-To learn more about developing your project with Expo, look at the following resources:
+## License
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+This project is licensed under the MIT License.

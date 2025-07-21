@@ -9,6 +9,9 @@ export const UserRole = {
 
 // Helper function to check if user has specific permission
 export function hasPermission(user, permission) {
+  if (!user || !user.permissions) {
+    return false;
+  }
   return user.permissions[permission] || false;
 }
 
