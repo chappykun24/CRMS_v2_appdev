@@ -174,7 +174,7 @@ export default function MySyllabiScreen() {
     const colors = {
       'approved': '#10B981',
       'pending': '#F59E0B',
-      'draft': '#6B7280',
+      'assigned': '#6366F1', // Use a blue/assigned color
       'rejected': '#EF4444'
     };
     return colors[status] || '#6B7280';
@@ -184,17 +184,17 @@ export default function MySyllabiScreen() {
     const icons = {
       'approved': 'checkmark-circle',
       'pending': 'time',
-      'draft': 'document-outline',
+      'assigned': 'person-add', // Use assigned icon
       'rejected': 'close-circle'
     };
     return icons[status] || 'document-outline';
   };
 
   const getStatusText = (status) => {
+    if (status === 'assigned') return 'Assigned';
     const texts = {
       'approved': 'Approved',
       'pending': 'Pending Review',
-      'draft': 'Draft',
       'rejected': 'Rejected'
     };
     return texts[status] || 'Unknown';
@@ -235,7 +235,15 @@ export default function MySyllabiScreen() {
     router.back();
   };
 
-  const filteredSyllabi = syllabi.filter(syllabus => {
+  // Map reviewStatus 'draft' to 'assigned' in the syllabi array
+  const mappedSyllabi = syllabi.map(syl => ({
+    ...syl,
+    status: syl.reviewStatus === 'draft' ? 'assigned' : syl.status,
+    reviewStatus: syl.reviewStatus === 'draft' ? 'assigned' : syl.reviewStatus,
+  }));
+
+  // Use mappedSyllabi for filtering and rendering
+  const filteredSyllabi = mappedSyllabi.filter(syllabus => {
     if (selectedFilter === 'all') return true;
     return syllabus.status === selectedFilter;
   }).filter(syllabus => {
@@ -322,6 +330,13 @@ export default function MySyllabiScreen() {
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
           <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, minWidth: 300, maxWidth: 380, width: '90%', maxHeight: '85%', alignItems: 'stretch', elevation: 4 }}>
+            {/* Exit button at top right */}
+            <TouchableOpacity
+              onPress={() => setShowSyllabusModal(false)}
+              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, padding: 6 }}
+            >
+              <Ionicons name="close" size={24} color="#DC2626" />
+            </TouchableOpacity>
             <ScrollView>
               <Text style={{ fontWeight: 'bold', fontSize: 22, marginBottom: 18, alignSelf: 'center', color: '#DC2626' }}>Syllabus Details</Text>
               {selectedSyllabus && (
@@ -388,20 +403,22 @@ export default function MySyllabiScreen() {
                   )}
                   {/* Actions */}
                   <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 8 }}>
-                    <TouchableOpacity style={[styles.actionButton, { marginHorizontal: 4 }]} onPress={() => handleEditSyllabus(selectedSyllabus)}>
-                      <Ionicons name="create-outline" size={16} color="#DC2626" />
-                      <Text style={styles.actionButtonText}>Edit</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionButton, styles.deleteButton, { marginHorizontal: 4 }]} onPress={() => handleDeleteSyllabus(selectedSyllabus)}>
-                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                      <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>Delete</Text>
-                    </TouchableOpacity>
+                    {selectedSyllabus && selectedSyllabus.status === 'assigned' && (
+                      <TouchableOpacity style={[styles.actionButton, { marginHorizontal: 4 }]} onPress={() => handleEditSyllabus(selectedSyllabus)}>
+                        <Ionicons name="create-outline" size={16} color="#DC2626" />
+                        <Text style={styles.actionButtonText}>Fill Out</Text>
+                      </TouchableOpacity>
+                    )}
+                    {selectedSyllabus && selectedSyllabus.status === 'pending' && (
+                      <TouchableOpacity style={[styles.actionButton, { marginHorizontal: 4 }]} onPress={() => handleEditSyllabus(selectedSyllabus)}>
+                        <Ionicons name="create-outline" size={16} color="#DC2626" />
+                        <Text style={styles.actionButtonText}>Edit</Text>
+                      </TouchableOpacity>
+                    )}
+                    {/* No action button for approved */}
                   </View>
                 </>
               )}
-              <TouchableOpacity onPress={() => setShowSyllabusModal(false)} style={{ marginTop: 18, padding: 10, backgroundColor: '#6366F1', borderRadius: 8, alignSelf: 'center', minWidth: 100 }}>
-                <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Close</Text>
-              </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
@@ -416,7 +433,7 @@ export default function MySyllabiScreen() {
         setSearchQuery={setSearchQuery}
         showSearch={showSearch}
         setShowSearch={setShowSearch}
-        onAddSyllabus={handleCreateNew}
+        // onAddSyllabus={handleCreateNew} // Remove add button
       />
 
       <View style={styles.content}>
@@ -428,15 +445,15 @@ export default function MySyllabiScreen() {
               onPress={() => setSelectedFilter('all')}
             >
               <Text style={[styles.filterChipText, selectedFilter === 'all' && styles.filterChipTextActive]}>
-                {`All (${syllabi.length})`}
+                All
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.filterChip, selectedFilter === 'draft' && styles.filterChipActive]}
-              onPress={() => setSelectedFilter('draft')}
+              style={[styles.filterChip, selectedFilter === 'assigned' && styles.filterChipActive]}
+              onPress={() => setSelectedFilter('assigned')}
             >
-              <Text style={[styles.filterChipText, selectedFilter === 'draft' && styles.filterChipTextActive]}>
-                {`Draft (${syllabi.filter(s => s.status === 'draft').length})`}
+              <Text style={[styles.filterChipText, selectedFilter === 'assigned' && styles.filterChipTextActive]}>
+                Assigned
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -444,7 +461,7 @@ export default function MySyllabiScreen() {
               onPress={() => setSelectedFilter('pending')}
             >
               <Text style={[styles.filterChipText, selectedFilter === 'pending' && styles.filterChipTextActive]}>
-                {`Pending (${syllabi.filter(s => s.status === 'pending').length})`}
+                Pending
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -452,7 +469,7 @@ export default function MySyllabiScreen() {
               onPress={() => setSelectedFilter('approved')}
             >
               <Text style={[styles.filterChipText, selectedFilter === 'approved' && styles.filterChipTextActive]}>
-                {`Approved (${syllabi.filter(s => s.status === 'approved').length})`}
+                Approved
               </Text>
             </TouchableOpacity>
           </ScrollView>

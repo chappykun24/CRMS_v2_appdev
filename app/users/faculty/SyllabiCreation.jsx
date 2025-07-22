@@ -61,6 +61,7 @@ export default function SyllabiCreationScreen() {
               courseId: found.course_id ? String(found.course_id) : '',
               termId: found.term_id ? String(found.term_id) : '',
               assessments: found.assessments || [],
+              section_course_id: found.section_course_id || ''
             });
             setSelectedILOs(found.ilos || found.selectedILOs || []);
             setSelectedCourse({
@@ -230,17 +231,47 @@ export default function SyllabiCreationScreen() {
           text: 'Submit', 
           onPress: async () => {
             try {
+              const syllabusId = params.syllabusId || formData.syllabusId || formData.id;
+              if (!syllabusId) {
+                Alert.alert('Error', 'No syllabus ID found.');
+                return;
+              }
+              // Clean assessments and rubrics before sending
+              const cleanAssessments = (formData.assessments || []).map(a => {
+                const base = {
+                  ...(['id','title','type','iloIds','weights','rubrics'].reduce((acc, k) => (a[k] !== undefined ? { ...acc, [k]: a[k] } : acc), {})),
+                  weights: Array.isArray(a.weights) ? a.weights.map(w => ({
+                    ilo_id: w.ilo_id,
+                    ilo_code: w.ilo_code,
+                    ilo_description: w.ilo_description,
+                    weight_percentage: Number(w.weight_percentage)
+                  })) : [],
+                  rubrics: Array.isArray(a.rubrics) ? a.rubrics.map(r => ({
+                    ...(r.rubric_id ? { rubric_id: r.rubric_id } : {}),
+                    title: r.title,
+                    description: r.description,
+                    criterion: r.criterion,
+                    max_score: Number(r.max_score),
+                    ilo_id: r.ilo_id
+                  })) : []
+                };
+                if (formData.section_course_id && !isNaN(Number(formData.section_course_id))) {
+                  base.section_course_id = Number(formData.section_course_id);
+                }
+                return base;
+              });
               const payload = {
                 title: formData.title,
-                courseId: formData.courseId,
-                termId: formData.termId,
-                created_by: currentUser.user_id,
-                iloIds: selectedILOs.map(ilo => ilo.id)
+                section_course_id: formData.section_course_id ? Number(formData.section_course_id) : undefined,
+                assessments: cleanAssessments,
+                // Add other fields as needed
               };
-              await apiClient.post('/syllabus', payload);
-            Alert.alert('Success', 'Syllabus submitted successfully!');
-            router.back();
+              console.log('Submitting syllabus payload:', JSON.stringify(payload, null, 2));
+              await apiClient.put(`/syllabus/update/${syllabusId}`, payload);
+              Alert.alert('Success', 'Syllabus submitted successfully!');
+              router.back();
             } catch (err) {
+              console.log('Submit error:', err, err?.response?.data);
               Alert.alert('Error', 'Failed to submit syllabus.');
             }
           }
@@ -366,19 +397,25 @@ export default function SyllabiCreationScreen() {
 
   // Add handler for adding/removing assessments
   const handleAddAssessment = () => {
-    setFormData(prev => ({
-      ...prev,
-      assessments: [
-        ...(Array.isArray(prev.assessments) ? prev.assessments : []),
-        {
-          title: '',
-          type: '',
-          iloIds: Array.isArray(selectedILOs) ? selectedILOs.map(ilo => ilo.id) : [],
-          weights: [],
-          rubrics: []
-        }
-      ]
-    }));
+    setFormData(prev => {
+      const base = {
+        title: '',
+        type: '',
+        iloIds: Array.isArray(selectedILOs) ? selectedILOs.map(ilo => ilo.id) : [],
+        weights: [],
+        rubrics: []
+      };
+      if (prev.section_course_id && !isNaN(Number(prev.section_course_id))) {
+        base.section_course_id = Number(prev.section_course_id);
+      }
+      return {
+        ...prev,
+        assessments: [
+          ...(Array.isArray(prev.assessments) ? prev.assessments : []),
+          base
+        ]
+      };
+    });
   };
   const handleRemoveAssessment = (idx) => {
     setFormData(prev => ({

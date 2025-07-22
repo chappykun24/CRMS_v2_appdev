@@ -510,3 +510,7 @@ CREATE INDEX idx_attendance_enrollment_date ON attendance_logs(enrollment_id, se
 CREATE INDEX idx_students_full_name_fts ON students USING gin(to_tsvector('english', full_name));
 CREATE INDEX idx_courses_title_fts ON courses USING gin(to_tsvector('english', title));
 CREATE INDEX idx_users_name_fts ON users USING gin(to_tsvector('english', name));
+
+
+ALTER TABLE syllabi ADD COLUMN section_course_id INTEGER;
+-- Then, when creating a draft syllabus, set this value.

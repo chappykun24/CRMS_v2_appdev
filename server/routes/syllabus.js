@@ -286,18 +286,84 @@ router.post('/draft', async (req, res) => {
         [created_by, section_course_id]
       );
     }
+    console.log('Inserting draft syllabus with section_course_id:', section_course_id);
     // 2. Insert draft syllabus
     const syllabusRes = await client.query(
-      `INSERT INTO syllabi (course_id, term_id, created_by, title, review_status)
-       VALUES ($1, $2, $3, $4, 'draft')
+      `INSERT INTO syllabi (course_id, term_id, created_by, title, review_status, section_course_id)
+       VALUES ($1, $2, $3, $4, 'draft', $5)
        RETURNING *`,
-      [course_id, term_id, created_by, title || 'Draft Syllabus']
+      [course_id, term_id, created_by, title || 'Draft Syllabus', section_course_id]
     );
     await client.query('COMMIT');
     res.status(201).json({ syllabus: syllabusRes.rows[0], section_course_id });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error in /draft endpoint:', err);
+    res.status(500).json({ error: 'Server error', details: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// PUT /api/syllabus/update/:syllabus_id - faculty updates and submits syllabus, including assessments, rubrics, and weights
+router.put('/update/:syllabus_id', async (req, res) => {
+  console.log('PUT /api/syllabus/update/:syllabus_id called', req.params, req.body);
+  const { syllabus_id } = req.params;
+  const { title, assessments } = req.body;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `UPDATE syllabi SET title = $1, review_status = 'pending' WHERE syllabus_id = $2`,
+      [title, syllabus_id]
+    );
+    // Upsert assessments, rubrics, and weights
+    for (const assess of assessments || []) {
+      // Upsert assessment (if assessment_id provided, update; else insert new)
+      let assessment_id = assess.id;
+      if (assessment_id) {
+        // Try update
+        await client.query(
+          `UPDATE assessments SET title = $1, type = $2 WHERE assessment_id = $3`,
+          [assess.title, assess.type, assessment_id]
+        );
+      } else {
+        // Insert new
+        const insertAssess = await client.query(
+          `INSERT INTO assessments (section_course_id, title, type, created_at) VALUES ($1, $2, $3, NOW()) RETURNING assessment_id`,
+          [assess.section_course_id, assess.title, assess.type]
+        );
+        assessment_id = insertAssess.rows[0].assessment_id;
+      }
+      // Upsert weights
+      for (const w of assess.weights || []) {
+        await client.query(
+          `INSERT INTO assessment_ilo_weights (assessment_id, ilo_id, weight_percentage)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (assessment_id, ilo_id) DO UPDATE SET weight_percentage = $3`,
+          [assessment_id, w.ilo_id, w.weight_percentage]
+        );
+      }
+      // Upsert rubrics
+      for (const r of assess.rubrics || []) {
+        if (r.rubric_id) {
+          await client.query(
+            `UPDATE rubrics SET title = $1, description = $2, criterion = $3, max_score = $4, ilo_id = $5 WHERE rubric_id = $6`,
+            [r.title, r.description, r.criterion, r.max_score, r.ilo_id, r.rubric_id]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO rubrics (assessment_id, title, description, criterion, max_score, ilo_id)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [assessment_id, r.title, r.description, r.criterion, r.max_score, r.ilo_id]
+          );
+        }
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ message: 'Syllabus and related data updated and submitted for review.' });
+  } catch (err) {
+    await client.query('ROLLBACK');
     res.status(500).json({ error: 'Server error', details: err.message });
   } finally {
     client.release();

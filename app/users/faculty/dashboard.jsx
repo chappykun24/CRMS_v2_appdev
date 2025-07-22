@@ -47,10 +47,6 @@ export default function FacultyDashboard() {
               <Ionicons name="book-outline" size={24} color="#DC2626" />
               <Text style={styles.actionText}>My Syllabi</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/users/faculty/SyllabiCreation')}>
-              <Ionicons name="create-outline" size={24} color="#DC2626" />
-              <Text style={styles.actionText}>Create Syllabus</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/users/faculty/GradeManagement')}>
               <Ionicons name="calculator-outline" size={24} color="#DC2626" />
               <Text style={styles.actionText}>Grade Management</Text>
@@ -58,10 +54,6 @@ export default function FacultyDashboard() {
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/users/faculty/AttendanceManagement')}>
               <Ionicons name="checkmark-circle-outline" size={24} color="#DC2626" />
               <Text style={styles.actionText}>Attendance</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/users/faculty/MyClasses')}>
-              <Ionicons name="time-outline" size={24} color="#DC2626" />
-              <Text style={styles.actionText}>Class Schedule</Text>
             </TouchableOpacity>
           </View>
         </View>

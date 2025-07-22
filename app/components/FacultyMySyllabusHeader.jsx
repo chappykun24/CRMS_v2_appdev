@@ -27,9 +27,6 @@ export default function FacultyMySyllabusHeader({
           <TouchableOpacity style={styles.toggleButton} onPress={() => setShowSearch((prev) => !prev)}>
             <Ionicons name={showSearch ? 'close-outline' : 'search-outline'} size={20} color="#dc2626" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.addButton} onPress={onAddSyllabus}>
-            <Ionicons name="add" size={24} color="#fff" />
-          </TouchableOpacity>
         </View>
       </View>
       
