@@ -268,8 +268,8 @@ export default function SyllabiCreationScreen() {
               };
               console.log('Submitting syllabus payload:', JSON.stringify(payload, null, 2));
               await apiClient.put(`/syllabus/update/${syllabusId}`, payload);
-              Alert.alert('Success', 'Syllabus submitted successfully!');
-              router.back();
+            Alert.alert('Success', 'Syllabus submitted successfully!');
+            router.back();
             } catch (err) {
               console.log('Submit error:', err, err?.response?.data);
               Alert.alert('Error', 'Failed to submit syllabus.');

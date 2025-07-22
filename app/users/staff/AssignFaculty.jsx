@@ -73,6 +73,8 @@ export default function AssignFaculty() {
   const [selectedCourseLabel, setSelectedCourseLabel] = useState('');
   const [draftSyllabusId, setDraftSyllabusId] = useState(null);
   const [draftSectionCourseId, setDraftSectionCourseId] = useState(null);
+  // Add state for assigned section_courses
+  const [assignedSectionCourses, setAssignedSectionCourses] = useState([]);
 
   console.log('terms:', terms);
   console.log('sections:', sections);
@@ -174,6 +176,65 @@ export default function AssignFaculty() {
       cls.currentFaculty.toLowerCase().includes(q)
     );
   });
+
+  // Fetch assigned section_courses on mount
+  useEffect(() => {
+    apiClient.get('/section-courses/assigned')
+      .then(res => setAssignedSectionCourses(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setAssignedSectionCourses([]));
+  }, []);
+
+  const handleDeleteAssignment = async (section_course_id) => {
+    Alert.alert(
+      'Remove Assignment',
+      'Are you sure you want to remove the assigned faculty from this class?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete', style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiClient.post('/section-courses/assign-instructor', {
+                section_course_id,
+                instructor_id: null
+              });
+              // Refresh the assigned list
+              const res = await apiClient.get('/section-courses/assigned');
+              setAssignedSectionCourses(Array.isArray(res.data) ? res.data : []);
+              Alert.alert('Success', 'Assignment removed.');
+            } catch (err) {
+              Alert.alert('Error', 'Failed to remove assignment.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Render assigned classes
+  const renderAssignedClasses = () => (
+    <ScrollView style={{ marginTop: 0 }} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 16 }}>
+      {assignedSectionCourses.filter(sc => sc.faculty_name).map(sc => (
+        <View key={sc.section_course_id} style={styles.syllabusCard}>
+          <View style={styles.syllabusHeader}>
+            <View style={styles.syllabusInfo}>
+              <Text style={styles.syllabusTitle}>{sc.course_title} <Text style={styles.syllabusCode}>({sc.section_code})</Text></Text>
+              <Text style={styles.syllabusTerm}>{sc.semester} {sc.school_year}</Text>
+            </View>
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusText}>Assigned</Text>
+            </View>
+          </View>
+          <Text style={styles.assignedFacultyLine}>
+            Assigned Faculty: <Text style={styles.assignedFacultyName}>{sc.faculty_name}</Text>
+          </Text>
+          <TouchableOpacity onPress={() => handleDeleteAssignment(sc.section_course_id)} style={{ marginLeft: 12, padding: 6, alignSelf: 'flex-end' }}>
+            <Ionicons name="trash-outline" size={20} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
+      ))}
+    </ScrollView>
+  );
 
   const renderAssignmentModal = () => {
     if (!selectedClass) return null;
@@ -375,6 +436,7 @@ export default function AssignFaculty() {
           ))
         )}
       </View>
+      {renderAssignedClasses()}
       {renderAssignmentModal()}
       {/* Assignment Modal (placeholder) */}
       <ModalContainer
@@ -836,6 +898,100 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  assignedCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  assignedHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  assignedInfo: {
+    flex: 1,
+  },
+  assignedTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    color: '#DC2626',
+  },
+  assignedSub: {
+    color: '#6B7280',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  assignedFaculty: {
+    color: '#10B981',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  assignedFacultyUnassigned: {
+    color: '#EF4444',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  syllabusCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    // Removed maxWidth and alignSelf for full-width stretch
+  },
+  syllabusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+    flexWrap: 'wrap',
+  },
+  syllabusInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  syllabusTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    color: '#DC2626',
+  },
+  syllabusCode: {
+    color: '#6B7280',
+    fontWeight: 'normal',
+    fontSize: 15,
+  },
+  syllabusTerm: {
+    color: '#6B7280',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  statusBadge: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+    marginLeft: 8,
+    marginTop: 2,
+  },
+  statusText: {
+    color: '#6366F1',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  assignedFacultyLine: {
+    color: '#6B7280',
+    fontSize: 14,
+    marginTop: 4,
+  },
+  assignedFacultyName: {
+    color: '#10B981',
+    fontWeight: 'bold',
   },
 });
 

@@ -486,11 +486,6 @@ export default function MySyllabiScreen() {
               <Text style={styles.emptySubtitle}>
                 {searchQuery ? 'Try adjusting your search terms' : 'Create your first syllabus to get started'}
               </Text>
-              {!searchQuery && (
-                <TouchableOpacity style={styles.emptyButton} onPress={handleCreateNew}>
-                  <Text style={styles.emptyButtonText}>Create Syllabus</Text>
-                </TouchableOpacity>
-              )}
             </View>
           )}
         </ScrollView>

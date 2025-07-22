@@ -1,155 +1,48 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import ClickableContainer from '../../../components/ClickableContainer';
-import ModalContainer from '../../../components/ModalContainer';
+import React, { useEffect, useState } from 'react';
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useUser } from '../../../contexts/UserContext';
-import { useModal } from '../../../utils/useModal';
 import ProgramChairSubmissionsHeader from '../../components/ProgramChairSubmissionsHeader';
+import { apiClient } from '../../utils/api'; // adjust path as needed
 
 // Syllabus Card Component
-const SyllabusCard = ({ approval, onApprove, onReject, onViewSyllabus, onCardPress }) => {
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending':
-        return '#F59E0B'; // Amber for pending
-      case 'approved':
-        return '#10B981'; // Green for approved
-      case 'rejected':
-        return '#EF4444'; // Red for rejected
-      default:
-        return '#6B7280'; // Gray for unknown
-    }
-  };
-
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'Pending';
-      case 'approved':
-        return 'Approved';
-      case 'rejected':
-        return 'Rejected';
-      default:
-        return 'Unknown';
-    }
-  };
-
-  return (
-    <ClickableContainer style={styles.approvalCard} onPress={() => onCardPress(approval)}>
-      <View style={styles.approvalHeader}>
-        <View style={styles.facultyAvatar}>
-          <Text style={styles.avatarText}>{approval.facultyName.charAt(0)}</Text>
-        </View>
-        <View style={styles.courseInfo}>
-          <Text style={styles.courseCode}>{approval.courseCode}</Text>
-          <Text style={styles.courseTitle}>{approval.courseTitle}</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <View style={[styles.statusDot, { backgroundColor: getStatusColor(approval.status) }]} />
-          <Text style={{ marginLeft: 8, color: getStatusColor(approval.status), fontWeight: 'bold' }}>{getStatusText(approval.status)}</Text>
-          <Ionicons name="chevron-forward" size={20} color="#6B7280" style={styles.expandIcon} />
-        </View>
+const SyllabusCard = ({ approval, onCardPress }) => (
+  <TouchableOpacity style={styles.card} onPress={() => onCardPress(approval)} activeOpacity={0.85}>
+    <View style={styles.cardHeader}>
+      <View style={styles.cardInfo}>
+        <Text style={styles.cardTitle}>{approval.course_title} <Text style={styles.cardCode}>({approval.course_code})</Text></Text>
+        <Text style={styles.cardTerm}>{approval.semester} {approval.school_year}</Text>
       </View>
-    </ClickableContainer>
-  );
-};
+      <View style={styles.statusBadge}>
+        <Text style={styles.statusText}>Pending</Text>
+      </View>
+    </View>
+  </TouchableOpacity>
+);
 
 export default function ReviewSubmissions() {
   const { currentUser, isLoading, isInitialized } = useUser();
+  const [syllabusApprovals, setSyllabusApprovals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showSyllabusModal, setShowSyllabusModal] = useState(false);
+  const [selectedSyllabus, setSelectedSyllabus] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState('pending');
   const [isTableView, setIsTableView] = useState(false);
   const [showContainers, setShowContainers] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const { visible, selectedItem: selectedApproval, openModal, closeModal } = useModal();
 
-  // Mock data for syllabus approvals
-  const [syllabusApprovals] = useState([
-    {
-      id: 1,
-      courseCode: 'CS101',
-      courseTitle: 'Introduction to Computer Science',
-      facultyName: 'Dr. John Doe',
-      department: 'Computer Science',
-      semester: 'Fall 2024',
-      status: 'pending',
-      submissionDate: '2024-01-15',
-      lastModified: '2024-01-15',
-      version: '1.0',
-      documents: ['Syllabus.pdf', 'Course Outline.docx', 'Assessment Plan.pdf'],
-      facultyProfile: {
-        id: 'F001',
-        name: 'Dr. John Doe',
-        email: 'john.doe@university.edu',
-        phone: '+1 (555) 123-4567',
-        department: 'Computer Science',
-        position: 'Associate Professor',
-        specialization: 'Software Engineering, Database Systems',
-        yearsOfExperience: 8,
-        education: 'Ph.D. Computer Science, Stanford University',
-        officeLocation: 'Room 301, Engineering Building',
-        officeHours: 'Mon/Wed 2:00-4:00 PM',
-        profileImage: null
-      }
-    },
-    {
-      id: 2,
-      courseCode: 'MATH201',
-      courseTitle: 'Calculus II',
-      facultyName: 'Dr. Jane Smith',
-      department: 'Mathematics',
-      semester: 'Fall 2024',
-      status: 'pending',
-      submissionDate: '2024-01-14',
-      lastModified: '2024-01-14',
-      version: '1.0',
-      documents: ['Syllabus.pdf', 'Course Schedule.xlsx'],
-      facultyProfile: {
-        id: 'F002',
-        name: 'Dr. Jane Smith',
-        email: 'jane.smith@university.edu',
-        phone: '+1 (555) 234-5678',
-        department: 'Mathematics',
-        position: 'Assistant Professor',
-        specialization: 'Calculus, Linear Algebra, Mathematical Analysis',
-        yearsOfExperience: 5,
-        education: 'Ph.D. Mathematics, MIT',
-        officeLocation: 'Room 205, Science Building',
-        officeHours: 'Tue/Thu 1:00-3:00 PM',
-        profileImage: null
-      }
-    },
-    {
-      id: 3,
-      courseCode: 'PHYS101',
-      courseTitle: 'Physics Fundamentals',
-      facultyName: 'Dr. Michael Johnson',
-      department: 'Physics',
-      semester: 'Fall 2024',
-      status: 'approved',
-      submissionDate: '2024-01-10',
-      lastModified: '2024-01-10',
-      version: '1.0',
-      documents: ['Syllabus.pdf', 'Lab Manual.pdf'],
-      facultyProfile: {
-        id: 'F003',
-        name: 'Dr. Michael Johnson',
-        email: 'michael.johnson@university.edu',
-        phone: '+1 (555) 345-6789',
-        department: 'Physics',
-        position: 'Professor',
-        specialization: 'Quantum Mechanics, Thermodynamics',
-        yearsOfExperience: 12,
-        education: 'Ph.D. Physics, Caltech',
-        officeLocation: 'Room 401, Science Building',
-        officeHours: 'Mon/Wed/Fri 10:00-12:00 PM',
-        profileImage: null
-      }
-    }
-  ]);
+  useEffect(() => {
+    setLoading(true);
+    apiClient.get('/syllabus/pending')
+      .then(res => {
+        const data = Array.isArray(res.data) ? res.data : [];
+        setSyllabusApprovals(data);
+      })
+      .catch(() => setSyllabusApprovals([]))
+      .finally(() => setLoading(false));
+  }, []);
 
-  // Show loading while app is initializing or user is loading
-  if (!isInitialized || isLoading) {
+  if (!isInitialized || isLoading || loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
         <Text style={{ fontSize: 24, color: 'gray', textAlign: 'center' }}>
@@ -159,224 +52,176 @@ export default function ReviewSubmissions() {
     );
   }
 
-  const handleSearch = () => {
-    // Search functionality can be implemented here
-    console.log('Searching for:', searchTerm);
+  const handleViewSyllabus = (syllabus) => {
+    setSelectedSyllabus(syllabus);
+    setShowSyllabusModal(true);
   };
 
-  // Filter approvals based on selected status and search term
-  const filteredApprovals = syllabusApprovals.filter(approval => {
-    // First filter by status
-    const statusMatch = selectedFilter === 'all' || approval.status === selectedFilter;
-    
-    // Then filter by search term
-    const searchMatch = !searchTerm || 
-      approval.courseCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      approval.courseTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      approval.facultyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      approval.department.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return statusMatch && searchMatch;
-  });
+  const safeText = (val) => {
+    if (val === null || val === undefined) return 'N/A';
+    if (typeof val === 'object') {
+      if (val instanceof Date) return val.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      if (val.seconds && typeof val.seconds === 'number') {
+        try {
+          return new Date(val.seconds * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+        } catch {
+          return 'N/A';
+        }
+      }
+      return 'N/A';
+    }
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+      const date = new Date(val.replace(' ', 'T'));
+      if (!isNaN(date)) {
+        return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      }
+    }
+    return String(val);
+  };
+
+  const getStatusText = (status) => {
+    if (status === 'assigned') return 'Assigned';
+    const texts = {
+      'approved': 'Approved',
+      'pending': 'Pending Review',
+      'rejected': 'Rejected'
+    };
+    return texts[status] || 'Unknown';
+  };
 
   const handleApprove = (id) => {
     // Handle approval logic here
     console.log('Program Chair approving submission:', id);
-    closeModal();
+    setShowSyllabusModal(false);
   };
 
   const handleReject = (id) => {
     // Handle rejection logic here
     console.log('Program Chair rejecting submission:', id);
-    closeModal();
+    setShowSyllabusModal(false);
   };
 
-  const handleViewSyllabus = (id) => {
-    // Handle viewing syllabus logic here
-    console.log('Program Chair viewing submission:', id);
+  const renderSyllabusModal = () => {
+    const fields = selectedSyllabus ? [
+      { label: 'Course Code', value: selectedSyllabus.course_code },
+      { label: 'Course Title', value: selectedSyllabus.course_title },
+      { label: 'Term', value: selectedSyllabus.school_year && selectedSyllabus.semester ? `${selectedSyllabus.school_year} ${selectedSyllabus.semester}` : '' },
+      { label: 'Syllabus Title', value: selectedSyllabus.title },
+      { label: 'Status', value: getStatusText(selectedSyllabus.approval_status) },
+      { label: 'Reviewed By', value: selectedSyllabus.reviewed_by },
+      { label: 'Approved By', value: selectedSyllabus.approved_by },
+      { label: 'Date Created', value: safeText(selectedSyllabus.created_at) },
+      { label: 'Date Reviewed', value: safeText(selectedSyllabus.reviewed_at) },
+      { label: 'Date Approved', value: (!selectedSyllabus.approved_at || selectedSyllabus.approved_at === 'null') ? 'Pending' : (safeText(selectedSyllabus.approved_at) || 'Pending') },
+    ] : [];
+    return (
+      <Modal
+        visible={showSyllabusModal && !!selectedSyllabus}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowSyllabusModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, minWidth: 300, maxWidth: 380, width: '90%', maxHeight: '85%', alignItems: 'stretch', elevation: 4 }}>
+            <TouchableOpacity
+              onPress={() => setShowSyllabusModal(false)}
+              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, padding: 6 }}
+            >
+              <Ionicons name="close" size={24} color="#DC2626" />
+            </TouchableOpacity>
+            <ScrollView>
+              <Text style={{ fontWeight: 'bold', fontSize: 22, marginBottom: 18, alignSelf: 'center', color: '#DC2626' }}>Syllabus Details</Text>
+              {selectedSyllabus && (
+                <>
+                  <View style={{ marginBottom: 24 }}>
+                    <Text style={{ fontWeight: 'bold', fontSize: 17, color: '#1E293B', marginBottom: 12, letterSpacing: 0.5 }}>Syllabus Information</Text>
+                    {fields.map((field, idx) => (
+                      <View key={field.label} style={{ flexDirection: 'row', marginBottom: 8, alignItems: 'flex-start' }}>
+                        <Text style={{ fontWeight: '600', minWidth: 130, color: '#334155', fontSize: 14 }}>{field.label}:</Text>
+                        <Text style={{ flex: 1, color: '#0F172A', fontSize: 14, fontWeight: '400' }}>{safeText(field.value)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  {Array.isArray(selectedSyllabus.ilos) && selectedSyllabus.ilos.length > 0 && (
+                    <View style={{ marginBottom: 24, backgroundColor: '#F3F4F6', borderRadius: 8, padding: 14 }}>
+                      <Text style={{ fontWeight: 'bold', color: '#DC2626', marginBottom: 8, fontSize: 15, letterSpacing: 0.5 }}>Intended Learning Outcomes (ILOs)</Text>
+                      {selectedSyllabus.ilos.map(ilo => (
+                        <View key={safeText(ilo.ilo_id)} style={{ marginBottom: 4 }}>
+                          <Text style={{ fontSize: 13, color: '#1E293B', fontWeight: '600' }}>{ilo.ilo_code}</Text>
+                          <Text style={{ fontSize: 13, color: '#475569', marginLeft: 10 }}>{ilo.ilo_description}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  {Array.isArray(selectedSyllabus.assessments) && selectedSyllabus.assessments.length > 0 && (
+                    <View style={{ marginBottom: 24 }}>
+                      <Text style={{ fontWeight: 'bold', color: '#DC2626', marginBottom: 10, fontSize: 15, letterSpacing: 0.5 }}>Assessments</Text>
+                      {selectedSyllabus.assessments.map(assess => (
+                        <View key={assess.id} style={{ backgroundColor: '#F9FAFB', borderRadius: 8, marginBottom: 16, padding: 14, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                            <Text style={{ fontSize: 14, color: '#1E293B', fontWeight: 'bold', letterSpacing: 0.2 }}>{assess.title}</Text>
+                          </View>
+                          {Array.isArray(assess.weights) && assess.weights.length > 0 && (
+                            <View style={{ marginLeft: 6, marginTop: 2, marginBottom: 6 }}>
+                              <Text style={{ fontSize: 12, color: '#6366F1', fontWeight: 'bold', marginBottom: 2 }}>Weights:</Text>
+                              {assess.weights.map((w, idx) => (
+                                <Text key={idx} style={{ fontSize: 12, color: '#6366F1', fontWeight: '500' }}>
+                                  {w.ilo_code}: {w.ilo_description} — {w.weight_percentage}%
+                                </Text>
+                              ))}
+                            </View>
+                          )}
+                          {Array.isArray(assess.rubrics) && assess.rubrics.length > 0 && (
+                            <View style={{ marginLeft: 6, marginTop: 2 }}>
+                              <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: 'bold', marginBottom: 2 }}>Rubrics:</Text>
+                              {assess.rubrics.map((r, ridx) => (
+                                <View key={r.rubric_id || ridx} style={{ marginBottom: 4, backgroundColor: '#FFF', borderRadius: 6, padding: 10, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                                  <Text style={{ fontSize: 12, color: '#1E293B', fontWeight: 'bold', marginBottom: 1 }}>{r.title}</Text>
+                                  <Text style={{ fontSize: 12, color: '#475569', marginBottom: 1 }}>{r.description}</Text>
+                                  <Text style={{ fontSize: 12, color: '#6366F1', marginBottom: 1 }}>Criterion: <Text style={{ fontWeight: '600' }}>{r.criterion}</Text></Text>
+                                  <Text style={{ fontSize: 12, color: '#6366F1' }}>Max Score: <Text style={{ fontWeight: '600' }}>{r.max_score}</Text></Text>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  {/* Approve/Reject Buttons */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 12, gap: 12 }}>
+                    <TouchableOpacity
+                      style={{ backgroundColor: '#10B981', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, marginRight: 8 }}
+                      onPress={() => handleApprove(selectedSyllabus.syllabus_id)}
+                    >
+                      <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Approve</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ backgroundColor: '#EF4444', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8 }}
+                      onPress={() => handleReject(selectedSyllabus.syllabus_id)}
+                    >
+                      <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Reject</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    );
   };
+
+  const handleSearch = () => {
+    // Search functionality can be implemented here
+    console.log('Searching for:', searchTerm);
+  };
+
+  // Filter to only show pending syllabi (should already be filtered by backend)
+  const filteredSyllabi = syllabusApprovals;
 
   const handleCardPress = (approval) => {
-    openModal(approval);
-  };
-
-  const renderSubmissionModal = () => {
-    if (!selectedApproval) return null;
-
-    const getStatusColor = (status) => {
-      switch (status) {
-        case 'pending':
-          return '#F59E0B';
-        case 'approved':
-          return '#10B981';
-        case 'rejected':
-          return '#EF4444';
-        default:
-          return '#6B7280';
-      }
-    };
-
-    const getStatusText = (status) => {
-      switch (status) {
-        case 'pending':
-          return 'Pending';
-        case 'approved':
-          return 'Approved';
-        case 'rejected':
-          return 'Rejected';
-        default:
-          return 'Unknown';
-      }
-    };
-
-    const modalFooter = selectedApproval.status === 'pending' ? (
-      <View style={styles.modalFooter}>
-        <TouchableOpacity
-          style={[styles.modalActionButton, styles.modalViewButton]}
-          onPress={() => handleViewSyllabus(selectedApproval.id)}
-        >
-          <Ionicons name="eye-outline" size={16} color="#DC2626" />
-          <Text style={styles.modalViewButtonText}>View Syllabus</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.modalActionButton, styles.modalApproveButton]}
-          onPress={() => handleApprove(selectedApproval.id)}
-        >
-          <Ionicons name="checkmark-circle-outline" size={16} color="#10B981" />
-          <Text style={styles.modalApproveButtonText}>Approve</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.modalActionButton, styles.modalRejectButton]}
-          onPress={() => handleReject(selectedApproval.id)}
-        >
-          <Ionicons name="close-circle-outline" size={16} color="#EF4444" />
-          <Text style={styles.modalRejectButtonText}>Reject</Text>
-        </TouchableOpacity>
-      </View>
-    ) : (
-      <View style={styles.modalFooter}>
-        <TouchableOpacity
-          style={[styles.modalActionButton, styles.modalViewButton]}
-          onPress={() => handleViewSyllabus(selectedApproval.id)}
-        >
-          <Ionicons name="eye-outline" size={16} color="#DC2626" />
-          <Text style={styles.modalViewButtonText}>View Syllabus</Text>
-        </TouchableOpacity>
-      </View>
-    );
-
-    return (
-      <ModalContainer
-        visible={visible}
-        onClose={closeModal}
-        title="Submission Details"
-        footer={modalFooter}
-      >
-        <View style={styles.modalContent}>
-          {/* Course Header */}
-          <View style={styles.modalCourseHeader}>
-            <View style={styles.modalFacultyAvatar}>
-              <Text style={styles.modalAvatarText}>{selectedApproval.facultyName.charAt(0)}</Text>
-            </View>
-            <View style={styles.modalCourseInfo}>
-              <Text style={styles.modalCourseCode}>{selectedApproval.courseCode}</Text>
-              <Text style={styles.modalCourseTitle}>{selectedApproval.courseTitle}</Text>
-              <View style={[styles.modalStatusBadge, { backgroundColor: getStatusColor(selectedApproval.status) }]}>
-                <Text style={styles.modalStatusText}>{getStatusText(selectedApproval.status)}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Submission Details */}
-          <View style={styles.modalDetails}>
-            <View style={styles.modalDetailRow}>
-              <View style={styles.modalDetailItem}>
-                <Ionicons name="person-outline" size={16} color="#6B7280" style={{ marginRight: 6 }} />
-                <Text style={styles.modalDetailLabel}>Faculty:</Text>
-                <Text style={styles.modalDetailValue}>{selectedApproval.facultyName}</Text>
-              </View>
-            </View>
-            <View style={styles.modalDetailRow}>
-              <View style={styles.modalDetailItem}>
-                <Ionicons name="school-outline" size={16} color="#6B7280" style={{ marginRight: 6 }} />
-                <Text style={styles.modalDetailLabel}>Department:</Text>
-                <Text style={styles.modalDetailValue}>{selectedApproval.department}</Text>
-              </View>
-            </View>
-            <View style={styles.modalDetailRow}>
-              <View style={styles.modalDetailItem}>
-                <Ionicons name="calendar-outline" size={16} color="#6B7280" style={{ marginRight: 6 }} />
-                <Text style={styles.modalDetailLabel}>Semester:</Text>
-                <Text style={styles.modalDetailValue}>{selectedApproval.semester}</Text>
-              </View>
-            </View>
-            <View style={styles.modalDetailRow}>
-              <View style={styles.modalDetailItem}>
-                <Ionicons name="document-text-outline" size={16} color="#6B7280" style={{ marginRight: 6 }} />
-                <Text style={styles.modalDetailLabel}>Version:</Text>
-                <Text style={styles.modalDetailValue}>{selectedApproval.version}</Text>
-              </View>
-            </View>
-            <View style={styles.modalDetailRow}>
-              <View style={styles.modalDetailItem}>
-                <Ionicons name="time-outline" size={16} color="#6B7280" style={{ marginRight: 6 }} />
-                <Text style={styles.modalDetailLabel}>Submitted:</Text>
-                <Text style={styles.modalDetailValue}>{selectedApproval.submissionDate}</Text>
-              </View>
-            </View>
-            <View style={styles.modalDetailRow}>
-              <View style={styles.modalDetailItem}>
-                <Ionicons name="refresh-outline" size={16} color="#6B7280" style={{ marginRight: 6 }} />
-                <Text style={styles.modalDetailLabel}>Last Modified:</Text>
-                <Text style={styles.modalDetailValue}>{selectedApproval.lastModified}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Documents */}
-          <View style={styles.modalDocuments}>
-            <Text style={styles.modalDocumentsTitle}>Documents:</Text>
-            {selectedApproval.documents.map((doc, index) => (
-              <View key={index} style={styles.modalDocumentItem}>
-                <Ionicons name="document-outline" size={16} color="#6B7280" />
-                <Text style={styles.modalDocumentText}>{doc}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Faculty Profile */}
-          <View style={styles.modalFacultyProfile}>
-            <Text style={styles.modalFacultyTitle}>Faculty Profile:</Text>
-            <View style={styles.modalFacultyDetails}>
-              <View style={styles.modalFacultyDetailRow}>
-                <Text style={styles.modalFacultyDetailLabel}>Name:</Text>
-                <Text style={styles.modalFacultyDetailValue}>{selectedApproval.facultyProfile.name}</Text>
-              </View>
-              <View style={styles.modalFacultyDetailRow}>
-                <Text style={styles.modalFacultyDetailLabel}>Email:</Text>
-                <Text style={styles.modalFacultyDetailValue}>{selectedApproval.facultyProfile.email}</Text>
-              </View>
-              <View style={styles.modalFacultyDetailRow}>
-                <Text style={styles.modalFacultyDetailLabel}>Position:</Text>
-                <Text style={styles.modalFacultyDetailValue}>{selectedApproval.facultyProfile.position}</Text>
-              </View>
-              <View style={styles.modalFacultyDetailRow}>
-                <Text style={styles.modalFacultyDetailLabel}>Experience:</Text>
-                <Text style={styles.modalFacultyDetailValue}>{selectedApproval.facultyProfile.yearsOfExperience} years</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Rejection Reason */}
-          {selectedApproval.rejectionReason && (
-            <View style={styles.modalRejectionSection}>
-              <Text style={styles.modalRejectionTitle}>Rejection Reason:</Text>
-              <Text style={styles.modalRejectionReason}>{selectedApproval.rejectionReason}</Text>
-            </View>
-          )}
-        </View>
-      </ModalContainer>
-    );
+    // openModal(approval); // This was for the old modal, now handled by setShowSyllabusModal(true)
   };
 
   return (
@@ -433,12 +278,12 @@ export default function ReviewSubmissions() {
         )}
 
         <View style={styles.approvalsList}>
-          {isLoading ? (
+          {loading ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="refresh" size={32} color="#DC2626" style={{ marginBottom: 12 }} />
               <Text style={styles.emptyText}>Loading submissions...</Text>
             </View>
-          ) : filteredApprovals.length === 0 ? (
+          ) : filteredSyllabi.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="document-text-outline" size={64} color="#D1D5DB" style={{ marginBottom: 16 }} />
               <Text style={styles.emptyText}>No submissions found</Text>
@@ -455,38 +300,41 @@ export default function ReviewSubmissions() {
                   <Text style={[styles.tableHeaderCell, {width: 120}]}>Semester</Text>
                   <Text style={[styles.tableHeaderCell, {width: 100}]}>Status</Text>
                 </View>
-                {filteredApprovals.map((approval, idx) => (
-                  <View key={approval.id || idx} style={styles.tableRow}>
-                    <Text style={[styles.tableCell, {width: 120}]}>{approval.courseCode}</Text>
-                    <Text style={[styles.tableCell, {width: 220}]}>{approval.courseTitle}</Text>
-                    <Text style={[styles.tableCell, {width: 160}]}>{approval.facultyName}</Text>
+                {filteredSyllabi.map((approval, idx) => (
+                  <View key={approval.syllabus_id || idx} style={styles.tableRow}>
+                    <Text style={[styles.tableCell, {width: 120}]}>{approval.course_code}</Text>
+                    <Text style={[styles.tableCell, {width: 220}]}>{approval.course_title}</Text>
+                    <Text style={[styles.tableCell, {width: 160}]}>{approval.faculty_name}</Text>
                     <Text style={[styles.tableCell, {width: 160}]}>{approval.department}</Text>
-                    <Text style={[styles.tableCell, {width: 120}]}>{approval.semester}</Text>
+                    <Text style={[styles.tableCell, {width: 120}]}>{approval.semester} {approval.school_year}</Text>
                     <Text style={[styles.tableCell, {width: 100}]}>{approval.status.charAt(0).toUpperCase() + approval.status.slice(1)}</Text>
                   </View>
                 ))}
               </View>
             </ScrollView>
           ) : (
-            filteredApprovals.map((approval) => (
-              <SyllabusCard
-                key={approval.id}
-                approval={approval}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                onViewSyllabus={handleViewSyllabus}
-                onCardPress={handleCardPress}
-              />
+            filteredSyllabi.map((approval) => (
+              <TouchableOpacity key={approval.syllabus_id} style={styles.card} onPress={() => handleViewSyllabus(approval)} activeOpacity={0.85}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.cardTitle}>{approval.course_title} <Text style={styles.cardCode}>({approval.course_code})</Text></Text>
+                    <Text style={styles.cardTerm}>{approval.semester} {approval.school_year}</Text>
+                  </View>
+                  <View style={styles.statusBadge}>
+                    <Text style={styles.statusText}>Pending</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
             ))
           )}
         </View>
       </View>
-      {renderSubmissionModal()}
+      {renderSyllabusModal()}
     </ScrollView>
   );
 }
 
-const styles = {
+const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -825,4 +673,49 @@ const styles = {
     fontWeight: '600',
     color: '#EF4444',
   },
-}; 
+  card: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#DC2626',
+    marginBottom: 2,
+  },
+  cardCode: {
+    color: '#6B7280',
+    fontWeight: 'normal',
+    fontSize: 15,
+  },
+  cardTerm: {
+    color: '#6B7280',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  statusBadge: {
+    backgroundColor: '#FEF9C3',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  statusText: {
+    color: '#F59E0B',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+}); 
