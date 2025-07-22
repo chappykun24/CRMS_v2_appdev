@@ -9,7 +9,8 @@ export default function StaffAssignFacultyHeader({
   isTableView, 
   setIsTableView, 
   showSearch, 
-  setShowSearch 
+  setShowSearch, 
+  onAddAssignment // new prop
 }) {
   const handleBack = () => {
     router.back();
@@ -30,6 +31,10 @@ export default function StaffAssignFacultyHeader({
           </TouchableOpacity>
           <TouchableOpacity style={styles.toggleButton} onPress={() => setIsTableView((prev) => !prev)}>
             <Ionicons name={isTableView ? 'grid-outline' : 'list-outline'} size={20} color="#dc2626" />
+          </TouchableOpacity>
+          {/* Plus button for assignment */}
+          <TouchableOpacity style={styles.addButton} onPress={onAddAssignment}>
+            <Ionicons name="add" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
@@ -130,5 +135,14 @@ const styles = StyleSheet.create({
   clearSearchButton: {
     marginLeft: 8,
     padding: 4,
+  },
+  addButton: {
+    backgroundColor: '#DC2626',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
   },
 }); 

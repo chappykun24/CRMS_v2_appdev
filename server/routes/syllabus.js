@@ -172,7 +172,7 @@ router.get('/ilos', async (req, res) => {
 
 // POST /api/syllabus - create syllabus and link ILOs
 router.post('/', async (req, res) => {
-  const { title, courseId, termId, created_by, iloIds } = req.body;
+  const { title, courseId, termId, created_by, iloIds, assessments } = req.body;
   if (!title || !courseId || !termId || !created_by || !Array.isArray(iloIds) || iloIds.length === 0) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -191,6 +191,40 @@ router.post('/', async (req, res) => {
         `INSERT INTO syllabus_ilos (syllabus_id, ilo_id) VALUES ($1, $2)`,
         [syllabus.syllabus_id, iloId]
       );
+    }
+    // Find section_course_id for this course and term
+    const sectionRes = await client.query(
+      `SELECT section_course_id FROM section_courses WHERE course_id = $1 AND term_id = $2 LIMIT 1`,
+      [courseId, termId]
+    );
+    const section_course_id = sectionRes.rows[0]?.section_course_id;
+    // Insert assessments, weights, and rubrics
+    if (section_course_id && Array.isArray(assessments)) {
+      for (const assessment of assessments) {
+        const assessRes = await client.query(
+          `INSERT INTO assessments (section_course_id, title, type, created_at) VALUES ($1, $2, $3, NOW()) RETURNING *`,
+          [section_course_id, assessment.title, assessment.type]
+        );
+        const assessment_id = assessRes.rows[0].assessment_id;
+        // Insert weights
+        if (Array.isArray(assessment.weights)) {
+          for (const w of assessment.weights) {
+            await client.query(
+              `INSERT INTO assessment_ilo_weights (assessment_id, ilo_id, weight_percentage) VALUES ($1, $2, $3)`,
+              [assessment_id, w.ilo_id, w.weight_percentage]
+            );
+          }
+        }
+        // Insert rubrics
+        if (Array.isArray(assessment.rubrics)) {
+          for (const r of assessment.rubrics) {
+            await client.query(
+              `INSERT INTO rubrics (assessment_id, title, description, criterion, max_score, ilo_id) VALUES ($1, $2, $3, $4, $5, $6)`,
+              [assessment_id, r.title, r.description, r.criterion, r.max_score, r.ilo_id || null]
+            );
+          }
+        }
+      }
     }
     await client.query('COMMIT');
     client.release();
@@ -217,6 +251,56 @@ router.post('/ilos', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/syllabus/draft - create a draft syllabus and ensure section_courses is updated
+router.post('/draft', async (req, res) => {
+  console.log('Draft endpoint hit with body:', req.body);
+  const { course_id, term_id, section_id, created_by, title } = req.body;
+  if (!course_id || !term_id || !section_id || !created_by) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // 1. Insert or update section_courses
+    let sectionCourseRes = await client.query(
+      `SELECT section_course_id FROM section_courses WHERE course_id = $1 AND section_id = $2 AND term_id = $3`,
+      [course_id, section_id, term_id]
+    );
+    let section_course_id;
+    if (sectionCourseRes.rows.length === 0) {
+      // Insert new section_course
+      const insertRes = await client.query(
+        `INSERT INTO section_courses (course_id, section_id, term_id, instructor_id)
+         VALUES ($1, $2, $3, $4) RETURNING section_course_id`,
+        [course_id, section_id, term_id, created_by]
+      );
+      section_course_id = insertRes.rows[0].section_course_id;
+    } else {
+      section_course_id = sectionCourseRes.rows[0].section_course_id;
+      // Optionally update instructor_id
+      await client.query(
+        `UPDATE section_courses SET instructor_id = $1 WHERE section_course_id = $2`,
+        [created_by, section_course_id]
+      );
+    }
+    // 2. Insert draft syllabus
+    const syllabusRes = await client.query(
+      `INSERT INTO syllabi (course_id, term_id, created_by, title, review_status)
+       VALUES ($1, $2, $3, $4, 'draft')
+       RETURNING *`,
+      [course_id, term_id, created_by, title || 'Draft Syllabus']
+    );
+    await client.query('COMMIT');
+    res.status(201).json({ syllabus: syllabusRes.rows[0], section_course_id });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error in /draft endpoint:', err);
+    res.status(500).json({ error: 'Server error', details: err.message });
+  } finally {
+    client.release();
   }
 });
 

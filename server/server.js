@@ -6,6 +6,7 @@ require('dotenv').config();
 const bcrypt = require('bcrypt');
 const crypto = require('crypto'); // Add this for SHA-256
 const syllabusRoutes = require('./routes/syllabus');
+const sectionCoursesRouter = require('./routes/sectionCourses');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -24,6 +25,11 @@ app.use(express.json());
 console.log('Before registering /api/syllabus');
 app.use('/api/syllabus', syllabusRoutes);
 console.log('After registering /api/syllabus');
+
+// Register the sectionCourses router
+console.log('Before registering /api/section-courses');
+app.use('/api/section-courses', sectionCoursesRouter);
+console.log('After registering /api/section-courses');
 
 const ALLOWED_IPS = [
   '::1', // IPv6 localhost

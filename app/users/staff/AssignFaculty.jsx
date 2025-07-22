@@ -1,116 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import React, { useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ClickableContainer from '../../../components/ClickableContainer';
 import ModalContainer from '../../../components/ModalContainer';
 import { useModal } from '../../../utils/useModal';
 import StaffAssignFacultyHeader from '../../components/StaffAssignFacultyHeader';
+import { apiClient } from '../../utils/api';
 
-// Mock data for classes with subject and section
-const mockClassList = [
-  {
-    id: 1,
-    subject: 'Introduction to Computer Science',
-    code: 'CS101',
-    section: 'BSIT 1101',
-    currentFaculty: 'Dr. John Doe',
-    credits: 3,
-    schedule: 'MWF 9:00-10:30 AM',
-    room: 'Room 301, Engineering Building',
-    semester: 'Fall 2024',
-    enrollment: 45,
-    maxEnrollment: 50,
-  },
-  {
-    id: 2,
-    subject: 'Calculus I',
-    code: 'MATH201',
-    section: 'BSIT 2201',
-    currentFaculty: 'Dr. Jane Smith',
-    credits: 4,
-    schedule: 'TTh 10:00-11:30 AM',
-    room: 'Room 205, Science Building',
-    semester: 'Fall 2024',
-    enrollment: 38,
-    maxEnrollment: 45,
-  },
-  {
-    id: 3,
-    subject: 'English Composition',
-    code: 'ENG101',
-    section: 'BSIT 1101',
-    currentFaculty: 'Dr. Michael Johnson',
-    credits: 3,
-    schedule: 'MWF 11:00-12:30 PM',
-    room: 'Room 102, Humanities Building',
-    semester: 'Fall 2024',
-    enrollment: 42,
-    maxEnrollment: 50,
-  },
-];
-
-const mockFaculty = [
-  {
-    id: 'F001',
-    name: 'Dr. John Doe',
-    email: 'john.doe@university.edu',
-    phone: '+1 (555) 123-4567',
-    department: 'Computer Science',
-    position: 'Associate Professor',
-    specialization: 'Software Engineering, Database Systems',
-    yearsOfExperience: 8,
-    education: 'Ph.D. Computer Science, Stanford University',
-    officeLocation: 'Room 301, Engineering Building',
-    officeHours: 'Mon/Wed 2:00-4:00 PM',
-    currentLoad: 3,
-    maxLoad: 4,
-  },
-  {
-    id: 'F002',
-    name: 'Dr. Jane Smith',
-    email: 'jane.smith@university.edu',
-    phone: '+1 (555) 234-5678',
-    department: 'Mathematics',
-    position: 'Assistant Professor',
-    specialization: 'Calculus, Linear Algebra, Mathematical Analysis',
-    yearsOfExperience: 5,
-    education: 'Ph.D. Mathematics, MIT',
-    officeLocation: 'Room 205, Science Building',
-    officeHours: 'Tue/Thu 1:00-3:00 PM',
-    currentLoad: 2,
-    maxLoad: 4,
-  },
-  {
-    id: 'F003',
-    name: 'Dr. Michael Johnson',
-    email: 'michael.johnson@university.edu',
-    phone: '+1 (555) 345-6789',
-    department: 'English',
-    position: 'Professor',
-    specialization: 'Creative Writing, Composition Studies',
-    yearsOfExperience: 12,
-    education: 'Ph.D. English Literature, Yale University',
-    officeLocation: 'Room 102, Humanities Building',
-    officeHours: 'Mon/Wed/Fri 10:00-12:00 AM',
-    currentLoad: 4,
-    maxLoad: 4,
-  },
-  {
-    id: 'F004',
-    name: 'Prof. Ana Reyes',
-    email: 'ana.reyes@university.edu',
-    phone: '+1 (555) 456-7890',
-    department: 'Computer Science',
-    position: 'Lecturer',
-    specialization: 'Programming Fundamentals, Web Development',
-    yearsOfExperience: 3,
-    education: 'M.S. Computer Science, UC Berkeley',
-    officeLocation: 'Room 201, Engineering Building',
-    officeHours: 'Tue/Thu 3:00-5:00 PM',
-    currentLoad: 2,
-    maxLoad: 4,
-  },
-];
+// Remove mock data for classes and faculty
+const mockClassList = [];
+const mockFaculty = [];
+// TODO: Fetch real class/section and faculty data from backend and populate these arrays
 
 // Class Card Component
 const ClassCard = ({ cls, currentFaculty, onCardPress }) => {
@@ -153,17 +54,114 @@ export default function AssignFaculty() {
   const [isTableView, setIsTableView] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  // Assignment form state
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [selectedSection, setSelectedSection] = useState('');
+  const [selectedTerm, setSelectedTerm] = useState('');
+  const [selectedFaculty, setSelectedFaculty] = useState('');
+  // TODO: Fetch these from backend
+  const [courses, setCourses] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [terms, setTerms] = useState([]);
+  const [facultyList, setFacultyList] = useState([]);
   const { visible, selectedItem: selectedClass, openModal, closeModal } = useModal();
+  // Remove DropDownPicker state for courses
+  const [courseQuery, setCourseQuery] = useState('');
+  const [showCourseDropdown, setShowCourseDropdown] = useState(false);
+  const [selectedCourseLabel, setSelectedCourseLabel] = useState('');
+  const [draftSyllabusId, setDraftSyllabusId] = useState(null);
+  const [draftSectionCourseId, setDraftSectionCourseId] = useState(null);
 
-  const handleAssign = (classId, facultyName) => {
-    // Update the faculty assignment
-    setFacultyAssignments((prev) => ({ ...prev, [classId]: facultyName }));
-    console.log(`Assigned ${facultyName} to class ${classId}`);
-    closeModal();
+  console.log('terms:', terms);
+  console.log('sections:', sections);
+  console.log('facultyList:', facultyList);
+
+  // Filter courses based on query
+  const filteredCourses = courseQuery
+    ? courses.filter(c => (c.title || c.name || '').toLowerCase().includes(courseQuery.toLowerCase()))
+    : courses;
+
+  // Update courseItems when courses change
+  useEffect(() => {
+    // setCourseItems(Array.isArray(courses)
+    //   ? courses.map(c => ({ label: c.title || c.name, value: c.course_id || c.id }))
+    //   : []);
+  }, [courses]);
+
+  // Fetch dropdown data when modal opens
+  useEffect(() => {
+    if (showAssignmentModal) {
+      // Fetch courses
+      apiClient.get('/courses').then(res => setCourses(Array.isArray(res.data) ? res.data : res.data.courses || [])).catch(() => setCourses([]));
+      // Fetch all sections
+      apiClient.get('/section-courses/sections')
+        .then(res => {
+          console.log('Fetched sections:', res.data);
+          setSections(Array.isArray(res.data) ? res.data : res.data.sections || []);
+        })
+        .catch(() => setSections([]));
+      apiClient.get('/section-courses/school-terms')
+        .then(res => {
+          console.log('Fetched terms:', res.data);
+          setTerms(Array.isArray(res.data) ? res.data : res.data.terms || []);
+        })
+        .catch(() => setTerms([]));
+      // Fetch faculty
+      apiClient.get('/section-courses/faculty')
+        .then(res => {
+          console.log('Fetched faculty:', res.data);
+          setFacultyList(Array.isArray(res.data) ? res.data : res.data.faculty || []);
+        })
+        .catch(() => setFacultyList([]));
+    }
+  }, [showAssignmentModal]);
+
+  // Filter sections by selected term only
+  const filteredSections = selectedTerm
+    ? sections.filter(s => String(s.term_id) === String(selectedTerm))
+    : [];
+
+  console.log('filteredSections:', filteredSections);
+
+  const handleAssign = async (classId, facultyName) => {
+    // Find the selected class and faculty object
+    const cls = mockClassList.find(c => c.id === classId);
+    const faculty = mockFaculty.find(f => f.name === facultyName);
+    if (!cls || !faculty) {
+      Alert.alert('Error', 'Invalid class or faculty selection.');
+      return;
+    }
+    // TODO: Replace cls.id with real section_course_id and faculty.id with real user_id when using real data
+    try {
+      await apiClient.post('/section-courses/assign-instructor', {
+        section_course_id: cls.id, // Replace with real section_course_id
+        instructor_id: faculty.id, // Replace with real user_id
+      });
+      setFacultyAssignments((prev) => ({ ...prev, [classId]: facultyName }));
+      Alert.alert('Success', `Assigned ${facultyName} to class ${cls.subject}`);
+      closeModal();
+    } catch (err) {
+      Alert.alert('Error', 'Failed to assign faculty.');
+    }
   };
 
   const handleCardPress = (cls, currentFaculty) => {
     openModal({ class: cls, currentFaculty });
+  };
+
+  const handleAssignmentSubmit = async () => {
+    if (!selectedCourse || !selectedSection || !selectedTerm || !selectedFaculty) {
+      Alert.alert('Error', 'Please select all fields.');
+      return;
+    }
+    // TODO: Find the correct section_course_id for the selected section, course, and term
+    // For now, just close the modal and show a success alert
+    setShowAssignmentModal(false);
+    Alert.alert('Success', 'Faculty assigned to section!');
+    // You would call the backend here
+    // await apiClient.post('/section-courses/assign-instructor', { section_course_id, instructor_id: selectedFaculty })
   };
 
   // Filter classes by search
@@ -301,6 +299,34 @@ export default function AssignFaculty() {
     );
   };
 
+  // Helper functions to get labels
+  const selectedTermObj = terms.find(t => String(t.term_id) === String(selectedTerm));
+  const selectedSectionObj = sections.find(s => String(s.section_id) === String(selectedSection));
+  const selectedFacultyObj = facultyList.find(f => String(f.user_id) === String(selectedFaculty));
+
+  const handlePreview = () => {
+    setShowPreview(true);
+  };
+
+  const handleConfirmAssignment = async () => {
+    // Create draft syllabus and section_course after user confirms
+    try {
+      const draftRes = await apiClient.post('/syllabus/draft', {
+        course_id: selectedCourse,
+        term_id: selectedTerm,
+        section_id: selectedSection,
+        created_by: selectedFaculty
+      });
+      setDraftSyllabusId(draftRes.data.syllabus.syllabus_id);
+      setDraftSectionCourseId(draftRes.data.section_course_id);
+      setShowAssignmentModal(false);
+      setShowPreview(false);
+      Alert.alert('Success', 'Faculty assigned to section and draft syllabus created!');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to create draft syllabus.');
+    }
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <StaffAssignFacultyHeader
@@ -310,6 +336,7 @@ export default function AssignFaculty() {
         setIsTableView={setIsTableView}
         showSearch={showSearch}
         setShowSearch={setShowSearch}
+        onAddAssignment={() => setShowAssignmentModal(true)}
       />
       
       <View style={styles.content}>
@@ -349,10 +376,153 @@ export default function AssignFaculty() {
         )}
       </View>
       {renderAssignmentModal()}
+      {/* Assignment Modal (placeholder) */}
+      <ModalContainer
+        visible={showAssignmentModal}
+        onClose={() => { setShowAssignmentModal(false); setShowPreview(false); }}
+        title={showPreview ? 'Preview Faculty Assignment' : 'Preview Faculty Assignment'}
+      >
+        <View style={{ padding: 16 }}>
+          {showPreview ? (
+            <View>
+              <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 8 }}>Preview Assignment</Text>
+              <Text style={{ marginBottom: 4 }}>Course: {selectedCourseLabel}</Text>
+              <Text style={{ marginBottom: 4 }}>Term: {selectedTermObj ? `${selectedTermObj.semester} ${selectedTermObj.school_year}` : ''}</Text>
+              <Text style={{ marginBottom: 4 }}>Section: {selectedSectionObj ? selectedSectionObj.section_code : ''}</Text>
+              <Text style={{ marginBottom: 4 }}>Faculty: {selectedFacultyObj ? selectedFacultyObj.name : ''}</Text>
+              {/* Syllabi data preview */}
+              <View style={{ marginTop: 12, marginBottom: 8, padding: 10, backgroundColor: '#F9FAFB', borderRadius: 8 }}>
+                <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>Syllabi Data to Insert:</Text>
+                <Text style={{ fontSize: 13 }}>course_id: {selectedCourse}</Text>
+                <Text style={{ fontSize: 13 }}>term_id: {selectedTerm}</Text>
+                <Text style={{ fontSize: 13 }}>created_by (faculty user_id): {selectedFaculty}</Text>
+                <Text style={{ fontSize: 13 }}>status: draft</Text>
+              </View>
+              <TouchableOpacity
+                style={{ backgroundColor: '#10B981', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 12 }}
+                onPress={handleConfirmAssignment}
+              >
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Confirm Assignment</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              <Text style={{ fontSize: 16, color: '#353A40', marginBottom: 8 }}>Select Course</Text>
+              <View style={{ marginBottom: 16, position: 'relative' }}>
+                <TextInput
+                  value={selectedCourseLabel || courseQuery}
+                  onChangeText={text => {
+                    setCourseQuery(text);
+                    setSelectedCourse('');
+                    setSelectedCourseLabel('');
+                    setShowCourseDropdown(true);
+                  }}
+                  placeholder="Type to search courses..."
+                  style={{
+                    borderWidth: 1,
+                    borderColor: '#E5E7EB',
+                    borderRadius: 8,
+                    padding: 12,
+                    fontSize: 16,
+                    backgroundColor: '#fff'
+                  }}
+                  onFocus={() => setShowCourseDropdown(true)}
+                />
+                {showCourseDropdown && filteredCourses.length > 0 && (
+                  <ScrollView
+                    style={{
+                      position: 'absolute',
+                      top: 50,
+                      left: 0,
+                      right: 0,
+                      backgroundColor: '#fff',
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                      borderRadius: 8,
+                      zIndex: 1000,
+                      maxHeight: 220
+                    }}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {filteredCourses.map(c => (
+                      <TouchableOpacity
+                        key={c.course_id || c.id}
+                        onPress={() => {
+                          setSelectedCourse(c.course_id || c.id);
+                          setSelectedCourseLabel(c.title || c.name);
+                          setCourseQuery('');
+                          setShowCourseDropdown(false);
+                        }}
+                        style={{
+                          paddingVertical: 14,
+                          paddingHorizontal: 16,
+                          borderBottomWidth: 1,
+                          borderBottomColor: '#F3F4F6',
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={{ fontSize: 16, color: '#353A40' }}>{c.title || c.name}</Text>
+                        {c.course_code && (
+                          <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{`Code: ${c.course_code}`}</Text>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+              <Text style={{ fontSize: 16, color: '#353A40', marginBottom: 12 }}>Select Term</Text>
+              <Picker
+                selectedValue={selectedTerm}
+                onValueChange={setSelectedTerm}
+                style={{ marginBottom: 12 }}
+              >
+                <Picker.Item label="Select a term..." value="" />
+                {Array.isArray(terms) && terms.map(t => (
+                  <Picker.Item
+                    key={t.term_id}
+                    label={`${t.semester} ${t.school_year}`}
+                    value={t.term_id}
+                  />
+                ))}
+              </Picker>
+
+              <Text style={{ fontSize: 16, color: '#353A40', marginBottom: 12 }}>Select Section</Text>
+              <Picker
+                selectedValue={selectedSection}
+                onValueChange={setSelectedSection}
+                style={{ marginBottom: 12 }}
+              >
+                <Picker.Item label="Select a section..." value="" />
+                {Array.isArray(filteredSections) && filteredSections.map(s => (
+                  <Picker.Item key={s.section_id} label={s.section_code} value={s.section_id} />
+                ))}
+              </Picker>
+              <Text style={{ fontSize: 16, color: '#353A40', marginBottom: 12 }}>Select Faculty</Text>
+              <Picker
+                selectedValue={selectedFaculty}
+                onValueChange={setSelectedFaculty}
+                style={{ marginBottom: 12 }}
+              >
+                <Picker.Item label="Select a faculty..." value="" />
+                {Array.isArray(facultyList) && facultyList.map(f => (
+                  <Picker.Item key={f.user_id} label={f.name} value={f.user_id} />
+                ))}
+              </Picker>
+              <TouchableOpacity
+                style={{ backgroundColor: '#DC2626', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 12 }}
+                onPress={handlePreview}
+              >
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Preview</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </ModalContainer>
     </ScrollView>
   );
 }
 
+// Add styles at the bottom of the file
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -667,4 +837,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-}); 
+});
+
+ 

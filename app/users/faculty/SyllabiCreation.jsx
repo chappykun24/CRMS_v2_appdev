@@ -134,6 +134,20 @@ export default function SyllabiCreationScreen() {
     }));
   }, [selectedILOs]);
 
+  // Add a debug log for selected course
+  useEffect(() => {
+    console.log('DEBUG: Selected courseId:', formData.courseId);
+    console.log('DEBUG: Selected course object:', selectedCourse);
+  }, [formData.courseId, selectedCourse]);
+
+  // Add a debug log on the last page (Step 3) to print formData.courseId and selectedCourse
+  useEffect(() => {
+    if (step === 3) {
+      console.log('Step 3: courseId:', formData.courseId);
+      console.log('Step 3: selectedCourse:', selectedCourse);
+    }
+  }, [step, formData.courseId, selectedCourse]);
+
   if (!currentUser) {
     router.replace('/');
     return null;
@@ -157,6 +171,10 @@ export default function SyllabiCreationScreen() {
       ...prev,
       [field]: value
     }));
+    if (field === 'courseId') {
+      const courseObj = courses.find(c => String(c.course_id) === String(value));
+      setSelectedCourse(courseObj || null);
+    }
   };
 
   const handleSaveDraft = () => {
@@ -914,28 +932,28 @@ export default function SyllabiCreationScreen() {
                       )}
                       {/* Rubric fields (editable) */}
                       <Text style={{ fontWeight: 'bold', color: '#1E293B', fontSize: 14 }}>Title</Text>
-                      <TextInput
+              <TextInput
                         style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, padding: 8, marginBottom: 6, fontSize: 14 }}
                         value={r.title}
                         editable={true}
                         onChangeText={v => handleRubricFieldChange(idx, ridx, 'title', v)}
                       />
                       <Text style={{ fontWeight: 'bold', color: '#1E293B', fontSize: 14 }}>Description</Text>
-                      <TextInput
+              <TextInput
                         style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, padding: 8, marginBottom: 6, fontSize: 14 }}
                         value={r.description}
                         editable={true}
                         onChangeText={v => handleRubricFieldChange(idx, ridx, 'description', v)}
                       />
                       <Text style={{ fontWeight: 'bold', color: '#1E293B', fontSize: 14 }}>Criterion</Text>
-                      <TextInput
+              <TextInput
                         style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, padding: 8, marginBottom: 6, fontSize: 14 }}
                         value={r.criterion}
                         editable={true}
                         onChangeText={v => handleRubricFieldChange(idx, ridx, 'criterion', v)}
                       />
                       <Text style={{ fontWeight: 'bold', color: '#1E293B', fontSize: 14 }}>Max Score</Text>
-                      <TextInput
+              <TextInput
                         style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, padding: 8, marginBottom: 6, fontSize: 14 }}
                         value={String(r.max_score)}
                         editable={true}
@@ -944,8 +962,8 @@ export default function SyllabiCreationScreen() {
                       <TouchableOpacity onPress={() => handleRemoveRubric(idx, ridx)} style={{ alignSelf: 'flex-end', marginTop: 4, marginBottom: 2 }}>
                         <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>Remove</Text>
                       </TouchableOpacity>
-                    </View>
-                  </View>
+            </View>
+          </View>
                 );
               })
             ) : (
