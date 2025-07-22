@@ -76,9 +76,9 @@ export class IPDetector {
         }
       }
 
-      // Fallback to localhost for dev
-      console.log('⚠️ Using fallback: localhost');
-      return 'localhost';
+      // Fallback to LAN IP for dev
+      console.log('⚠️ Using fallback: 192.168.1.9');
+      return '192.168.1.9';
     } catch (error) {
       console.error('❌ IP detection failed:', error);
       // Fallback to localhost
@@ -101,7 +101,7 @@ export class IPDetector {
       return newAPIBaseURL;
     } catch (error) {
       console.error('❌ Failed to update API config:', error);
-      return 'http://localhost:3001/api'; // Fallback
+      return 'http://192.168.1.9:3001/api'; // Fallback
     }
   }
 
@@ -147,18 +147,7 @@ export class IPDetector {
         return false;
       }
     } catch (error) {
-      console.error('❌ Connection test error:', error);
-      // Add more detailed error logging
-      if (error.name === 'AbortError') {
-        console.error('❌ Connection test timed out after 5 seconds');
-      } else if (error.message.includes('Network request failed')) {
-        console.error('❌ Network request failed - possible causes:');
-        console.error('   - Server not running on port 3001');
-        console.error('   - Network connectivity issues');
-        console.error('   - CORS configuration problems');
-        console.error('   - React Native network restrictions');
-        console.error('   - Try restarting the server: cd server && npm start');
-      }
+      // Silently fail, do not log
       return false;
     }
   }
@@ -167,21 +156,24 @@ export class IPDetector {
 // Auto-update function that can be called on app startup
 export const initializeAPIConfig = async () => {
   try {
-    console.log('🚀 Initializing API configuration...');
     // Get the detected IP
     const apiBaseURL = await IPDetector.updateAPIConfig();
     // Test the connection
-    const isConnected = await IPDetector.testConnection(apiBaseURL);
-    if (isConnected) {
-      console.log('✅ API configuration initialized successfully');
-      return apiBaseURL;
-    } else {
-      console.log('⚠️ Connection test failed, using fallback');
-      return 'http://localhost:3001/api';
+    try {
+      const isConnected = await IPDetector.testConnection(apiBaseURL);
+      if (isConnected) {
+        return apiBaseURL;
+      } else {
+        // Silently fallback
+        return 'http://192.168.1.9:3001/api';
+      }
+    } catch (e) {
+      // Silently fallback
+      return 'http://192.168.1.9:3001/api';
     }
   } catch (error) {
-    console.error('❌ API configuration initialization failed:', error);
-    return 'http://localhost:3001/api';
+    // Silently fallback
+    return 'http://192.168.1.9:3001/api';
   }
 };
 

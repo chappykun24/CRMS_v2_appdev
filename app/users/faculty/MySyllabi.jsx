@@ -47,6 +47,7 @@ export default function MySyllabiScreen() {
           approvedBy: syl.approver_name || syl.approved_by || '',
           term: syl.school_year && syl.semester ? `${syl.school_year} ${syl.semester}` : '',
           selectedILOs: syl.ilos || [], // Use ilos from backend
+          assessments: syl.assessments || [] // Use real data from backend
         }));
         console.log('[MySyllabi] syllabi data:', mapped);
         setSyllabi(mapped);
@@ -205,14 +206,10 @@ export default function MySyllabiScreen() {
   };
 
   const handleEditSyllabus = (syllabus) => {
-    Alert.alert(
-      'Edit Syllabus',
-      `Edit syllabus for ${syllabus.courseCode}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Edit', onPress: () => router.push('/syllabi-creation') }
-      ]
-    );
+    setShowSyllabusModal(false);
+    setTimeout(() => {
+      router.push({ pathname: '/users/faculty/SyllabiCreation', params: { syllabusId: syllabus.syllabusId || syllabus.id } });
+    }, 300);
   };
 
   const handleDeleteSyllabus = (syllabus) => {
@@ -250,13 +247,12 @@ export default function MySyllabiScreen() {
   console.log('[MySyllabi] filteredSyllabi:', filteredSyllabi);
 
   const renderSyllabusCard = (syllabus) => {
-    console.log('[MySyllabi] Rendering syllabus:', syllabus);
     return (
-      <View key={syllabus.id} style={styles.syllabusCard}>
+      <TouchableOpacity key={syllabus.id} style={styles.syllabusCard} onPress={() => handleViewSyllabus(syllabus)} activeOpacity={0.85}>
         <View style={styles.syllabusHeader}>
           <View style={styles.syllabusInfo}>
             <Text style={styles.syllabusTitle}>{String(syllabus.courseCode ?? '')} - {String(syllabus.courseTitle ?? '')}</Text>
-            <Text style={styles.syllabusSchedule}>{String(syllabus.term ?? '')}</Text>
+            <Text style={{ color: '#6B7280', fontSize: 13, marginTop: 2 }}>{String(syllabus.term ?? '')}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(syllabus.status)}20` }]}> 
             <Ionicons name={getStatusIcon(syllabus.status)} size={16} color={getStatusColor(syllabus.status)} />
@@ -265,81 +261,153 @@ export default function MySyllabiScreen() {
             </Text>
           </View>
         </View>
-        <Text style={styles.syllabusDescription}>{String(syllabus.title ?? '')}</Text>
-        <Text style={styles.syllabusDescription}>Reviewer: {String(syllabus.reviewedBy ?? '')}</Text>
-        <Text style={styles.syllabusDescription}>Approver: {String(syllabus.approvedBy ?? '')}</Text>
-        <Text style={styles.syllabusDescription}>Term: {String(syllabus.term ?? '')}</Text>
-        {/* Show ILOs in the card */}
-        {syllabus.selectedILOs && syllabus.selectedILOs.length > 0 && (
-          <View style={{ marginBottom: 8 }}>
-            <Text style={{ fontWeight: 'bold', color: '#DC2626' }}>ILOs:</Text>
-            {syllabus.selectedILOs.map(ilo => (
-              <View key={ilo.id} style={{ flexDirection: 'row', flexWrap: 'wrap', marginLeft: 8, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: '#353A40' }}>{String(ilo.code ?? '')}: </Text>
-                <Text style={{ fontSize: 13, color: '#353A40' }}>{String(ilo.description ?? '')}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-        
-        <View style={styles.syllabusStats}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{String(syllabus.units ?? '')}</Text>
-            <Text style={styles.statLabel}>Units</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{String(syllabus.selectedILOs?.length ?? 0)}</Text>
-            <Text style={styles.statLabel}>ILOs</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{String(syllabus.term ?? '')}</Text>
-            <Text style={styles.statLabel}>Term</Text>
-          </View>
-        </View>
-
-        <View style={styles.syllabusActions}>
-          <TouchableOpacity 
-            style={styles.actionButton} 
-            onPress={() => handleViewSyllabus(syllabus)}
-          >
-            <Ionicons name="eye-outline" size={16} color="#DC2626" />
-            <Text style={styles.actionButtonText}>View</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.actionButton} 
-            onPress={() => handleEditSyllabus(syllabus)}
-          >
-            <Ionicons name="create-outline" size={16} color="#DC2626" />
-            <Text style={styles.actionButtonText}>Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.deleteButton]} 
-            onPress={() => handleDeleteSyllabus(syllabus)}
-          >
-            <Ionicons name="trash-outline" size={16} color="#EF4444" />
-            <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>Delete</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
   const windowHeight = Dimensions.get('window').height;
 
-  const renderSyllabusModal = () => (
-    <Modal
-      visible={showSyllabusModal}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => setShowSyllabusModal(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, { maxHeight: windowHeight * 0.8 }]}> {/* Set maxHeight dynamically */}
-          <Text>Test Modal</Text>
+  // Helper to safely render any value as a string
+  const safeText = (val) => {
+    if (val === null || val === undefined) return 'N/A';
+    if (typeof val === 'object') {
+      // Handle Firestore Timestamp-like objects
+      if (val instanceof Date) return val.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      if (val.seconds && typeof val.seconds === 'number') {
+        try {
+          return new Date(val.seconds * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+        } catch {
+          return 'N/A';
+        }
+      }
+      return 'N/A';
+    }
+    // Format date strings like '2025-05-30 00:00:00'
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+      const date = new Date(val.replace(' ', 'T'));
+      if (!isNaN(date)) {
+        return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      }
+    }
+    return String(val);
+  };
+
+  // Helper to format date strings
+  const formatDate = (val) => {
+    if (!val) return 'N/A';
+    const date = new Date(val);
+    if (isNaN(date)) return String(val);
+    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
+  const renderSyllabusModal = () => {
+    const fields = selectedSyllabus ? [
+      { label: 'Course Code', value: selectedSyllabus.courseCode },
+      { label: 'Course Title', value: selectedSyllabus.courseTitle },
+      { label: 'Term', value: selectedSyllabus.term },
+      { label: 'Syllabus Title', value: selectedSyllabus.title },
+      { label: 'Status', value: getStatusText(selectedSyllabus.status) },
+      { label: 'Reviewed By', value: selectedSyllabus.reviewedBy },
+      { label: 'Approved By', value: selectedSyllabus.approvedBy },
+      { label: 'Date Created', value: safeText(selectedSyllabus.dateCreated) },
+      { label: 'Date Reviewed', value: safeText(selectedSyllabus.dateReviewed) },
+      { label: 'Date Approved', value: (!selectedSyllabus.dateApproved || selectedSyllabus.dateApproved === 'null') ? 'Pending' : (safeText(selectedSyllabus.dateApproved) || 'Pending') },
+    ] : [];
+    return (
+      <Modal
+        visible={showSyllabusModal && !!selectedSyllabus}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowSyllabusModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, minWidth: 300, maxWidth: 380, width: '90%', maxHeight: '85%', alignItems: 'stretch', elevation: 4 }}>
+            <ScrollView>
+              <Text style={{ fontWeight: 'bold', fontSize: 22, marginBottom: 18, alignSelf: 'center', color: '#DC2626' }}>Syllabus Details</Text>
+              {selectedSyllabus && (
+                <>
+                  {/* Syllabus Info */}
+                  <View style={{ marginBottom: 24 }}>
+                    <Text style={{ fontWeight: 'bold', fontSize: 17, color: '#1E293B', marginBottom: 12, letterSpacing: 0.5 }}>Syllabus Information</Text>
+                    {fields.map((field, idx) => (
+                      <View key={field.label} style={{ flexDirection: 'row', marginBottom: 8, alignItems: 'flex-start' }}>
+                        <Text style={{ fontWeight: '600', minWidth: 130, color: '#334155', fontSize: 14 }}>{field.label}:</Text>
+                        <Text style={{ flex: 1, color: '#0F172A', fontSize: 14, fontWeight: '400' }}>{safeText(field.value)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  {/* ILOs */}
+                  {Array.isArray(selectedSyllabus.selectedILOs) && selectedSyllabus.selectedILOs.length > 0 && (
+                    <View style={{ marginBottom: 24, backgroundColor: '#F3F4F6', borderRadius: 8, padding: 14 }}>
+                      <Text style={{ fontWeight: 'bold', color: '#DC2626', marginBottom: 8, fontSize: 15, letterSpacing: 0.5 }}>Intended Learning Outcomes (ILOs)</Text>
+                      {selectedSyllabus.selectedILOs.map(ilo => (
+                        <View key={safeText(ilo.id)} style={{ marginBottom: 4 }}>
+                          <Text style={{ fontSize: 13, color: '#1E293B', fontWeight: '600' }}>{ilo.code}</Text>
+                          <Text style={{ fontSize: 13, color: '#475569', marginLeft: 10 }}>{ilo.description}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  {/* Assessments */}
+                  {Array.isArray(selectedSyllabus.assessments) && selectedSyllabus.assessments.length > 0 && (
+                    <View style={{ marginBottom: 24 }}>
+                      <Text style={{ fontWeight: 'bold', color: '#DC2626', marginBottom: 10, fontSize: 15, letterSpacing: 0.5 }}>Assessments</Text>
+                      {selectedSyllabus.assessments.map(assess => (
+                        <View key={assess.id} style={{ backgroundColor: '#F9FAFB', borderRadius: 8, marginBottom: 16, padding: 14, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                            <Text style={{ fontSize: 14, color: '#1E293B', fontWeight: 'bold', letterSpacing: 0.2 }}>{assess.title}</Text>
+                          </View>
+                          {/* Weights */}
+                          {Array.isArray(assess.weights) && assess.weights.length > 0 && (
+                            <View style={{ marginLeft: 6, marginTop: 2, marginBottom: 6 }}>
+                              <Text style={{ fontSize: 12, color: '#6366F1', fontWeight: 'bold', marginBottom: 2 }}>Weights:</Text>
+                              {assess.weights.map((w, idx) => (
+                                <Text key={idx} style={{ fontSize: 12, color: '#6366F1', fontWeight: '500' }}>
+                                  {w.ilo_code}: {w.ilo_description} — {w.weight_percentage}%
+                                </Text>
+                              ))}
+                            </View>
+                          )}
+                          {/* Rubrics */}
+                          {Array.isArray(assess.rubrics) && assess.rubrics.length > 0 && (
+                            <View style={{ marginLeft: 6, marginTop: 2 }}>
+                              <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: 'bold', marginBottom: 2 }}>Rubrics:</Text>
+                              {assess.rubrics.map((r, ridx) => (
+                                <View key={r.rubric_id || ridx} style={{ marginBottom: 4, backgroundColor: '#FFF', borderRadius: 6, padding: 10, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                                  <Text style={{ fontSize: 12, color: '#1E293B', fontWeight: 'bold', marginBottom: 1 }}>{r.title}</Text>
+                                  <Text style={{ fontSize: 12, color: '#475569', marginBottom: 1 }}>{r.description}</Text>
+                                  <Text style={{ fontSize: 12, color: '#6366F1', marginBottom: 1 }}>Criterion: <Text style={{ fontWeight: '600' }}>{r.criterion}</Text></Text>
+                                  <Text style={{ fontSize: 12, color: '#6366F1' }}>Max Score: <Text style={{ fontWeight: '600' }}>{r.max_score}</Text></Text>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  {/* Actions */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 8 }}>
+                    <TouchableOpacity style={[styles.actionButton, { marginHorizontal: 4 }]} onPress={() => handleEditSyllabus(selectedSyllabus)}>
+                      <Ionicons name="create-outline" size={16} color="#DC2626" />
+                      <Text style={styles.actionButtonText}>Edit</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.actionButton, styles.deleteButton, { marginHorizontal: 4 }]} onPress={() => handleDeleteSyllabus(selectedSyllabus)}>
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                      <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+              <TouchableOpacity onPress={() => setShowSyllabusModal(false)} style={{ marginTop: 18, padding: 10, backgroundColor: '#6366F1', borderRadius: 8, alignSelf: 'center', minWidth: 100 }}>
+                <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Close</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
         </View>
-      </View>
-    </Modal>
-  );
+      </Modal>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>

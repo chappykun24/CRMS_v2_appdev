@@ -3,12 +3,12 @@
 import { initializeAPIConfig } from './ipDetector';
 
 // Dynamic API base URL that will be set on app startup
-let API_BASE_URL = 'http://localhost:3001/api'; // Default fallback
+let API_BASE_URL = 'http://192.168.1.9:3001/api'; // Default fallback
 
 // Function to get local IP address (legacy support)
 const getLocalIP = () => {
   // For development, use detected IP
-  return '192.168.1.207';
+  return '192.168.1.9';
 };
 
 // Initialize API configuration on app startup
@@ -24,7 +24,7 @@ export const initializeAPI = async () => {
     return API_BASE_URL;
   } catch (error) {
     console.error('❌ API initialization failed:', error);
-    API_BASE_URL = 'http://localhost:3001/api';
+    API_BASE_URL = 'http://192.168.1.9:3001/api';
     apiClient.updateBaseURL(API_BASE_URL);
     return API_BASE_URL;
   }

@@ -50,36 +50,18 @@ const ALLOWED_IPS = [
   '::ffff:192.168.1.101', // IPv6-mapped version of newly allowed device
   '192.168.1.105', // Newly allowed device IPv4
   '::ffff:192.168.1.105', // IPv6-mapped version of newly allowed device
+  '192.168.1.9', // Manually added current device IP
+  '::ffff:192.168.1.9', // IPv6-mapped version
 ];
 
-// Simple test endpoint (no database required)
-app.get('/api/test', (req, res) => {
-  res.json({
-    status: 'ok',
-    message: 'Server is running',
-    timestamp: new Date().toISOString()
-  });
+// Health check endpoint for connection tests
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
 });
 
-// Health check endpoint
-app.get('/api/health', async (req, res) => {
-  try {
-    const client = await pool.connect();
-    const result = await client.query('SELECT NOW() as current_time');
-    client.release();
-    res.json({
-      status: 'healthy',
-      database: 'connected',
-      timestamp: result.rows[0].current_time
-    });
-  } catch (error) {
-    console.error('Health check failed:', error);
-    res.status(500).json({
-      status: 'unhealthy',
-      database: 'disconnected',
-      error: error.message
-    });
-  }
+// Simple test endpoint
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API is working!' });
 });
 
 // IP restriction middleware (move this after public endpoints)

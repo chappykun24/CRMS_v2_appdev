@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { useState } from 'react';
+import { Picker } from '@react-native-picker/picker';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
     KeyboardAvoidingView,
@@ -16,9 +17,11 @@ import {
 } from 'react-native';
 import { useUser } from '../../../contexts/UserContext';
 import FacultySyllabiCreationHeader from '../../components/FacultySyllabiCreationHeader';
+import { apiClient } from '../../utils/api';
 
 export default function SyllabiCreationScreen() {
   const { currentUser } = useUser();
+  const params = useLocalSearchParams();
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [showILOModal, setShowILOModal] = useState(false);
@@ -26,70 +29,128 @@ export default function SyllabiCreationScreen() {
   const [selectedILOs, setSelectedILOs] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
-    courseCode: '',
-    courseTitle: '',
-    courseDescription: '',
-    units: '',
-    prerequisites: '',
-    courseObjectives: '',
-    learningOutcomes: '',
-    courseContent: '',
-    teachingMethods: '',
-    assessmentMethods: '',
-    gradingSystem: '',
-    references: '',
-    schedule: '',
-    officeHours: '',
-    contactInfo: '',
-    term: '',
-    specialization: ''
+    courseId: '',
+    termId: '',
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [courses, setCourses] = useState([]);
+  const [terms, setTerms] = useState([]);
+  // Remove static availableILOs
+  // Add state for availableILOs
+  const [availableILOs, setAvailableILOs] = useState([]);
+  // Add state for multi-step
+  const [step, setStep] = useState(1);
+  const totalSteps = 3;
+  // Add state for new ILOs
+  const [newILOs, setNewILOs] = useState([{ code: '', description: '' }]);
+  // Add ref for scrolling and focusing
+  const scrollViewRef = useRef(null);
+  const inputRefs = useRef([]);
+
+  // Prefill logic for editing
+  useEffect(() => {
+    const { syllabusId } = params;
+    if (syllabusId && currentUser) {
+      setIsLoading(true);
+      apiClient.get(`/syllabus/my?facultyId=${currentUser.user_id}`)
+        .then(res => {
+          const found = (res.data || []).find(s => String(s.syllabus_id) === String(syllabusId));
+          if (found) {
+            setFormData({
+              title: found.title || '',
+              courseId: found.course_id ? String(found.course_id) : '',
+              termId: found.term_id ? String(found.term_id) : '',
+              assessments: found.assessments || [],
+            });
+            setSelectedILOs(found.ilos || found.selectedILOs || []);
+            setSelectedCourse({
+              id: found.course_id,
+              code: found.course_code,
+              title: found.course_title,
+            });
+          }
+        })
+        .finally(() => setIsLoading(false));
+    }
+  }, [params.syllabusId, currentUser?.user_id]);
+
+  // Fetch courses and terms on mount
+  useEffect(() => {
+    apiClient.get('/courses')
+      .then(res => {
+        if (Array.isArray(res.data)) setCourses(res.data);
+        else if (res.data && Array.isArray(res.data.courses)) setCourses(res.data.courses);
+        else setCourses([]);
+      });
+    apiClient.get('/terms')
+      .then(res => {
+        if (Array.isArray(res.data)) setTerms(res.data);
+        else if (res.data && Array.isArray(res.data.terms)) setTerms(res.data.terms);
+        else setTerms([]);
+      });
+  }, []);
+
+  // Fetch ILOs from backend on mount
+  useEffect(() => {
+    apiClient.get('/syllabus/ilos')
+      .then(res => {
+        if (Array.isArray(res.data)) setAvailableILOs(res.data);
+        else setAvailableILOs([]);
+      });
+  }, []);
+
+  // Debug log for course selection
+  useEffect(() => {
+    console.log('Selected courseId:', formData.courseId);
+  }, [formData.courseId]);
+  // Debug log for term Picker options and value
+  useEffect(() => {
+    console.log('Available terms:', terms);
+    console.log('Selected termId:', formData.termId);
+  }, [terms, formData.termId]);
+  // Debug log for ILO Picker options and value
+  useEffect(() => {
+    console.log('Available ILOs:', availableILOs);
+    console.log('Selected ILOs:', selectedILOs);
+  }, [availableILOs, selectedILOs]);
+  // Debug log for rubric ILO Picker options and value in Step 3
+  useEffect(() => {
+    if (formData.assessments) {
+      formData.assessments.forEach((a, idx) => {
+        if (a.rubrics) {
+          a.rubrics.forEach((r, ridx) => {
+            console.log(`Assessment ${idx} Rubric ${ridx} ilo_id:`, r.ilo_id);
+          });
+        }
+      });
+    }
+  }, [formData.assessments]);
+
+  // Sync selectedILOs and formData.selectedILOs
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      selectedILOs: selectedILOs
+    }));
+  }, [selectedILOs]);
 
   if (!currentUser) {
     router.replace('/');
     return null;
   }
-
-  // Sample courses data
-  const availableCourses = [
-    {
-      id: 'course-001',
-      code: 'CS101',
-      title: 'Introduction to Computer Science',
-      description: 'Fundamental concepts of computer science and programming',
-      units: '3',
-      specialization: 'Computer Science',
-      term: '2024-2025 1st Semester'
-    },
-    {
-      id: 'course-002',
-      code: 'MATH201',
-      title: 'Calculus I',
-      description: 'Introduction to differential calculus',
-      units: '4',
-      specialization: 'Mathematics',
-      term: '2024-2025 1st Semester'
-    },
-    {
-      id: 'course-003',
-      code: 'ENG101',
-      title: 'English Composition',
-      description: 'Basic composition and rhetoric',
-      units: '3',
-      specialization: 'English',
-      term: '2024-2025 1st Semester'
-    }
-  ];
+  if (isLoading) {
+    return <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text>Loading...</Text></SafeAreaView>;
+  }
 
   // Sample ILOs data
-  const availableILOs = [
-    { id: 1, code: 'ILO1', description: 'Demonstrate understanding of fundamental programming concepts' },
-    { id: 2, code: 'ILO2', description: 'Apply problem-solving techniques to computational problems' },
-    { id: 3, code: 'ILO3', description: 'Write and debug simple computer programs' },
-    { id: 4, code: 'ILO4', description: 'Analyze and evaluate mathematical concepts' },
-    { id: 5, code: 'ILO5', description: 'Communicate technical concepts effectively' },
-    { id: 6, code: 'ILO6', description: 'Work collaboratively in team environments' }
-  ];
+  // const availableILOs = [
+  //   { id: 1, code: 'ILO1', description: 'Demonstrate understanding of fundamental programming concepts' },
+  //   { id: 2, code: 'ILO2', description: 'Apply problem-solving techniques to computational problems' },
+  //   { id: 3, code: 'ILO3', description: 'Write and debug simple computer programs' },
+  //   { id: 4, code: 'ILO4', description: 'Analyze and evaluate mathematical concepts' },
+  //   { id: 5, code: 'ILO5', description: 'Communicate technical concepts effectively' },
+  //   { id: 6, code: 'ILO6', description: 'Work collaboratively in team environments' }
+  // ];
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -106,6 +167,7 @@ export default function SyllabiCreationScreen() {
     setSelectedCourse(course);
     setFormData(prev => ({
       ...prev,
+      courseId: course.id,
       courseCode: course.code,
       courseTitle: course.title,
       courseDescription: course.description,
@@ -129,6 +191,7 @@ export default function SyllabiCreationScreen() {
     setShowPreviewModal(true);
   };
 
+  // In handleSubmit, send selected ILO IDs to backend
   const handleSubmit = () => {
     if (!selectedCourse) {
       Alert.alert('Error', 'Please select a course first.');
@@ -147,9 +210,21 @@ export default function SyllabiCreationScreen() {
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Submit', 
-          onPress: () => {
+          onPress: async () => {
+            try {
+              const payload = {
+                title: formData.title,
+                courseId: formData.courseId,
+                termId: formData.termId,
+                created_by: currentUser.user_id,
+                iloIds: selectedILOs.map(ilo => ilo.id)
+              };
+              await apiClient.post('/syllabus', payload);
             Alert.alert('Success', 'Syllabus submitted successfully!');
             router.back();
+            } catch (err) {
+              Alert.alert('Error', 'Failed to submit syllabus.');
+            }
           }
         }
       ]
@@ -165,6 +240,178 @@ export default function SyllabiCreationScreen() {
         { text: 'Discard', style: 'destructive', onPress: () => router.back() }
       ]
     );
+  };
+
+  const handleAddNewILO = () => {
+    // Prevent adding if last ILO is empty
+    const last = newILOs[newILOs.length - 1];
+    if (!last.code.trim() || !last.description.trim()) {
+      Alert.alert('Please fill in the code and description before adding another ILO.');
+      return;
+    }
+    setNewILOs(prev => [...prev, { code: '', description: '' }]);
+    setTimeout(() => {
+      if (inputRefs.current[newILOs.length]) {
+        inputRefs.current[newILOs.length].focus();
+      }
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollToEnd({ animated: true });
+      }
+    }, 200);
+  };
+  const handleRemoveNewILO = (idx) => {
+    setNewILOs(prev => prev.filter((_, i) => i !== idx));
+  };
+  const handleNewILOChange = (idx, field, value) => {
+    setNewILOs(prev => prev.map((ilo, i) => i === idx ? { ...ilo, [field]: value } : ilo));
+  };
+  const handleSaveNewILOs = async () => {
+    // Validate all ILOs before saving
+    for (const ilo of newILOs) {
+      if (!ilo.code.trim() || !ilo.description.trim()) {
+        Alert.alert('Please fill in all code and description fields before saving.');
+        return;
+      }
+    }
+    try {
+      for (const ilo of newILOs) {
+        await apiClient.post('/syllabus/ilos', ilo);
+      }
+      // Refetch ILOs after insert
+      const res = await apiClient.get('/syllabus/ilos');
+      setAvailableILOs(Array.isArray(res.data) ? res.data : []);
+      setNewILOs([{ code: '', description: '' }]);
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ y: 0, animated: true });
+      }
+      Alert.alert('Success', 'ILOs added!');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to add ILOs.');
+    }
+  };
+
+  // Add a handler for changing selected ILOs for an assessment
+  const handleAssessmentILOChange = (assessmentIdx, selectedIds) => {
+    setFormData(prev => ({
+      ...prev,
+      assessments: prev.assessments.map((a, idx) =>
+        idx === assessmentIdx ? { ...a, iloIds: selectedIds } : a
+      )
+    }));
+  };
+
+  // Add a handler for changing weight for an ILO in an assessment
+  const handleAssessmentWeightChange = (assessmentIdx, iloId, newWeight) => {
+    setFormData(prev => ({
+      ...prev,
+      assessments: prev.assessments.map((a, idx) => {
+        if (idx !== assessmentIdx) return a;
+        // Update or add the weight for this ILO
+        let weights = Array.isArray(a.weights) ? [...a.weights] : [];
+        const wIdx = weights.findIndex(w => w.ilo_id === iloId);
+        if (wIdx >= 0) {
+          weights[wIdx] = { ...weights[wIdx], weight_percentage: newWeight };
+        } else {
+          const ilo = availableILOs.find(i => i.id === iloId);
+          weights.push({ ilo_id: iloId, ilo_code: ilo?.code || '', ilo_description: ilo?.description || '', weight_percentage: newWeight });
+        }
+        return { ...a, weights, date: new Date().toISOString() };
+      })
+    }));
+  };
+
+  // Add a handler for editing rubric fields
+  const handleRubricFieldChange = (assessmentIdx, rubricIdx, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      assessments: prev.assessments.map((a, aIdx) => {
+        if (aIdx !== assessmentIdx) return a;
+        const rubrics = Array.isArray(a.rubrics) ? a.rubrics.map((r, rIdx) =>
+          rIdx === rubricIdx ? { ...r, [field]: value } : r
+        ) : [];
+        return { ...a, rubrics };
+      })
+    }));
+  };
+
+  // Update handleInputChange for assessment fields to also update the date
+  const handleAssessmentFieldChange = (assessmentIdx, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      assessments: prev.assessments.map((a, idx) =>
+        idx === assessmentIdx
+          ? { ...a, [field]: value, date: new Date().toISOString() }
+          : a
+      )
+    }));
+  };
+
+  // Add handler for adding/removing assessments
+  const handleAddAssessment = () => {
+    setFormData(prev => ({
+      ...prev,
+      assessments: [
+        ...(Array.isArray(prev.assessments) ? prev.assessments : []),
+        {
+          title: '',
+          type: '',
+          iloIds: Array.isArray(selectedILOs) ? selectedILOs.map(ilo => ilo.id) : [],
+          weights: [],
+          rubrics: []
+        }
+      ]
+    }));
+  };
+  const handleRemoveAssessment = (idx) => {
+    setFormData(prev => ({
+      ...prev,
+      assessments: prev.assessments.filter((_, i) => i !== idx)
+    }));
+  };
+
+  // Add handler for adding/removing rubrics
+  const handleAddRubric = (assessmentIdx) => {
+    setFormData(prev => ({
+      ...prev,
+      assessments: prev.assessments.map((a, idx) =>
+        idx === assessmentIdx
+          ? {
+              ...a,
+              rubrics: [
+                ...(Array.isArray(a.rubrics) ? a.rubrics : []),
+                { title: '', description: '', criterion: '', max_score: '', ilo_id: (Array.isArray(formData.selectedILOs) && formData.selectedILOs[0]?.id) || '', assessment_id: a.id || undefined }
+              ]
+            }
+          : a
+      )
+    }));
+  };
+  const handleRemoveRubric = (assessmentIdx, rubricIdx) => {
+    setFormData(prev => ({
+      ...prev,
+      assessments: prev.assessments.map((a, idx) =>
+        idx === assessmentIdx
+          ? {
+              ...a,
+              rubrics: a.rubrics.filter((_, rIdx) => rIdx !== rubricIdx)
+            }
+          : a
+      )
+    }));
+  };
+
+  // Add handler for changing rubric ILO
+  const handleRubricILOChange = (assessmentIdx, rubricIdx, iloId) => {
+    setFormData(prev => ({
+      ...prev,
+      assessments: prev.assessments.map((a, aIdx) => {
+        if (aIdx !== assessmentIdx) return a;
+        const rubrics = Array.isArray(a.rubrics) ? a.rubrics.map((r, rIdx) =>
+          rIdx === rubricIdx ? { ...r, ilo_id: iloId } : r
+        ) : [];
+        return { ...a, rubrics };
+      })
+    }));
   };
 
   const renderCourseModal = () => (
@@ -184,15 +431,15 @@ export default function SyllabiCreationScreen() {
           </View>
           
           <ScrollView style={styles.modalBody}>
-            {availableCourses.map((course) => (
+            {courses.map((course) => (
               <TouchableOpacity
-                key={course.id}
+                key={course.course_id}
                 style={styles.courseOption}
                 onPress={() => handleCourseSelection(course)}
               >
                 <View style={styles.courseOptionHeader}>
-                  <Text style={styles.courseOptionCode}>{course.code}</Text>
-                  <Text style={styles.courseOptionUnits}>{course.units} units</Text>
+                  <Text style={styles.courseOptionCode}>{course.course_code}</Text>
+                  <Text style={styles.courseOptionUnits}>{course.title}</Text>
                 </View>
                 <Text style={styles.courseOptionTitle}>{course.title}</Text>
                 <Text style={styles.courseOptionDescription}>{course.description}</Text>
@@ -266,13 +513,13 @@ export default function SyllabiCreationScreen() {
             <View style={styles.previewSection}>
               <Text style={styles.previewSectionTitle}>Course Information</Text>
               <Text style={styles.previewLabel}>Course Code:</Text>
-              <Text style={styles.previewValue}>{formData.courseCode}</Text>
+              <Text style={styles.previewValue}>{selectedCourse?.code}</Text>
               
               <Text style={styles.previewLabel}>Course Title:</Text>
-              <Text style={styles.previewValue}>{formData.courseTitle}</Text>
+              <Text style={styles.previewValue}>{selectedCourse?.title}</Text>
               
               <Text style={styles.previewLabel}>Description:</Text>
-              <Text style={styles.previewValue}>{formData.courseDescription}</Text>
+              <Text style={styles.previewValue}>{selectedCourse?.description}</Text>
             </View>
             
             <View style={styles.previewSection}>
@@ -290,6 +537,452 @@ export default function SyllabiCreationScreen() {
     </Modal>
   );
 
+  // Step indicator
+  const renderStepIndicator = () => (
+    <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 18 }}>
+      {[1, 2, 3].map(s => (
+        <View key={s} style={{ width: 32, height: 8, borderRadius: 4, marginHorizontal: 6, backgroundColor: step === s ? '#DC2626' : '#E5E7EB' }} />
+      ))}
+    </View>
+  );
+
+  // Shared styles for modal consistency
+  const modalContainerStyle = { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 18, marginBottom: 24, borderWidth: 1, borderColor: '#E5E7EB' };
+  const sectionHeaderStyle = { fontWeight: 'bold', fontSize: 17, color: '#DC2626', marginBottom: 12 };
+  const cardStyle = { backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', padding: 14, marginBottom: 14 };
+
+  // Step 1: Syllabus Info & ILOs
+  // In renderStep1, guard term Picker and ILO section by course selection
+  const renderStep1 = () => (
+    <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false}>
+      <View style={modalContainerStyle}>
+        <Text style={sectionHeaderStyle}>Course & Term</Text>
+        <View style={{ ...styles.inputGroup, marginBottom: 18 }}>
+          <Text style={styles.inputLabel}>Course</Text>
+          <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, marginBottom: 8, paddingHorizontal: 8, paddingVertical: 8, minHeight: 48 }}>
+            <Picker
+              selectedValue={formData.courseId}
+              onValueChange={value => handleInputChange('courseId', value)}
+              style={{ height: 48, fontSize: 16 }}
+            >
+              <Picker.Item label="Select a course" value="" />
+              {Array.isArray(courses) && courses.map(course => (
+                <Picker.Item
+                  key={course.course_id}
+                  label={`${course.course_code} - ${course.title}${course.description ? ' | ' + course.description : ''}`}
+                  value={String(course.course_id)}
+                />
+              ))}
+            </Picker>
+                  </View>
+                </View>
+        <View style={{ ...styles.inputGroup, marginBottom: 24 }}>
+          <Text style={styles.inputLabel}>Term</Text>
+          {formData.courseId ? (
+            <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, marginBottom: 8, paddingHorizontal: 8, paddingVertical: 8, minHeight: 48 }}>
+              <Picker
+                selectedValue={formData.termId}
+                onValueChange={value => handleInputChange('termId', value)}
+                style={{ height: 48, fontSize: 16 }}
+              >
+                <Picker.Item label="Select a term" value="" />
+                {Array.isArray(terms) && terms.map(term => (
+                  <Picker.Item
+                    key={term.term_id}
+                    label={`${term.school_year} ${term.semester}`}
+                    value={String(term.term_id)}
+                  />
+                ))}
+              </Picker>
+                </View>
+          ) : (
+            <Text style={{ color: '#64748B', fontStyle: 'italic', marginTop: 8 }}>Please select a course first</Text>
+              )}
+          </View>
+        <Text style={sectionHeaderStyle}>Syllabus Title</Text>
+        <View style={{ ...styles.inputGroup, marginBottom: 24 }}>
+          <Text style={styles.inputLabel}>Title</Text>
+          <TextInput
+            style={{ ...styles.input, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16 }}
+            value={formData.title}
+            onChangeText={(value) => handleInputChange('title', value)}
+            placeholder="Enter syllabus title"
+          />
+        </View>
+        <Text style={sectionHeaderStyle}>Intended Learning Outcomes (ILOs)</Text>
+        {formData.courseId ? (
+          <View style={{ marginBottom: 8 }}>
+            {availableILOs.map(ilo => {
+              const selected = selectedILOs.some(sel => sel.id === ilo.id);
+              return (
+            <TouchableOpacity 
+                  key={ilo.id}
+                  style={{
+                    ...cardStyle,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    borderColor: selected ? '#DC2626' : '#E5E7EB',
+                    backgroundColor: selected ? '#FFF1F2' : '#fff',
+                    borderRadius: 8,
+                    marginBottom: 14,
+                  }}
+                  onPress={() => handleILOSelection(ilo)}
+                  activeOpacity={0.88}
+                >
+                  {/* Checkbox (left) */}
+                  <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: '#DC2626', backgroundColor: selected ? '#DC2626' : '#fff', justifyContent: 'center', alignItems: 'center', marginRight: 14 }}>
+                    {selected && <Ionicons name="checkmark" size={16} color="#fff" />}
+              </View>
+                  {/* ILO code and description */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: 'bold', color: '#DC2626', fontSize: 16, marginBottom: 4 }}>{ilo.code}</Text>
+                    <Text style={{ color: '#475569', fontSize: 15, lineHeight: 20 }}>{ilo.description}</Text>
+                    </View>
+                </TouchableOpacity>
+              );
+            })}
+                </View>
+              ) : (
+          <Text style={{ color: '#64748B', fontStyle: 'italic', marginTop: 8 }}>Please select a course first</Text>
+        )}
+        {/* ILO insertion form visually consistent with other cards */}
+        <View style={{ ...cardStyle, backgroundColor: '#F3F4F6', borderRadius: 8, marginTop: 14 }}>
+          <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#DC2626', marginBottom: 10 }}>Add Intended Learning Outcomes (ILOs)</Text>
+          {newILOs.map((ilo, idx) => (
+            <View key={idx} style={{ marginBottom: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingBottom: 10 }}>
+              <Text style={{ fontWeight: '600', color: '#1E293B', fontSize: 14 }}>Code</Text>
+              <TextInput
+                ref={ref => inputRefs.current[idx] = ref}
+                style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 8, marginBottom: 6, fontSize: 14 }}
+                value={ilo.code}
+                onChangeText={v => handleNewILOChange(idx, 'code', v)}
+                placeholder="ILO Code"
+                returnKeyType="next"
+              />
+              <Text style={{ fontWeight: '600', color: '#1E293B', fontSize: 14 }}>Description</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 8, fontSize: 14, minHeight: 40, textAlignVertical: 'top' }}
+                value={ilo.description}
+                onChangeText={v => handleNewILOChange(idx, 'description', v)}
+                placeholder="ILO Description"
+                multiline
+              />
+              {newILOs.length > 1 && (
+                <TouchableOpacity onPress={() => handleRemoveNewILO(idx)} style={{ marginTop: 4, alignSelf: 'flex-end' }}>
+                  <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>Remove</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+          <TouchableOpacity onPress={handleAddNewILO} style={{ marginBottom: 12, alignSelf: 'flex-start' }}>
+            <Text style={{ color: '#6366F1', fontWeight: 'bold' }}>+ Add Another ILO</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSaveNewILOs} style={{ backgroundColor: '#DC2626', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 18, alignSelf: 'flex-end' }}>
+            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Save ILOs</Text>
+          </TouchableOpacity>
+            </View>
+      </View>
+    </ScrollView>
+  );
+
+  // Step 2: Assessments (read-only for now)
+  const renderStep2 = () => (
+    <View style={modalContainerStyle}>
+      <Text style={sectionHeaderStyle}>Assessments</Text>
+      {Array.isArray(formData.assessments) && formData.assessments.length > 0 ? (
+        formData.assessments.map((a, idx) => {
+          // Use only selected ILOs from page 1
+          const selectedILOOptions = Array.isArray(selectedILOs) ? selectedILOs : [];
+          const selectedILOIds = Array.isArray(a.iloIds)
+            ? a.iloIds
+            : (Array.isArray(a.weights) ? a.weights.map(w => w.ilo_id) : []);
+          // Multi-select dropdown UI
+          return (
+            <View key={a.id || idx} style={cardStyle}>
+              <View style={{ marginBottom: 8 }}>
+                <Text style={{ fontWeight: '600', color: '#1E293B', fontSize: 14, marginBottom: 2 }}>Linked ILO(s):</Text>
+                {selectedILOOptions.length > 0 ? (
+                  <TouchableOpacity
+                    style={{ backgroundColor: '#F3F4F6', borderRadius: 6, padding: 8, minHeight: 36, borderWidth: 1, borderColor: '#E5E7EB' }}
+                    onPress={() => setFormData(prev => ({
+                      ...prev,
+                      assessments: prev.assessments.map((assess, i) =>
+                        i === idx ? { ...assess, showILOSelect: !assess.showILOSelect } : { ...assess, showILOSelect: false }
+                      )
+                    }))}
+                  >
+                    <Text style={{ color: selectedILOIds.length ? '#DC2626' : '#64748B', fontWeight: 'bold', fontSize: 14 }}>
+                      {selectedILOIds.length
+                        ? selectedILOOptions.filter(ilo => selectedILOIds.includes(ilo.id)).map(ilo => ilo.code).join(', ')
+                        : 'Select ILO(s)'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={{ color: '#64748B', fontStyle: 'italic', marginTop: 4 }}>Select ILOs on the first page</Text>
+                )}
+                {a.showILOSelect && selectedILOOptions.length > 0 && (
+                  <View style={{ backgroundColor: '#fff', borderRadius: 6, borderWidth: 1, borderColor: '#E5E7EB', marginTop: 6, padding: 8, zIndex: 10 }}>
+                    {selectedILOOptions.map(ilo => {
+                      const checked = selectedILOIds.includes(ilo.id);
+                      return (
+                        <TouchableOpacity
+                          key={ilo.id}
+                          style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
+                          onPress={() => {
+                            let newSelected;
+                            if (checked) {
+                              newSelected = selectedILOIds.filter(id => id !== ilo.id);
+                            } else {
+                              newSelected = [...selectedILOIds, ilo.id];
+                            }
+                            handleAssessmentILOChange(idx, newSelected);
+                          }}
+                        >
+                          <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: '#DC2626', marginRight: 10, backgroundColor: checked ? '#DC2626' : '#fff', justifyContent: 'center', alignItems: 'center' }}>
+                            {checked && <Ionicons name="checkmark" size={14} color="#fff" />}
+                          </View>
+                          <Text style={{ color: '#1E293B', fontSize: 14, fontWeight: checked ? 'bold' : 'normal' }}>{ilo.code} - {ilo.description}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+              {/* Weights Section (editable) */}
+              {selectedILOIds.length > 0 && (
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={{ fontWeight: '600', color: '#6366F1', fontSize: 14, marginBottom: 2 }}>Weights (total should not exceed 100%)</Text>
+                  {selectedILOIds.map(iloId => {
+                    const ilo = selectedILOOptions.find(i => i.id === iloId);
+                    const weightObj = Array.isArray(a.weights) ? a.weights.find(w => w.ilo_id === iloId) : undefined;
+                    return (
+                      <View key={iloId} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, backgroundColor: '#EEF2FF', borderRadius: 6, padding: 8 }}>
+                        <Text style={{ color: '#6366F1', fontWeight: 'bold', fontSize: 13, minWidth: 60 }}>{ilo?.code}</Text>
+                        <Text style={{ color: '#6366F1', fontSize: 13, flex: 1 }}>{ilo?.description}</Text>
+              <TextInput
+                          style={{ borderWidth: 1, borderColor: '#6366F1', borderRadius: 6, padding: 6, width: 60, marginLeft: 8, color: '#1E293B', fontWeight: 'bold', fontSize: 14, backgroundColor: '#fff' }}
+                          value={weightObj ? String(weightObj.weight_percentage) : ''}
+                          onChangeText={v => {
+                            let val = v.replace(/[^0-9.]/g, '');
+                            if (val.length > 0 && !isNaN(Number(val))) {
+                              let num = Math.max(0, Math.min(100, Number(val)));
+                              handleAssessmentWeightChange(idx, iloId, num);
+                            } else if (val === '') {
+                              handleAssessmentWeightChange(idx, iloId, '');
+                            }
+                          }}
+                          placeholder="%"
+                          keyboardType="numeric"
+                          maxLength={5}
+                        />
+                        <Text style={{ color: '#6366F1', fontWeight: 'bold', marginLeft: 4 }}>%</Text>
+            </View>
+                    );
+                  })}
+                </View>
+              )}
+              {/* Assessment fields */}
+              <Text style={{ fontWeight: 'bold', color: '#1E293B', fontSize: 15, marginBottom: 6 }}>Assessment {idx + 1}</Text>
+              <Text style={{ fontWeight: '600', color: '#1E293B', fontSize: 14 }}>Title</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, padding: 8, marginBottom: 8, fontSize: 14 }}
+                value={a.title}
+                editable={true}
+                placeholder="Assessment Title"
+                onChangeText={v => handleAssessmentFieldChange(idx, 'title', v)}
+              />
+              <Text style={{ fontWeight: '600', color: '#1E293B', fontSize: 14 }}>Type</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, padding: 8, marginBottom: 8, fontSize: 14 }}
+                value={a.type}
+                editable={true}
+                placeholder="Assessment Type"
+                onChangeText={v => handleAssessmentFieldChange(idx, 'type', v)}
+              />
+              {formData.assessments.length > 1 && (
+                <TouchableOpacity onPress={() => handleRemoveAssessment(idx)} style={{ alignSelf: 'flex-end', marginTop: 4, marginBottom: 2 }}>
+                  <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>Remove</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        })
+      ) : (
+        <Text style={{ color: '#64748B' }}>No assessments found.</Text>
+      )}
+      <TouchableOpacity onPress={handleAddAssessment} style={{ marginTop: 8, alignSelf: 'flex-start' }}>
+        <Text style={{ color: '#6366F1', fontWeight: 'bold', fontSize: 15 }}>+ Add Assessment</Text>
+      </TouchableOpacity>
+      {/* Legend for assessment types */}
+      {/* In renderStep2, update the legend to be vertically arranged */}
+      <View style={{ marginTop: 18, padding: 12, backgroundColor: '#F3F4F6', borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB' }}>
+        <Text style={{ fontWeight: 'bold', color: '#334155', fontSize: 14, marginBottom: 4 }}>Assessment Type Legend:</Text>
+        <View style={{ gap: 2 }}>
+          <Text style={{ color: '#64748B', fontSize: 13 }}><Text style={{ fontWeight: 'bold', color: '#DC2626' }}>R</Text> = Recitation</Text>
+          <Text style={{ color: '#64748B', fontSize: 13 }}><Text style={{ fontWeight: 'bold', color: '#DC2626' }}>D</Text> = Discussion</Text>
+          <Text style={{ color: '#64748B', fontSize: 13 }}><Text style={{ fontWeight: 'bold', color: '#DC2626' }}>Q</Text> = Quiz</Text>
+          <Text style={{ color: '#64748B', fontSize: 13 }}><Text style={{ fontWeight: 'bold', color: '#DC2626' }}>E</Text> = Exam</Text>
+          <Text style={{ color: '#64748B', fontSize: 13 }}><Text style={{ fontWeight: 'bold', color: '#DC2626' }}>P</Text> = Project</Text>
+          <Text style={{ color: '#64748B', fontSize: 13 }}><Text style={{ fontWeight: 'bold', color: '#DC2626' }}>L</Text> = Laboratory</Text>
+          <Text style={{ color: '#64748B', fontSize: 13 }}><Text style={{ fontWeight: 'bold', color: '#DC2626' }}>O</Text> = Others</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  // Step 3: Rubrics (read-only for now)
+  const renderStep3 = () => (
+    <View style={modalContainerStyle}>
+      <Text style={sectionHeaderStyle}>Rubrics</Text>
+      {Array.isArray(formData.assessments) && formData.assessments.length > 0 ? (
+        formData.assessments.map((a, idx) => (
+          <View key={a.id || idx} style={{ marginBottom: 18 }}>
+            <Text style={{ fontWeight: 'bold', color: '#DC2626', fontSize: 15, marginBottom: 4 }}>{a.title}</Text>
+            {Array.isArray(a.rubrics) && a.rubrics.length > 0 ? (
+              a.rubrics.map((r, ridx) => {
+                const selectedILOs = formData.selectedILOs || [];
+                const iloOptions = Array.isArray(selectedILOs) ? selectedILOs : [];
+                const hasILOs = iloOptions.length > 0;
+                // Always use a valid value for Picker
+                let rubricILOId = r.ilo_id;
+                if (!rubricILOId || !iloOptions.some(ilo => ilo.id === rubricILOId)) {
+                  rubricILOId = hasILOs ? iloOptions[0].id : '';
+                }
+                // Check if a weight is set for this ILO in the parent assessment
+                const hasWeight = Array.isArray(a.weights) && a.weights.some(w => w.ilo_id === rubricILOId);
+                return (
+                  <View key={r.rubric_id || ridx} style={cardStyle}>
+                    <View>
+                      {/* Linked ILO selection dropdown (card style) */}
+                      <View style={{ marginBottom: 6 }}>
+                        <Text style={{ fontWeight: '600', color: '#1E293B', fontSize: 14, marginBottom: 2 }}>Select ILO for this Rubric:</Text>
+                        {iloOptions.length > 0 ? (
+                          <TouchableOpacity
+                            style={{ backgroundColor: '#F3F4F6', borderRadius: 6, padding: 8, minHeight: 36, borderWidth: 1, borderColor: '#E5E7EB' }}
+                            onPress={() => setFormData(prev => ({
+                              ...prev,
+                              assessments: prev.assessments.map((assess, i) =>
+                                i === idx ? {
+                                  ...assess,
+                                  rubrics: assess.rubrics.map((rub, rIdx) =>
+                                    rIdx === ridx ? { ...rub, showILOSelect: !rub.showILOSelect } : { ...rub, showILOSelect: false }
+                                  )
+                                } : assess
+                              )
+                            }))}
+                          >
+                            <Text style={{ color: '#DC2626', fontWeight: 'bold', fontSize: 14 }}>
+                              {iloOptions.find(ilo => ilo.id === rubricILOId)?.code || 'Select ILO'}
+                            </Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <Text style={{ color: '#64748B', fontStyle: 'italic', marginTop: 4 }}>Select ILOs on the first page</Text>
+                        )}
+                        {r.showILOSelect && iloOptions.length > 0 && (
+                          <View style={{ backgroundColor: '#fff', borderRadius: 6, borderWidth: 1, borderColor: '#E5E7EB', marginTop: 6, padding: 8, zIndex: 10 }}>
+                            {/* Unselect option */}
+                            <TouchableOpacity
+                              style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
+                              onPress={() => handleRubricILOChange(idx, ridx, '')}
+                            >
+                              <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: '#DC2626', marginRight: 10, backgroundColor: rubricILOId === '' ? '#DC2626' : '#fff', justifyContent: 'center', alignItems: 'center' }}>
+                                {rubricILOId === '' && <Ionicons name="close" size={14} color="#fff" />}
+                              </View>
+                              <Text style={{ color: '#1E293B', fontSize: 14, fontWeight: rubricILOId === '' ? 'bold' : 'normal' }}>None</Text>
+                            </TouchableOpacity>
+                            {iloOptions.map(ilo => {
+                              const checked = rubricILOId === ilo.id;
+                              return (
+                                <TouchableOpacity
+                                  key={ilo.id}
+                                  style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
+                                  onPress={() => handleRubricILOChange(idx, ridx, checked ? '' : ilo.id)}
+                                >
+                                  <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: '#DC2626', marginRight: 10, backgroundColor: checked ? '#DC2626' : '#fff', justifyContent: 'center', alignItems: 'center' }}>
+                                    {checked && <Ionicons name="checkmark" size={14} color="#fff" />}
+                                  </View>
+                                  <Text style={{ color: '#1E293B', fontSize: 14, fontWeight: checked ? 'bold' : 'normal' }}>{ilo.code} - {ilo.description}</Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        )}
+                      </View>
+                      {/* Show warning if no weight is set for this ILO */}
+                      {!hasWeight && (
+                        <Text style={{ color: '#EF4444', fontSize: 13, marginBottom: 6 }}>Warning: No weight set for this ILO in the assessment. Please set a weight in Step 2.</Text>
+                      )}
+                      {/* Rubric fields (editable) */}
+                      <Text style={{ fontWeight: 'bold', color: '#1E293B', fontSize: 14 }}>Title</Text>
+                      <TextInput
+                        style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, padding: 8, marginBottom: 6, fontSize: 14 }}
+                        value={r.title}
+                        editable={true}
+                        onChangeText={v => handleRubricFieldChange(idx, ridx, 'title', v)}
+                      />
+                      <Text style={{ fontWeight: 'bold', color: '#1E293B', fontSize: 14 }}>Description</Text>
+                      <TextInput
+                        style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, padding: 8, marginBottom: 6, fontSize: 14 }}
+                        value={r.description}
+                        editable={true}
+                        onChangeText={v => handleRubricFieldChange(idx, ridx, 'description', v)}
+                      />
+                      <Text style={{ fontWeight: 'bold', color: '#1E293B', fontSize: 14 }}>Criterion</Text>
+                      <TextInput
+                        style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, padding: 8, marginBottom: 6, fontSize: 14 }}
+                        value={r.criterion}
+                        editable={true}
+                        onChangeText={v => handleRubricFieldChange(idx, ridx, 'criterion', v)}
+                      />
+                      <Text style={{ fontWeight: 'bold', color: '#1E293B', fontSize: 14 }}>Max Score</Text>
+                      <TextInput
+                        style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, padding: 8, marginBottom: 6, fontSize: 14 }}
+                        value={String(r.max_score)}
+                        editable={true}
+                        onChangeText={v => handleRubricFieldChange(idx, ridx, 'max_score', v.replace(/[^0-9]/g, ''))}
+                      />
+                      <TouchableOpacity onPress={() => handleRemoveRubric(idx, ridx)} style={{ alignSelf: 'flex-end', marginTop: 4, marginBottom: 2 }}>
+                        <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>Remove</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })
+            ) : (
+              <Text style={{ color: '#64748B' }}>No rubrics found.</Text>
+            )}
+            <TouchableOpacity onPress={() => handleAddRubric(idx)} style={{ marginTop: 8, alignSelf: 'flex-start' }}>
+              <Text style={{ color: '#6366F1', fontWeight: 'bold', fontSize: 15 }}>+ Add Rubric</Text>
+            </TouchableOpacity>
+          </View>
+        ))
+      ) : (
+        <Text style={{ color: '#64748B' }}>No assessments/rubrics found.</Text>
+      )}
+    </View>
+  );
+
+  // Navigation buttons
+  const renderStepNavigation = () => (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 }}>
+      {step > 1 && (
+        <TouchableOpacity style={[styles.previewButton, { flex: 1, marginRight: 8 }]} onPress={() => setStep(step - 1)}>
+          <Text style={styles.previewButtonText}>Back</Text>
+            </TouchableOpacity>
+      )}
+      {step < totalSteps && (
+        <TouchableOpacity style={[styles.submitButton, { flex: 2, marginLeft: step > 1 ? 8 : 0 }]} onPress={() => setStep(step + 1)}>
+          <Text style={styles.submitButtonText}>Next</Text>
+            </TouchableOpacity>
+      )}
+      {step === totalSteps && (
+        <TouchableOpacity style={[styles.submitButton, { flex: 2, marginLeft: step > 1 ? 8 : 0 }]} onPress={handleSubmit}>
+          <Text style={styles.submitButtonText}>Save/Submit</Text>
+        </TouchableOpacity>
+      )}
+          </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <FacultySyllabiCreationHeader onSaveDraft={handleSaveDraft} />
@@ -299,190 +992,11 @@ export default function SyllabiCreationScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContentContainer}>
-          {/* Course Selection Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Course Selection</Text>
-            <Text style={styles.sectionSubtitle}>Choose the course for your syllabus</Text>
-            
-            <TouchableOpacity 
-              style={styles.selectorCard} 
-              onPress={() => setShowCourseModal(true)}
-            >
-              {selectedCourse ? (
-                <View style={styles.selectedCourse}>
-                  <View style={styles.selectedCourseHeader}>
-                    <Text style={styles.selectedCourseCode}>{selectedCourse.code}</Text>
-                    <Text style={styles.selectedCourseUnits}>{selectedCourse.units} units</Text>
-                  </View>
-                  <Text style={styles.selectedCourseTitle}>{selectedCourse.title}</Text>
-                  <Text style={styles.selectedCourseDescription}>{selectedCourse.description}</Text>
-                </View>
-              ) : (
-                <View style={styles.selectorPlaceholder}>
-                  <Ionicons name="school-outline" size={24} color="#9CA3AF" />
-                  <Text style={styles.selectorPlaceholderText}>Select a course</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* ILO Selection Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Intended Learning Outcomes</Text>
-            <Text style={styles.sectionSubtitle}>Select the ILOs for this course</Text>
-            
-            <TouchableOpacity 
-              style={styles.selectorCard} 
-              onPress={() => setShowILOModal(true)}
-            >
-              <View style={styles.iloSelectorHeader}>
-                <Text style={styles.iloSelectorTitle}>Selected ILOs</Text>
-                <Text style={styles.iloSelectorCount}>{selectedILOs.length} selected</Text>
-              </View>
-              {selectedILOs.length > 0 ? (
-                <View style={styles.selectedILOs}>
-                  {selectedILOs.map((ilo) => (
-                    <View key={ilo.id} style={styles.selectedILO}>
-                      <Text style={styles.selectedILOCode}>{ilo.code}</Text>
-                      <Text style={styles.selectedILODescription}>{ilo.description}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.iloSelectorText}>No ILOs selected</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Syllabus Details Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Syllabus Details</Text>
-            <Text style={styles.sectionSubtitle}>Fill in the course details</Text>
-            
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Course Objectives</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.courseObjectives}
-                onChangeText={(value) => handleInputChange('courseObjectives', value)}
-                placeholder="Enter course objectives..."
-                multiline
-                numberOfLines={4}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Learning Outcomes</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.learningOutcomes}
-                onChangeText={(value) => handleInputChange('learningOutcomes', value)}
-                placeholder="Enter learning outcomes..."
-                multiline
-                numberOfLines={4}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Course Content</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.courseContent}
-                onChangeText={(value) => handleInputChange('courseContent', value)}
-                placeholder="Enter course content..."
-                multiline
-                numberOfLines={4}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Teaching Methods</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.teachingMethods}
-                onChangeText={(value) => handleInputChange('teachingMethods', value)}
-                placeholder="Enter teaching methods..."
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Assessment Methods</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.assessmentMethods}
-                onChangeText={(value) => handleInputChange('assessmentMethods', value)}
-                placeholder="Enter assessment methods..."
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Grading System</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.gradingSystem}
-                onChangeText={(value) => handleInputChange('gradingSystem', value)}
-                placeholder="e.g., A: 90-100, B: 80-89, C: 70-79, D: 60-69, F: Below 60"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>References</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.references}
-                onChangeText={(value) => handleInputChange('references', value)}
-                placeholder="Enter course references..."
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Schedule</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.schedule}
-                onChangeText={(value) => handleInputChange('schedule', value)}
-                placeholder="e.g., MWF 9:00-10:30 AM"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Office Hours</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.officeHours}
-                onChangeText={(value) => handleInputChange('officeHours', value)}
-                placeholder="e.g., Tuesdays 2:00-4:00 PM"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Contact Information</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.contactInfo}
-                onChangeText={(value) => handleInputChange('contactInfo', value)}
-                placeholder="e.g., Office: Room 301, Email: faculty@university.edu"
-              />
-            </View>
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.actionSection}>
-            <TouchableOpacity style={styles.previewButton} onPress={handlePreview}>
-              <Ionicons name="eye-outline" size={20} color="#DC2626" />
-              <Text style={styles.previewButtonText}>Preview</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-              <Ionicons name="checkmark" size={20} color="white" />
-              <Text style={styles.submitButtonText}>Submit Syllabus</Text>
-            </TouchableOpacity>
-          </View>
+          {renderStepIndicator()}
+          {step === 1 && renderStep1()}
+          {step === 2 && renderStep2()}
+          {step === 3 && renderStep3()}
+          {renderStepNavigation()}
         </ScrollView>
       </KeyboardAvoidingView>
 
