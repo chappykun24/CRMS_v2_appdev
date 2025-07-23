@@ -91,4 +91,24 @@ router.get('/assigned', async (req, res) => {
   }
 });
 
+// GET /api/section-courses/:section_course_id/students - get all students enrolled in a section_course
+router.get('/:section_course_id/students', async (req, res) => {
+  const { section_course_id } = req.params;
+  if (!section_course_id) {
+    return res.status(400).json({ error: 'Missing section_course_id' });
+  }
+  try {
+    const result = await pool.query(`
+      SELECT e.enrollment_id, u.user_id, u.name
+      FROM enrollments e
+      JOIN users u ON e.user_id = u.user_id
+      WHERE e.section_course_id = $1
+      ORDER BY u.name
+    `, [section_course_id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router; 

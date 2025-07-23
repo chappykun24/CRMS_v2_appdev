@@ -7,6 +7,8 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto'); // Add this for SHA-256
 const syllabusRoutes = require('./routes/syllabus');
 const sectionCoursesRouter = require('./routes/sectionCourses');
+const usersRouter = require('./routes/users');
+const studentsRouter = require('./routes/students');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,6 +33,16 @@ console.log('After registering /api/syllabus');
 console.log('Before registering /api/section-courses');
 app.use('/api/section-courses', sectionCoursesRouter);
 console.log('After registering /api/section-courses');
+
+// Register the users router
+console.log('Before registering /api/users');
+app.use('/api/users', usersRouter);
+console.log('After registering /api/users');
+
+// Register the students router
+console.log('Before registering /api/students');
+app.use('/api/students', studentsRouter);
+console.log('After registering /api/students');
 
 const ALLOWED_IPS = [
   '::1', // IPv6 localhost

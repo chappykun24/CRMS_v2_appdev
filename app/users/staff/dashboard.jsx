@@ -75,18 +75,14 @@ export default function StaffDashboard() {
               <Ionicons name="person-add-outline" size={24} color="#DC2626" />
               <Text style={styles.actionText}>Add Student</Text>
             </TouchableOpacity>
-            <View style={styles.actionCard}>
-              <TouchableOpacity style={{alignItems: 'center'}} onPress={() => router.push('/users/staff/AcademicRecords')}>
-                <Ionicons name="folder-outline" size={24} color="#DC2626" />
-                <Text style={styles.actionText}>Records</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.actionCard}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/users/staff/AcademicRecords')}>
+              <Ionicons name="book-outline" size={24} color="#DC2626" />
+              <Text style={styles.actionText}>Classes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/users/staff/student-management')}>
               <Ionicons name="search-outline" size={24} color="#DC2626" />
-              <TouchableOpacity style={{alignItems: 'center'}} onPress={() => router.push('/users/staff/student-management')}>
-                <Text style={styles.actionText}>Search Student</Text>
-              </TouchableOpacity>
-            </View>
+              <Text style={styles.actionText}>Search Student</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/users/staff/AssignFaculty')}>
               <Ionicons name="people-circle-outline" size={24} color="#DC2626" />
               <Text style={styles.actionText}>Assign Faculty</Text>

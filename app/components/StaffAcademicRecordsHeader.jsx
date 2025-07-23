@@ -9,7 +9,8 @@ export default function StaffAcademicRecordsHeader({
   isTableView, 
   setIsTableView, 
   showSearch, 
-  setShowSearch 
+  setShowSearch, 
+  onAddAssignment 
 }) {
   const handleBack = () => {
     router.back();
@@ -22,7 +23,7 @@ export default function StaffAcademicRecordsHeader({
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={24} color="#dc2626" />
           </TouchableOpacity>
-          <Text style={styles.title}>Student Records</Text>
+          <Text style={styles.title}>Classes</Text>
         </View>
         <View style={styles.headerButtons}>
           <TouchableOpacity style={styles.toggleButton} onPress={() => setShowSearch((prev) => !prev)}>
@@ -31,6 +32,12 @@ export default function StaffAcademicRecordsHeader({
           <TouchableOpacity style={styles.toggleButton} onPress={() => setIsTableView((prev) => !prev)}>
             <Ionicons name={isTableView ? 'grid-outline' : 'list-outline'} size={20} color="#dc2626" />
           </TouchableOpacity>
+          {/* Always show plus button if onAddAssignment is provided */}
+          {onAddAssignment && (
+            <TouchableOpacity style={styles.addButton} onPress={onAddAssignment}>
+              <Ionicons name="add" size={24} color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
       
@@ -98,6 +105,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    borderRadius: 20,
+    padding: 8,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButton: {
+    backgroundColor: '#dc2626',
     borderRadius: 20,
     padding: 8,
     width: 40,

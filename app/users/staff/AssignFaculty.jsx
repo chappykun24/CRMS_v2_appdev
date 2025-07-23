@@ -431,48 +431,22 @@ export default function AssignFaculty() {
       <StaffAssignFacultyHeader
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        isTableView={isTableView}
-        setIsTableView={setIsTableView}
+        // Removed isTableView and setIsTableView props
         showSearch={showSearch}
         setShowSearch={setShowSearch}
         onAddAssignment={() => setShowAssignmentModal(true)}
       />
       
       <View style={styles.content}>
-        {isTableView ? (
-          <View style={styles.tableViewContainer}>
-            <View style={styles.tableHeaderRow}>
-              <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Subject</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Section</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Faculty</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Action</Text>
-            </View>
-            {filteredClasses.map((cls) => (
-              <View key={cls.id} style={styles.tableRow}>
-                <Text style={[styles.tableCell, { flex: 2 }]}>{cls.subject} <Text style={{ color: '#6B7280' }}>({cls.code})</Text></Text>
-                <Text style={[styles.tableCell, { flex: 1 }]}>{cls.section}</Text>
-                <Text style={[styles.tableCell, { flex: 1 }]}>{cls.currentFaculty}</Text>
-                <TouchableOpacity 
-                  style={[styles.tableCell, { flex: 1 }]}
-                  onPress={() => handleCardPress(cls, cls.currentFaculty)}
-                >
-                  <View style={styles.assignButtonSmall}>
-                    <Text style={styles.assignButtonSmallText}>Assign</Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        ) : (
-          filteredClasses.map((cls) => (
-            <ClassCard
-              key={cls.id}
-              cls={cls}
-              currentFaculty={facultyAssignments[cls.id]}
-              onCardPress={handleCardPress}
-            />
-          ))
-        )}
+        {/* Removed table view and toggle logic. Only card view remains. */}
+        {filteredClasses.map((cls) => (
+          <ClassCard
+            key={cls.id}
+            cls={cls}
+            currentFaculty={facultyAssignments[cls.id]}
+            onCardPress={handleCardPress}
+          />
+        ))}
       </View>
       {renderAssignedClasses()}
       {renderAssignmentModal()}

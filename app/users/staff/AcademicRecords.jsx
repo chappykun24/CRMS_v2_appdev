@@ -1,45 +1,44 @@
-import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import apiClient from '../../../utils/api.js';
 import StaffAcademicRecordsHeader from '../../components/StaffAcademicRecordsHeader';
 
-const mockRecords = [
-  {
-    id: 1,
-    subject: 'Introduction to Computer Science',
-    code: 'CS101',
-    faculty: 'Dr. John Doe',
-    numStudents: 35,
-    year: '2023-2024',
-  },
-  {
-    id: 2,
-    subject: 'Calculus I',
-    code: 'MATH201',
-    faculty: 'Dr. Jane Smith',
-    numStudents: 28,
-    year: '2023-2024',
-  },
-  {
-    id: 3,
-    subject: 'English Composition',
-    code: 'ENG101',
-    faculty: 'Dr. Michael Johnson',
-    numStudents: 32,
-    year: '2023-2024',
-  },
-];
+// Removed mockRecords dummy data
 
 export default function AcademicRecords() {
   const [search, setSearch] = useState('');
   const [isTableView, setIsTableView] = useState(false);
   const [showSearch, setShowSearch] = useState(true);
-  const filteredRecords = mockRecords.filter(rec =>
-    rec.subject.toLowerCase().includes(search.toLowerCase()) ||
-    rec.code.toLowerCase().includes(search.toLowerCase()) ||
-    rec.faculty.toLowerCase().includes(search.toLowerCase()) ||
-    rec.year.includes(search)
-  );
+  const [approvedClasses, setApprovedClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  // Removed: const navigation = useNavigation();
+
+  useEffect(() => {
+    setLoading(true);
+    apiClient.get('/syllabus/approved')
+      .then(data => {
+        setApprovedClasses(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setApprovedClasses([]);
+        setLoading(false);
+      });
+  }, []);
+
+  // Filter by search
+  const filteredClasses = approvedClasses.filter(cls => {
+    const q = search.toLowerCase();
+    return (
+      (cls.course_title || '').toLowerCase().includes(q) ||
+      (cls.course_code || '').toLowerCase().includes(q) ||
+      (cls.faculty_name || '').toLowerCase().includes(q) ||
+      (cls.semester || '').toLowerCase().includes(q) ||
+      (cls.school_year || '').toLowerCase().includes(q)
+    );
+  });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
@@ -51,23 +50,26 @@ export default function AcademicRecords() {
         showSearch={showSearch}
         setShowSearch={setShowSearch}
       />
-      
       <View style={styles.content}>
-        {isTableView ? (
+        {loading ? (
+          <Text style={{ textAlign: 'center', marginTop: 32 }}>Loading approved classes...</Text>
+        ) : filteredClasses.length === 0 ? (
+          <Text style={{ textAlign: 'center', marginTop: 32 }}>No approved classes found.</Text>
+        ) : isTableView ? (
           <View style={styles.tableViewContainer}>
             <View style={styles.tableHeaderRow}>
-              <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Subject</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Class</Text>
               <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Faculty</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 1 }]}># Students</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Term</Text>
               <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Year</Text>
               <Text style={[styles.tableHeaderCell, { flex: 1 }]}>View</Text>
             </View>
-            {filteredRecords.map(rec => (
-              <View key={rec.id} style={styles.tableRow}>
-                <Text style={[styles.tableCell, { flex: 2 }]}>{rec.subject} <Text style={{ color: '#6B7280' }}>({rec.code})</Text></Text>
-                <Text style={[styles.tableCell, { flex: 1 }]}>{rec.faculty}</Text>
-                <Text style={[styles.tableCell, { flex: 1 }]}>{rec.numStudents}</Text>
-                <Text style={[styles.tableCell, { flex: 1 }]}>{rec.year}</Text>
+            {filteredClasses.map(cls => (
+              <View key={cls.syllabus_id} style={styles.tableRow}>
+                <Text style={[styles.tableCell, { flex: 2 }]}>{cls.course_title} <Text style={{ color: '#6B7280' }}>({cls.course_code})</Text></Text>
+                <Text style={[styles.tableCell, { flex: 1 }]}>{cls.faculty_name}</Text>
+                <Text style={[styles.tableCell, { flex: 1 }]}>{cls.semester}</Text>
+                <Text style={[styles.tableCell, { flex: 1 }]}>{cls.school_year}</Text>
                 <View style={[styles.tableCell, { flex: 1 }]}> 
                   <TouchableOpacity style={styles.viewButtonSmall}>
                     <Ionicons name="eye-outline" size={18} color="#DC2626" />
@@ -77,28 +79,29 @@ export default function AcademicRecords() {
             ))}
           </View>
         ) : (
-          filteredRecords.map(rec => (
-            <View key={rec.id} style={styles.recordCard}>
+          filteredClasses.map(cls => (
+            <TouchableOpacity
+              key={cls.syllabus_id}
+              style={styles.recordCard}
+              onPress={() => router.push({ pathname: '/users/staff/ClassStudents', params: { section_course_id: cls.section_course_id, syllabus_id: cls.syllabus_id } })}
+            >
               <View style={styles.recordHeader}>
                 <Ionicons name="book-outline" size={28} color="#DC2626" style={{ marginRight: 10 }} />
                 <View>
-                  <Text style={styles.subject}>{rec.subject} <Text style={styles.code}>({rec.code})</Text></Text>
-                  <Text style={styles.year}>Year: <Text style={styles.yearValue}>{rec.year}</Text></Text>
+                  <Text style={styles.subject}>{cls.course_title} <Text style={styles.code}>({cls.course_code})</Text></Text>
+                  <Text style={styles.year}>Year: <Text style={styles.yearValue}>{cls.school_year}</Text></Text>
+                  <Text style={styles.year}>Term: <Text style={styles.yearValue}>{cls.semester}</Text></Text>
                 </View>
               </View>
               <View style={styles.recordRow}>
                 <Text style={styles.label}>Faculty Assigned:</Text>
-                <Text style={styles.value}>{rec.faculty}</Text>
+                <Text style={styles.value}>{cls.faculty_name}</Text>
               </View>
-              <View style={styles.recordRow}>
-                <Text style={styles.label}>Number of Students:</Text>
-                <Text style={styles.value}>{rec.numStudents}</Text>
-              </View>
-              <TouchableOpacity style={styles.viewButton}>
+              <TouchableOpacity style={styles.viewButton} onPress={() => router.push({ pathname: '/users/staff/ClassStudents', params: { section_course_id: cls.section_course_id, syllabus_id: cls.syllabus_id } })}>
                 <Ionicons name="eye-outline" size={18} color="#DC2626" style={{ marginRight: 6 }} />
                 <Text style={styles.viewButtonText}>View</Text>
               </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </View>

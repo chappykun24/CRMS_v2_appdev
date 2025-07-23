@@ -6,8 +6,6 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-nativ
 export default function StaffAssignFacultyHeader({ 
   searchQuery, 
   setSearchQuery, 
-  isTableView, 
-  setIsTableView, 
   showSearch, 
   setShowSearch, 
   onAddAssignment // new prop
@@ -28,9 +26,6 @@ export default function StaffAssignFacultyHeader({
         <View style={styles.headerButtons}>
           <TouchableOpacity style={styles.toggleButton} onPress={() => setShowSearch((prev) => !prev)}>
             <Ionicons name={showSearch ? 'close-outline' : 'search-outline'} size={20} color="#dc2626" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.toggleButton} onPress={() => setIsTableView((prev) => !prev)}>
-            <Ionicons name={isTableView ? 'grid-outline' : 'list-outline'} size={20} color="#dc2626" />
           </TouchableOpacity>
           {/* Plus button for assignment */}
           <TouchableOpacity style={styles.addButton} onPress={onAddAssignment}>
