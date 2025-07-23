@@ -31,7 +31,26 @@ export default function MySyllabiScreen() {
       try {
         const data = await apiClient.get(`/syllabus/my?facultyId=${currentUser.user_id}`);
         console.log('Fetched syllabi:', data);
-        setSyllabi(Array.isArray(data) ? data : []);
+        const mapped = (Array.isArray(data) ? data : []).map(syl => ({
+          id: syl.syllabus_id,
+          syllabusId: syl.syllabus_id,
+          title: syl.title || 'Untitled Syllabus',
+          courseCode: syl.course_code || syl.course_id || 'N/A',
+          courseTitle: syl.course_title || 'N/A',
+          status: syl.approval_status || 'pending',
+          reviewStatus: syl.review_status || 'pending',
+          approvalStatus: syl.approval_status || 'pending',
+          dateCreated: syl.created_at || '',
+          dateReviewed: syl.reviewed_at || '',
+          dateApproved: syl.approved_at || '',
+          reviewedBy: syl.reviewer_name || syl.reviewed_by || '',
+          approvedBy: syl.approver_name || syl.approved_by || '',
+          selectedILOs: syl.ilos || [],
+          assessments: syl.assessments || [],
+          term: (syl.school_year && syl.semester) ? `${syl.school_year} ${syl.semester}` : '',
+        }));
+        console.log('Mapped syllabi:', mapped);
+        setSyllabi(mapped);
       } catch (err) {
         console.log('Error fetching syllabi:', err);
         setSyllabi([]);

@@ -34,9 +34,9 @@ export default function ReviewSubmissions() {
   useEffect(() => {
     setLoading(true);
     apiClient.get('/syllabus/pending')
-      .then(res => {
-        const data = Array.isArray(res.data) ? res.data : [];
-        setSyllabusApprovals(data);
+      .then(data => {
+        console.log('Fetched pending syllabi:', data);
+        setSyllabusApprovals(Array.isArray(data) ? data : []);
       })
       .catch(() => setSyllabusApprovals([]))
       .finally(() => setLoading(false));
