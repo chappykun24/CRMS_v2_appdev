@@ -232,7 +232,9 @@ router.get('/my', async (req, res) => {
 router.get('/ilos', async (req, res) => {
   try {
     const client = await pool.connect();
-    const result = await client.query('SELECT ilo_id AS id, code, description FROM ilos ORDER BY code');
+    const sql = 'SELECT ilo_id AS id, code, description FROM ilos ORDER BY code';
+    console.log('Executing SQL for ILOs:', sql);
+    const result = await client.query(sql);
     client.release();
     res.json(result.rows);
   } catch (err) {
@@ -274,6 +276,458 @@ router.get('/pending', async (req, res) => {
           id: row.ilo_id,
           code: row.code,
           description: row.description
+        });
+        return acc;
+      }, {});
+    }
+    let assessmentsBySyllabus = {};
+    for (const s of syllabi) {
+      const sectionCoursesRes = await client.query(
+        `SELECT section_course_id FROM section_courses WHERE course_id = $1 AND term_id = $2`,
+        [s.course_id, s.term_id]
+      );
+      const sectionCourseIds = sectionCoursesRes.rows.map(r => r.section_course_id);
+      let assessments = [];
+      if (sectionCourseIds.length > 0) {
+        const assessmentsRes = await client.query(
+          `SELECT assessment_id, title, type, created_at FROM assessments WHERE section_course_id = ANY($1::int[])`,
+          [sectionCourseIds]
+        );
+        const assessmentIds = assessmentsRes.rows.map(a => a.assessment_id);
+        let weightsByAssessment = {};
+        if (assessmentIds.length > 0) {
+          const weightsRes = await client.query(
+            `SELECT w.assessment_id, w.ilo_id, w.weight_percentage, i.code AS ilo_code, i.description AS ilo_description
+             FROM assessment_ilo_weights w
+             JOIN ilos i ON w.ilo_id = i.ilo_id
+             WHERE w.assessment_id = ANY($1::int[])`,
+            [assessmentIds]
+          );
+          weightsByAssessment = weightsRes.rows.reduce((acc, row) => {
+            if (!acc[row.assessment_id]) acc[row.assessment_id] = [];
+            acc[row.assessment_id].push({
+              ilo_id: row.ilo_id,
+              ilo_code: row.ilo_code,
+              ilo_description: row.ilo_description,
+              weight_percentage: row.weight_percentage
+            });
+            return acc;
+          }, {});
+        }
+        let rubricsByAssessment = {};
+        if (assessmentIds.length > 0) {
+          const rubricsRes = await client.query(
+            `SELECT rubric_id, assessment_id, title, description, criterion, max_score, ilo_id
+             FROM rubrics WHERE assessment_id = ANY($1::int[])`,
+            [assessmentIds]
+          );
+          rubricsByAssessment = rubricsRes.rows.reduce((acc, row) => {
+            if (!acc[row.assessment_id]) acc[row.assessment_id] = [];
+            acc[row.assessment_id].push({
+              rubric_id: row.rubric_id,
+              title: row.title,
+              description: row.description,
+              criterion: row.criterion,
+              max_score: row.max_score,
+              ilo_id: row.ilo_id
+            });
+            return acc;
+          }, {});
+        }
+        assessments = assessmentsRes.rows.map(a => ({
+          id: a.assessment_id,
+          title: a.title,
+          type: a.type,
+          date: a.created_at,
+          weights: weightsByAssessment[a.assessment_id] || [],
+          rubrics: rubricsByAssessment[a.assessment_id] || []
+        }));
+      }
+      assessmentsBySyllabus[s.syllabus_id] = assessments;
+    }
+    client.release();
+    const syllabiWithDetails = syllabi.map(s => ({
+      ...s,
+      ilos: ilosBySyllabus[s.syllabus_id] || [],
+      assessments: assessmentsBySyllabus[s.syllabus_id] || []
+    }));
+    res.json(syllabiWithDetails);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/syllabus/all - get all syllabi
+router.get('/all', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query(
+      `SELECT s.*, c.title AS course_title, c.course_code, u.name AS faculty_name, t.semester, t.school_year, reviewer.name AS reviewer_name
+       FROM syllabi s
+       LEFT JOIN courses c ON s.course_id = c.course_id
+       LEFT JOIN users u ON s.created_by = u.user_id
+       LEFT JOIN users reviewer ON s.reviewed_by = reviewer.user_id
+       LEFT JOIN school_terms t ON s.term_id = t.term_id
+       ORDER BY s.created_at DESC`
+    );
+    const syllabi = result.rows;
+    // Attach ILOs and assessments (copy logic from /pending)
+    const syllabusIds = syllabi.map(s => s.syllabus_id);
+    let ilosBySyllabus = {};
+    if (syllabusIds.length > 0) {
+      const iloResult = await client.query(
+        `SELECT si.syllabus_id, i.ilo_id, i.code, i.description
+         FROM syllabus_ilos si
+         JOIN ilos i ON si.ilo_id = i.ilo_id
+         WHERE si.syllabus_id = ANY($1::int[])`,
+        [syllabusIds]
+      );
+      ilosBySyllabus = iloResult.rows.reduce((acc, row) => {
+        if (!acc[row.syllabus_id]) acc[row.syllabus_id] = [];
+        acc[row.syllabus_id].push({
+          id: row.ilo_id,
+          code: row.code,
+          description: row.description
+        });
+        return acc;
+      }, {});
+    }
+    let assessmentsBySyllabus = {};
+    for (const s of syllabi) {
+      const sectionCoursesRes = await client.query(
+        `SELECT section_course_id FROM section_courses WHERE course_id = $1 AND term_id = $2`,
+        [s.course_id, s.term_id]
+      );
+      const sectionCourseIds = sectionCoursesRes.rows.map(r => r.section_course_id);
+      let assessments = [];
+      if (sectionCourseIds.length > 0) {
+        const assessmentsRes = await client.query(
+          `SELECT assessment_id, title, type, created_at FROM assessments WHERE section_course_id = ANY($1::int[])`,
+          [sectionCourseIds]
+        );
+        const assessmentIds = assessmentsRes.rows.map(a => a.assessment_id);
+        let weightsByAssessment = {};
+        if (assessmentIds.length > 0) {
+          const weightsRes = await client.query(
+            `SELECT w.assessment_id, w.ilo_id, w.weight_percentage, i.code AS ilo_code, i.description AS ilo_description
+             FROM assessment_ilo_weights w
+             JOIN ilos i ON w.ilo_id = i.ilo_id
+             WHERE w.assessment_id = ANY($1::int[])`,
+            [assessmentIds]
+          );
+          weightsByAssessment = weightsRes.rows.reduce((acc, row) => {
+            if (!acc[row.assessment_id]) acc[row.assessment_id] = [];
+            acc[row.assessment_id].push({
+              ilo_id: row.ilo_id,
+              ilo_code: row.ilo_code,
+              ilo_description: row.ilo_description,
+              weight_percentage: row.weight_percentage
+            });
+            return acc;
+          }, {});
+        }
+        let rubricsByAssessment = {};
+        if (assessmentIds.length > 0) {
+          const rubricsRes = await client.query(
+            `SELECT rubric_id, assessment_id, title, description, criterion, max_score, ilo_id
+             FROM rubrics WHERE assessment_id = ANY($1::int[])`,
+            [assessmentIds]
+          );
+          rubricsByAssessment = rubricsRes.rows.reduce((acc, row) => {
+            if (!acc[row.assessment_id]) acc[row.assessment_id] = [];
+            acc[row.assessment_id].push({
+              rubric_id: row.rubric_id,
+              title: row.title,
+              description: row.description,
+              criterion: row.criterion,
+              max_score: row.max_score,
+              ilo_id: row.ilo_id
+            });
+            return acc;
+          }, {});
+        }
+        assessments = assessmentsRes.rows.map(a => ({
+          id: a.assessment_id,
+          title: a.title,
+          type: a.type,
+          date: a.created_at,
+          weights: weightsByAssessment[a.assessment_id] || [],
+          rubrics: rubricsByAssessment[a.assessment_id] || []
+        }));
+      }
+      assessmentsBySyllabus[s.syllabus_id] = assessments;
+    }
+    client.release();
+    const syllabiWithDetails = syllabi.map(s => ({
+      ...s,
+      ilos: ilosBySyllabus[s.syllabus_id] || [],
+      assessments: assessmentsBySyllabus[s.syllabus_id] || []
+    }));
+    res.json(syllabiWithDetails);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/syllabus/pending - get syllabi pending Program Chair review
+router.get('/pending', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query(
+      `SELECT s.*, c.title AS course_title, c.course_code, u.name AS faculty_name, t.semester, t.school_year, reviewer.name AS reviewer_name
+       FROM syllabi s
+       LEFT JOIN courses c ON s.course_id = c.course_id
+       LEFT JOIN users u ON s.created_by = u.user_id
+       LEFT JOIN users reviewer ON s.reviewed_by = reviewer.user_id
+       LEFT JOIN school_terms t ON s.term_id = t.term_id
+       WHERE s.review_status = 'pending' AND s.approval_status = 'pending'
+         AND u.name IS NOT NULL AND u.name <> ''
+       ORDER BY s.created_at DESC`
+    );
+    const syllabi = result.rows;
+    const syllabusIds = syllabi.map(s => s.syllabus_id);
+    let ilosBySyllabus = {};
+    if (syllabusIds.length > 0) {
+      const iloResult = await client.query(
+        `SELECT si.syllabus_id, i.ilo_id, i.code, i.description
+         FROM syllabus_ilos si
+         JOIN ilos i ON si.ilo_id = i.ilo_id
+         WHERE si.syllabus_id = ANY($1::int[])`,
+        [syllabusIds]
+      );
+      ilosBySyllabus = iloResult.rows.reduce((acc, row) => {
+        if (!acc[row.syllabus_id]) acc[row.syllabus_id] = [];
+        acc[row.syllabus_id].push({
+          ilo_id: row.ilo_id,
+          ilo_code: row.code,
+          ilo_description: row.description
+        });
+        return acc;
+      }, {});
+    }
+    let assessmentsBySyllabus = {};
+    for (const s of syllabi) {
+      const sectionCoursesRes = await client.query(
+        `SELECT section_course_id FROM section_courses WHERE course_id = $1 AND term_id = $2`,
+        [s.course_id, s.term_id]
+      );
+      const sectionCourseIds = sectionCoursesRes.rows.map(r => r.section_course_id);
+      let assessments = [];
+      if (sectionCourseIds.length > 0) {
+        const assessmentsRes = await client.query(
+          `SELECT assessment_id, title, type, created_at FROM assessments WHERE section_course_id = ANY($1::int[])`,
+          [sectionCourseIds]
+        );
+        const assessmentIds = assessmentsRes.rows.map(a => a.assessment_id);
+        let weightsByAssessment = {};
+        if (assessmentIds.length > 0) {
+          const weightsRes = await client.query(
+            `SELECT w.assessment_id, w.ilo_id, w.weight_percentage, i.code AS ilo_code, i.description AS ilo_description
+             FROM assessment_ilo_weights w
+             JOIN ilos i ON w.ilo_id = i.ilo_id
+             WHERE w.assessment_id = ANY($1::int[])`,
+            [assessmentIds]
+          );
+          weightsByAssessment = weightsRes.rows.reduce((acc, row) => {
+            if (!acc[row.assessment_id]) acc[row.assessment_id] = [];
+            acc[row.assessment_id].push({
+              ilo_id: row.ilo_id,
+              ilo_code: row.ilo_code,
+              ilo_description: row.ilo_description,
+              weight_percentage: row.weight_percentage
+            });
+            return acc;
+          }, {});
+        }
+        let rubricsByAssessment = {};
+        if (assessmentIds.length > 0) {
+          const rubricsRes = await client.query(
+            `SELECT rubric_id, assessment_id, title, description, criterion, max_score, ilo_id
+             FROM rubrics WHERE assessment_id = ANY($1::int[])`,
+            [assessmentIds]
+          );
+          rubricsByAssessment = rubricsRes.rows.reduce((acc, row) => {
+            if (!acc[row.assessment_id]) acc[row.assessment_id] = [];
+            acc[row.assessment_id].push({
+              rubric_id: row.rubric_id,
+              title: row.title,
+              description: row.description,
+              criterion: row.criterion,
+              max_score: row.max_score,
+              ilo_id: row.ilo_id
+            });
+            return acc;
+          }, {});
+        }
+        assessments = assessmentsRes.rows.map(a => ({
+          id: a.assessment_id,
+          title: a.title,
+          type: a.type,
+          date: a.created_at,
+          weights: weightsByAssessment[a.assessment_id] || [],
+          rubrics: rubricsByAssessment[a.assessment_id] || []
+        }));
+      }
+      assessmentsBySyllabus[s.syllabus_id] = assessments;
+    }
+    client.release();
+    const syllabiWithDetails = syllabi.map(s => ({
+      ...s,
+      ilos: ilosBySyllabus[s.syllabus_id] || [],
+      assessments: assessmentsBySyllabus[s.syllabus_id] || []
+    }));
+    res.json(syllabiWithDetails);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/syllabus/approved - get syllabi approved by Program Chair or fully approved
+router.get('/approved', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query(
+      `SELECT s.*, c.title AS course_title, c.course_code, u.name AS faculty_name, t.semester, t.school_year, reviewer.name AS reviewer_name
+       FROM syllabi s
+       LEFT JOIN courses c ON s.course_id = c.course_id
+       LEFT JOIN users u ON s.created_by = u.user_id
+       LEFT JOIN users reviewer ON s.reviewed_by = reviewer.user_id
+       LEFT JOIN school_terms t ON s.term_id = t.term_id
+       WHERE (s.review_status = 'approved' AND s.approval_status = 'pending')
+          OR (s.review_status = 'approved' AND s.approval_status = 'approved')
+         AND u.name IS NOT NULL AND u.name <> ''
+       ORDER BY s.created_at DESC`
+    );
+    const syllabi = result.rows;
+    const syllabusIds = syllabi.map(s => s.syllabus_id);
+    let ilosBySyllabus = {};
+    if (syllabusIds.length > 0) {
+      const iloResult = await client.query(
+        `SELECT si.syllabus_id, i.ilo_id, i.code, i.description
+         FROM syllabus_ilos si
+         JOIN ilos i ON si.ilo_id = i.ilo_id
+         WHERE si.syllabus_id = ANY($1::int[])`,
+        [syllabusIds]
+      );
+      ilosBySyllabus = iloResult.rows.reduce((acc, row) => {
+        if (!acc[row.syllabus_id]) acc[row.syllabus_id] = [];
+        acc[row.syllabus_id].push({
+          ilo_id: row.ilo_id,
+          ilo_code: row.code,
+          ilo_description: row.description
+        });
+        return acc;
+      }, {});
+    }
+    let assessmentsBySyllabus = {};
+    for (const s of syllabi) {
+      const sectionCoursesRes = await client.query(
+        `SELECT section_course_id FROM section_courses WHERE course_id = $1 AND term_id = $2`,
+        [s.course_id, s.term_id]
+      );
+      const sectionCourseIds = sectionCoursesRes.rows.map(r => r.section_course_id);
+      let assessments = [];
+      if (sectionCourseIds.length > 0) {
+        const assessmentsRes = await client.query(
+          `SELECT assessment_id, title, type, created_at FROM assessments WHERE section_course_id = ANY($1::int[])`,
+          [sectionCourseIds]
+        );
+        const assessmentIds = assessmentsRes.rows.map(a => a.assessment_id);
+        let weightsByAssessment = {};
+        if (assessmentIds.length > 0) {
+          const weightsRes = await client.query(
+            `SELECT w.assessment_id, w.ilo_id, w.weight_percentage, i.code AS ilo_code, i.description AS ilo_description
+             FROM assessment_ilo_weights w
+             JOIN ilos i ON w.ilo_id = i.ilo_id
+             WHERE w.assessment_id = ANY($1::int[])`,
+            [assessmentIds]
+          );
+          weightsByAssessment = weightsRes.rows.reduce((acc, row) => {
+            if (!acc[row.assessment_id]) acc[row.assessment_id] = [];
+            acc[row.assessment_id].push({
+              ilo_id: row.ilo_id,
+              ilo_code: row.ilo_code,
+              ilo_description: row.ilo_description,
+              weight_percentage: row.weight_percentage
+            });
+            return acc;
+          }, {});
+        }
+        let rubricsByAssessment = {};
+        if (assessmentIds.length > 0) {
+          const rubricsRes = await client.query(
+            `SELECT rubric_id, assessment_id, title, description, criterion, max_score, ilo_id
+             FROM rubrics WHERE assessment_id = ANY($1::int[])`,
+            [assessmentIds]
+          );
+          rubricsByAssessment = rubricsRes.rows.reduce((acc, row) => {
+            if (!acc[row.assessment_id]) acc[row.assessment_id] = [];
+            acc[row.assessment_id].push({
+              rubric_id: row.rubric_id,
+              title: row.title,
+              description: row.description,
+              criterion: row.criterion,
+              max_score: row.max_score,
+              ilo_id: row.ilo_id
+            });
+            return acc;
+          }, {});
+        }
+        assessments = assessmentsRes.rows.map(a => ({
+          id: a.assessment_id,
+          title: a.title,
+          type: a.type,
+          date: a.created_at,
+          weights: weightsByAssessment[a.assessment_id] || [],
+          rubrics: rubricsByAssessment[a.assessment_id] || []
+        }));
+      }
+      assessmentsBySyllabus[s.syllabus_id] = assessments;
+    }
+    client.release();
+    const syllabiWithDetails = syllabi.map(s => ({
+      ...s,
+      ilos: ilosBySyllabus[s.syllabus_id] || [],
+      assessments: assessmentsBySyllabus[s.syllabus_id] || []
+    }));
+    res.json(syllabiWithDetails);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/syllabus/rejected - get syllabi rejected at any stage
+router.get('/rejected', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query(
+      `SELECT s.*, c.title AS course_title, c.course_code, u.name AS faculty_name, t.semester, t.school_year, reviewer.name AS reviewer_name
+       FROM syllabi s
+       LEFT JOIN courses c ON s.course_id = c.course_id
+       LEFT JOIN users u ON s.created_by = u.user_id
+       LEFT JOIN users reviewer ON s.reviewed_by = reviewer.user_id
+       LEFT JOIN school_terms t ON s.term_id = t.term_id
+       WHERE s.review_status = 'rejected' OR s.approval_status = 'rejected'
+         AND u.name IS NOT NULL AND u.name <> ''
+       ORDER BY s.created_at DESC`
+    );
+    const syllabi = result.rows;
+    const syllabusIds = syllabi.map(s => s.syllabus_id);
+    let ilosBySyllabus = {};
+    if (syllabusIds.length > 0) {
+      const iloResult = await client.query(
+        `SELECT si.syllabus_id, i.ilo_id, i.code, i.description
+         FROM syllabus_ilos si
+         JOIN ilos i ON si.ilo_id = i.ilo_id
+         WHERE si.syllabus_id = ANY($1::int[])`,
+        [syllabusIds]
+      );
+      ilosBySyllabus = iloResult.rows.reduce((acc, row) => {
+        if (!acc[row.syllabus_id]) acc[row.syllabus_id] = [];
+        acc[row.syllabus_id].push({
+          ilo_id: row.ilo_id,
+          ilo_code: row.code,
+          ilo_description: row.description
         });
         return acc;
       }, {});
@@ -555,6 +1009,127 @@ router.put('/update/:syllabus_id', async (req, res) => {
   }
 });
 
+// GET /api/syllabus/one/:id - get a single syllabus by ID
+router.get('/one/:id', async (req, res) => {
+  console.log('GET /one/:id called with id:', req.params.id); // Debug log at route entry
+  const { id } = req.params;
+  try {
+    const client = await pool.connect();
+    // Fetch the syllabus with joined fields
+    const result = await client.query(
+      `SELECT s.*, c.title AS course_title, c.course_code, u1.name AS reviewer_name, u2.name AS approver_name, t.school_year, t.semester
+       FROM syllabi s
+       LEFT JOIN courses c ON s.course_id = c.course_id
+       LEFT JOIN users u1 ON s.reviewed_by = u1.user_id
+       LEFT JOIN users u2 ON s.approved_by = u2.user_id
+       LEFT JOIN school_terms t ON s.term_id = t.term_id
+       WHERE s.syllabus_id = $1
+       LIMIT 1`,
+      [id]
+    );
+    const syllabus = result.rows[0];
+    if (!syllabus) {
+      client.release();
+      return res.status(404).json({ error: 'Syllabus not found' });
+    }
+    // Attach ILOs
+    let ilos = [];
+    const iloResult = await client.query(
+      `SELECT si.syllabus_id, i.ilo_id, i.code, i.description
+       FROM syllabus_ilos si
+       JOIN ilos i ON si.ilo_id = i.ilo_id
+       WHERE si.syllabus_id = $1`,
+      [syllabus.syllabus_id]
+    );
+    ilos = iloResult.rows.map(row => ({
+      id: row.ilo_id,
+      code: row.code,
+      description: row.description
+    }));
+    // Attach assessments, weights, rubrics
+    const sectionCoursesRes = await client.query(
+      `SELECT section_course_id FROM section_courses WHERE course_id = $1 AND term_id = $2`,
+      [syllabus.course_id, syllabus.term_id]
+    );
+    const sectionCourseIds = sectionCoursesRes.rows.map(r => r.section_course_id);
+    let assessments = [];
+    if (sectionCourseIds.length > 0) {
+      const assessmentsRes = await client.query(
+        `SELECT assessment_id, title, type, created_at FROM assessments WHERE section_course_id = ANY($1::int[])`,
+        [sectionCourseIds]
+      );
+      const assessmentIds = assessmentsRes.rows.map(a => a.assessment_id);
+      // Weights
+      let weightsByAssessment = {};
+      if (assessmentIds.length > 0) {
+        const weightsRes = await client.query(
+          `SELECT w.assessment_id, w.ilo_id, w.weight_percentage, i.code AS ilo_code, i.description AS ilo_description
+           FROM assessment_ilo_weights w
+           JOIN ilos i ON w.ilo_id = i.ilo_id
+           WHERE w.assessment_id = ANY($1::int[])`,
+          [assessmentIds]
+        );
+        weightsByAssessment = weightsRes.rows.reduce((acc, row) => {
+          if (!acc[row.assessment_id]) acc[row.assessment_id] = [];
+          acc[row.assessment_id].push({
+            ilo_id: row.ilo_id,
+            ilo_code: row.ilo_code,
+            ilo_description: row.ilo_description,
+            weight_percentage: row.weight_percentage
+          });
+          return acc;
+        }, {});
+      }
+      // Rubrics
+      let rubricsByAssessment = {};
+      if (assessmentIds.length > 0) {
+        const rubricsRes = await client.query(
+          `SELECT rubric_id, assessment_id, title, description, criterion, max_score, ilo_id
+           FROM rubrics WHERE assessment_id = ANY($1::int[])`,
+          [assessmentIds]
+        );
+        rubricsByAssessment = rubricsRes.rows.reduce((acc, row) => {
+          if (!acc[row.assessment_id]) acc[row.assessment_id] = [];
+          acc[row.assessment_id].push({
+            rubric_id: row.rubric_id,
+            title: row.title,
+            description: row.description,
+            criterion: row.criterion,
+            max_score: row.max_score,
+            ilo_id: row.ilo_id
+          });
+          return acc;
+        }, {});
+      }
+      assessments = assessmentsRes.rows.map(a => ({
+        id: a.assessment_id,
+        title: a.title,
+        type: a.type,
+        date: a.created_at,
+        weights: weightsByAssessment[a.assessment_id] || [],
+        rubrics: rubricsByAssessment[a.assessment_id] || []
+      }));
+    }
+    client.release();
+    res.json({ ...syllabus, ilos, assessments });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/syllabus/terms - fetch all terms
+router.get('/terms', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query('SELECT * FROM school_terms ORDER BY start_date');
+    client.release();
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// This must be LAST!
 router.all('*', (req, res) => {
   console.log('Unmatched syllabus route:', req.method, req.originalUrl);
   res.status(404).json({ error: 'Not found' });

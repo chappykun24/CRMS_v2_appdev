@@ -209,7 +209,13 @@ export default function MySyllabiScreen() {
   const handleEditSyllabus = (syllabus) => {
     setShowSyllabusModal(false);
     setTimeout(() => {
-      router.push({ pathname: '/users/faculty/SyllabiCreation', params: { syllabusId: syllabus.syllabusId || syllabus.id } });
+      router.push({
+        pathname: '/users/faculty/SyllabiCreation',
+        params: {
+          syllabusId: syllabus.syllabusId || syllabus.id,
+          syllabusData: JSON.stringify(syllabus)
+        }
+      });
     }, 300);
   };
 

@@ -15,13 +15,9 @@ export default function FacultySyllabiCreationHeader({ onSaveDraft }) {
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={24} color="#dc2626" />
           </TouchableOpacity>
-          <Text style={styles.title}>Create Syllabus</Text>
+          <Text style={styles.title}>Syllabus</Text>
         </View>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity style={styles.saveButton} onPress={onSaveDraft}>
-            <Ionicons name="save-outline" size={20} color="#dc2626" />
-          </TouchableOpacity>
-        </View>
+        {/* Save icon removed */}
       </View>
     </View>
   );

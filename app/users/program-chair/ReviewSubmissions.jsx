@@ -9,7 +9,7 @@ import ProgramChairSubmissionsHeader from '../../components/ProgramChairSubmissi
 const SyllabusCard = ({ approval, onCardPress }) => {
   let statusLabel = 'Pending Review';
   if (approval.review_status === 'approved' && approval.approval_status === 'pending') {
-    statusLabel = 'Pending for Dean Approval';
+    statusLabel = 'Approved'; // Changed from 'Pending for Dean Approval' to 'Approved'
   } else if (approval.review_status === 'approved' && approval.approval_status === 'approved') {
     statusLabel = 'Approved';
   } else if (approval.review_status === 'rejected' || approval.approval_status === 'rejected') {
@@ -19,8 +19,9 @@ const SyllabusCard = ({ approval, onCardPress }) => {
     <TouchableOpacity style={styles.card} onPress={() => onCardPress(approval)} activeOpacity={0.85}>
       <View style={styles.cardHeader}>
         <View style={styles.cardInfo}>
-          <Text style={styles.cardTitle}>{approval.course_title} <Text style={styles.cardCode}>({approval.course_code})</Text></Text>
-          <Text style={styles.cardTerm}>{approval.semester} {approval.school_year}</Text>
+          <Text style={styles.cardTitle}>{approval.course_title || approval.title} <Text style={styles.cardCode}>({approval.course_code || ''})</Text></Text>
+          <Text style={styles.cardTerm}>{approval.semester || ''} {approval.school_year || ''}</Text>
+          <Text style={styles.cardSubmittedBy}>Submitted by: {approval.faculty_name || 'N/A'}</Text>
         </View>
         <View style={styles.statusBadge}>
           <Text style={styles.statusText}>{statusLabel}</Text>
@@ -41,19 +42,27 @@ export default function ReviewSubmissions() {
   const [showContainers, setShowContainers] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Helper to get endpoint for filter
+  const getEndpointForFilter = (filter) => {
+    if (filter === 'all') return '/syllabus/all';
+    if (filter === 'pending') return '/syllabus/pending';
+    if (filter === 'approved') return '/syllabus/approved';
+    if (filter === 'rejected') return '/syllabus/rejected';
+    return '/syllabus/pending';
+  };
+
+  // Fetch syllabi when filter changes or on mount
   useEffect(() => {
     setLoading(true);
-    apiClient.get('/syllabus/pending')
+    const endpoint = getEndpointForFilter(selectedFilter);
+    apiClient.get(endpoint)
       .then(data => {
-        console.log('Fetched pending syllabi:', data);
-        data.forEach(syl => {
-          console.log(`syllabus_id: ${syl.syllabus_id}, review_status: ${syl.review_status}, approval_status: ${syl.approval_status}`);
-        });
+        console.log(`API response for filter '${selectedFilter}':`, data);
         setSyllabusApprovals(Array.isArray(data) ? data : []);
       })
       .catch(() => setSyllabusApprovals([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedFilter]);
 
   if (!isInitialized || isLoading || loading) {
     return (
@@ -93,7 +102,8 @@ export default function ReviewSubmissions() {
   };
 
   const getStatusText = (status, review_status, approval_status) => {
-    if (review_status === 'approved' && approval_status === 'pending') return 'Pending for Dean Approval';
+    if (review_status === 'draft') return 'Draft';
+    if (review_status === 'approved' && approval_status === 'pending') return 'Approved'; // Changed from 'Pending for Dean Approval' to 'Approved'
     if (review_status === 'approved' && approval_status === 'approved') return 'Approved';
     if (review_status === 'rejected' || approval_status === 'rejected') return 'Rejected';
     if (review_status === 'pending') return 'Pending Review';
@@ -187,6 +197,7 @@ export default function ReviewSubmissions() {
       { label: 'Course Code', value: selectedSyllabus.course_code },
       { label: 'Course Title', value: selectedSyllabus.course_title },
       { label: 'Term', value: selectedSyllabus.school_year && selectedSyllabus.semester ? `${selectedSyllabus.school_year} ${selectedSyllabus.semester}` : '' },
+      { label: 'Submitted by', value: selectedSyllabus.faculty_name || 'N/A' },
       { label: 'Syllabus Title', value: selectedSyllabus.title },
       { label: 'Status', value: getStatusText(selectedSyllabus.approval_status, selectedSyllabus.review_status, selectedSyllabus.approval_status) },
       { label: 'Reviewed By', value: selectedSyllabus.reviewer_name || selectedSyllabus.reviewed_by || 'N/A' },
@@ -218,23 +229,25 @@ export default function ReviewSubmissions() {
                   <View style={{ marginBottom: 24 }}>
                     <Text style={{ fontWeight: 'bold', fontSize: 17, color: '#1E293B', marginBottom: 12, letterSpacing: 0.5 }}>Syllabus Information</Text>
                     {fields.map((field, idx) => (
-                      <View key={field.label} style={{ flexDirection: 'row', marginBottom: 8, alignItems: 'flex-start' }}>
+                      <View key={field.label + '-' + idx} style={{ flexDirection: 'row', marginBottom: 8, alignItems: 'flex-start' }}>
                         <Text style={{ fontWeight: '600', minWidth: 130, color: '#334155', fontSize: 14 }}>{field.label}:</Text>
                         <Text style={{ flex: 1, color: '#0F172A', fontSize: 14, fontWeight: '400' }}>{safeText(field.value)}</Text>
                       </View>
                     ))}
                   </View>
+                  {/* In renderSyllabusModal, only render ILOs container if ilos exist */}
                   {Array.isArray(selectedSyllabus.ilos) && selectedSyllabus.ilos.length > 0 && (
                     <View style={{ marginBottom: 24, backgroundColor: '#F3F4F6', borderRadius: 8, padding: 14 }}>
                       <Text style={{ fontWeight: 'bold', color: '#DC2626', marginBottom: 8, fontSize: 15, letterSpacing: 0.5 }}>Intended Learning Outcomes (ILOs)</Text>
                       {selectedSyllabus.ilos.map(ilo => (
-                        <View key={safeText(ilo.ilo_id)} style={{ marginBottom: 4 }}>
-                          <Text style={{ fontSize: 13, color: '#1E293B', fontWeight: '600' }}>{ilo.ilo_code}</Text>
-                          <Text style={{ fontSize: 13, color: '#475569', marginLeft: 10 }}>{ilo.ilo_description}</Text>
+                        <View key={safeText(ilo.ilo_id) + '-' + safeText(ilo.code)} style={{ marginBottom: 4 }}>
+                          <Text style={{ fontSize: 13, color: '#1E293B', fontWeight: '600' }}>{ilo.ilo_code || ilo.code}</Text>
+                          <Text style={{ fontSize: 13, color: '#475569', marginLeft: 10 }}>{ilo.ilo_description || ilo.description}</Text>
                         </View>
                       ))}
                     </View>
                   )}
+                  {/* In renderSyllabusModal, only render Assessments container if assessments exist */}
                   {Array.isArray(selectedSyllabus.assessments) && selectedSyllabus.assessments.length > 0 && (
                     <View style={{ marginBottom: 24 }}>
                       <Text style={{ fontWeight: 'bold', color: '#DC2626', marginBottom: 10, fontSize: 15, letterSpacing: 0.5 }}>Assessments</Text>
@@ -257,7 +270,7 @@ export default function ReviewSubmissions() {
                             <View style={{ marginLeft: 6, marginTop: 2 }}>
                               <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: 'bold', marginBottom: 2 }}>Rubrics:</Text>
                               {assess.rubrics.map((r, ridx) => (
-                                <View key={r.rubric_id || ridx} style={{ marginBottom: 4, backgroundColor: '#FFF', borderRadius: 6, padding: 10, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                                <View key={(r.rubric_id || ridx) + '-' + (r.title || '')} style={{ marginBottom: 4, backgroundColor: '#FFF', borderRadius: 6, padding: 10, borderWidth: 1, borderColor: '#E5E7EB' }}>
                                   <Text style={{ fontSize: 12, color: '#1E293B', fontWeight: 'bold', marginBottom: 1 }}>{r.title}</Text>
                                   <Text style={{ fontSize: 12, color: '#475569', marginBottom: 1 }}>{r.description}</Text>
                                   <Text style={{ fontSize: 12, color: '#6366F1', marginBottom: 1 }}>Criterion: <Text style={{ fontWeight: '600' }}>{r.criterion}</Text></Text>
@@ -301,19 +314,19 @@ export default function ReviewSubmissions() {
     console.log('Searching for:', searchTerm);
   };
 
-  // Filter syllabi by selected review_status
+  // Improved filtering logic for syllabi (filter out drafts from 'all')
   const filteredSyllabi = syllabusApprovals.filter(syl => {
-    if (selectedFilter === 'all') return true;
+    if (selectedFilter === 'all') return syl.review_status !== 'draft';
     if (selectedFilter === 'pending') {
-      // Syllabi filled by faculty, awaiting Program Chair review
-      return syl.review_status === 'pending';
+      // Awaiting Program Chair review
+      return syl.review_status === 'pending' && syl.approval_status === 'pending';
     }
     if (selectedFilter === 'approved') {
-      // Syllabi reviewed by Program Chair, awaiting Dean approval
-      return syl.review_status === 'approved' && syl.approval_status === 'pending';
+      // Approved by Program Chair or fully approved syllabi
+      return (syl.review_status === 'approved' && syl.approval_status === 'pending') || (syl.review_status === 'approved' && syl.approval_status === 'approved');
     }
     if (selectedFilter === 'rejected') {
-      // Syllabi rejected by Program Chair
+      // Rejected at any stage
       return syl.review_status === 'rejected' || syl.approval_status === 'rejected';
     }
     return false;
@@ -337,8 +350,7 @@ export default function ReviewSubmissions() {
       
       <View style={styles.content}>
         {showContainers && (
-          <View style={styles.filterContainer}>
-            <Text style={styles.filterTitle}>Filter by Review Status</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ paddingHorizontal: 0 }}>
             <View style={styles.filterButtons}>
               <TouchableOpacity
                 style={[styles.filterButton, selectedFilter === 'all' && styles.filterButtonActive]}
@@ -356,7 +368,7 @@ export default function ReviewSubmissions() {
                 style={[styles.filterButton, selectedFilter === 'approved' && styles.filterButtonActive]}
                 onPress={() => setSelectedFilter('approved')}
               >
-                <Text style={[styles.filterButtonText, selectedFilter === 'approved' && styles.filterButtonTextActive]}>Pending for Dean Approval</Text>
+                <Text style={[styles.filterButtonText, selectedFilter === 'approved' && styles.filterButtonTextActive]}>Approved</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.filterButton, selectedFilter === 'rejected' && styles.filterButtonActive]}
@@ -365,7 +377,7 @@ export default function ReviewSubmissions() {
                 <Text style={[styles.filterButtonText, selectedFilter === 'rejected' && styles.filterButtonTextActive]}>Rejected</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         )}
 
         <View style={styles.approvalsList}>
@@ -426,20 +438,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingTop: 16,
-  },
-  filterContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  filterTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#353A40',
-    marginBottom: 12,
   },
   filterButtons: {
     flexDirection: 'row',
@@ -798,5 +796,10 @@ const styles = StyleSheet.create({
     color: '#F59E0B',
     fontWeight: 'bold',
     fontSize: 13,
+  },
+  cardSubmittedBy: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
   },
 }); 
