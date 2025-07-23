@@ -11,6 +11,12 @@ const sectionCoursesRouter = require('./routes/sectionCourses');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Global log middleware for all requests
+app.use((req, res, next) => {
+  console.log('SERVER LOG:', req.method, req.originalUrl);
+  next();
+});
+
 // Middleware
 // Allow all origins for development
 app.use(cors());

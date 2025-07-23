@@ -1,0 +1,4 @@
+error: column "date_reviewed" of relation "syllabi" does not exist
+    at C:\Users\KC\Desktop\CRMS_V2\server\node_modules\pg\lib\client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async C:\Users\KC\Desktop\CRMS_V2\server\routes\syllabus.js:47:5

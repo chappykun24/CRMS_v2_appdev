@@ -4,6 +4,22 @@ const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
 require('dotenv').config();
+const fs = require('fs');
+
+// TEST ENDPOINT: Write to database (move to top)
+router.post('/test-write', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    // Create a test table if it doesn't exist
+    await client.query(`CREATE TABLE IF NOT EXISTS test_table (id SERIAL PRIMARY KEY, message TEXT, created_at TIMESTAMP DEFAULT NOW())`);
+    // Insert a test row
+    const result = await client.query(`INSERT INTO test_table (message) VALUES ($1) RETURNING *`, ['Hello from test-write endpoint']);
+    client.release();
+    res.json({ message: 'Write successful', row: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Write failed', details: err.message });
+  }
+});
 
 // Use the same pool config as in server.js
 const pool = new Pool({
@@ -15,6 +31,61 @@ const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
+});
+
+// Move approval-status route to the top
+router.put('/approval-status/:syllabus_id', async (req, res) => {
+  console.log('PUT /api/syllabus/approval-status/:syllabus_id', req.params, req.body);
+  console.log('Raw req.body:', req.body);
+  const { syllabus_id } = req.params;
+  const { reviewed_by, review_status, approval_status } = req.body;
+  if (!reviewed_by) {
+    return res.status(400).json({ error: 'Missing reviewed_by' });
+  }
+  const client = await pool.connect();
+  try {
+    if (review_status === 'rejected') {
+      await client.query(
+        `UPDATE syllabi
+         SET review_status = 'rejected',
+             reviewed_by = $1,
+             reviewed_at = NOW()
+         WHERE syllabus_id = $2`,
+        [reviewed_by, syllabus_id]
+      );
+      client.release();
+      return res.json({ message: 'Syllabus rejected' });
+    } else if (approval_status === 'rejected') {
+      await client.query(
+        `UPDATE syllabi
+         SET approval_status = 'rejected',
+             reviewed_by = $1,
+             reviewed_at = NOW()
+         WHERE syllabus_id = $2`,
+        [reviewed_by, syllabus_id]
+      );
+      client.release();
+      return res.json({ message: 'Syllabus approval rejected' });
+    } else {
+      await client.query(
+        `UPDATE syllabi
+         SET review_status = 'approved',
+             reviewed_by = $1,
+             reviewed_at = NOW()
+         WHERE syllabus_id = $2`,
+        [reviewed_by, syllabus_id]
+      );
+      client.release();
+      return res.json({ message: 'Review status and reviewer updated' });
+    }
+  } catch (err) {
+    client.release();
+    console.error('Error in approval-status route:', err);
+    if (err.stack) {
+      fs.appendFileSync('error.log', err.stack + '\n');
+    }
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
 });
 
 // Debug test route
@@ -170,17 +241,19 @@ router.get('/ilos', async (req, res) => {
   }
 });
 
-// GET /api/syllabus/pending - get all syllabi with review_status 'pending'
+// GET /api/syllabus/pending - get all syllabi with review_status 'pending' or reviewed by Program Chair but not yet approved by Dean
 router.get('/pending', async (req, res) => {
   try {
     const client = await pool.connect();
     const result = await client.query(
-      `SELECT s.*, c.title AS course_title, c.course_code, u.name AS faculty_name, t.semester, t.school_year
+      `SELECT s.*, c.title AS course_title, c.course_code, u.name AS faculty_name, t.semester, t.school_year, reviewer.name AS reviewer_name
        FROM syllabi s
        LEFT JOIN courses c ON s.course_id = c.course_id
        LEFT JOIN users u ON s.created_by = u.user_id
+       LEFT JOIN users reviewer ON s.reviewed_by = reviewer.user_id
        LEFT JOIN school_terms t ON s.term_id = t.term_id
        WHERE s.review_status = 'pending'
+          OR (s.review_status = 'approved' AND s.approval_status = 'pending')
        ORDER BY s.created_at DESC`
     );
     const syllabi = result.rows;
@@ -482,26 +555,9 @@ router.put('/update/:syllabus_id', async (req, res) => {
   }
 });
 
-// PUT /api/syllabus/approval-status/:syllabus_id
-router.put('/approval-status/:syllabus_id', async (req, res) => {
-  console.log('PUT /api/syllabus/approval-status/:syllabus_id', req.params, req.body);
-  const { syllabus_id } = req.params;
-  const { approval_status } = req.body;
-  if (!approval_status) {
-    return res.status(400).json({ error: 'Missing approval_status' });
-  }
-  const client = await pool.connect();
-  try {
-    await client.query(
-      `UPDATE syllabi SET approval_status = $1 WHERE syllabus_id = $2`,
-      [approval_status, syllabus_id]
-    );
-    client.release();
-    res.json({ message: 'Approval status updated' });
-  } catch (err) {
-    client.release();
-    res.status(500).json({ error: 'Server error', details: err.message });
-  }
+router.all('*', (req, res) => {
+  console.log('Unmatched syllabus route:', req.method, req.originalUrl);
+  res.status(404).json({ error: 'Not found' });
 });
 
 module.exports = router; 

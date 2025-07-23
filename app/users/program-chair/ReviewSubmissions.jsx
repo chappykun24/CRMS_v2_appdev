@@ -6,19 +6,29 @@ import apiClient from '../../../utils/api'; // adjust path as needed
 import ProgramChairSubmissionsHeader from '../../components/ProgramChairSubmissionsHeader';
 
 // Syllabus Card Component
-const SyllabusCard = ({ approval, onCardPress }) => (
-  <TouchableOpacity style={styles.card} onPress={() => onCardPress(approval)} activeOpacity={0.85}>
-    <View style={styles.cardHeader}>
-      <View style={styles.cardInfo}>
-        <Text style={styles.cardTitle}>{approval.course_title} <Text style={styles.cardCode}>({approval.course_code})</Text></Text>
-        <Text style={styles.cardTerm}>{approval.semester} {approval.school_year}</Text>
+const SyllabusCard = ({ approval, onCardPress }) => {
+  let statusLabel = 'Pending Review';
+  if (approval.review_status === 'approved' && approval.approval_status === 'pending') {
+    statusLabel = 'Pending for Dean Approval';
+  } else if (approval.review_status === 'approved' && approval.approval_status === 'approved') {
+    statusLabel = 'Approved';
+  } else if (approval.review_status === 'rejected' || approval.approval_status === 'rejected') {
+    statusLabel = 'Rejected';
+  }
+  return (
+    <TouchableOpacity style={styles.card} onPress={() => onCardPress(approval)} activeOpacity={0.85}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardTitle}>{approval.course_title} <Text style={styles.cardCode}>({approval.course_code})</Text></Text>
+          <Text style={styles.cardTerm}>{approval.semester} {approval.school_year}</Text>
+        </View>
+        <View style={styles.statusBadge}>
+          <Text style={styles.statusText}>{statusLabel}</Text>
+        </View>
       </View>
-      <View style={styles.statusBadge}>
-        <Text style={styles.statusText}>Pending</Text>
-      </View>
-    </View>
-  </TouchableOpacity>
-);
+    </TouchableOpacity>
+  );
+};
 
 export default function ReviewSubmissions() {
   const { currentUser, isLoading, isInitialized } = useUser();
@@ -36,6 +46,9 @@ export default function ReviewSubmissions() {
     apiClient.get('/syllabus/pending')
       .then(data => {
         console.log('Fetched pending syllabi:', data);
+        data.forEach(syl => {
+          console.log(`syllabus_id: ${syl.syllabus_id}, review_status: ${syl.review_status}, approval_status: ${syl.approval_status}`);
+        });
         setSyllabusApprovals(Array.isArray(data) ? data : []);
       })
       .catch(() => setSyllabusApprovals([]))
@@ -79,20 +92,27 @@ export default function ReviewSubmissions() {
     return String(val);
   };
 
-  const getStatusText = (status) => {
-    if (status === 'assigned') return 'Assigned';
-    const texts = {
-      'approved': 'Approved',
-      'pending': 'Pending Review',
-      'rejected': 'Rejected'
-    };
-    return texts[status] || 'Unknown';
+  const getStatusText = (status, review_status, approval_status) => {
+    if (review_status === 'approved' && approval_status === 'pending') return 'Pending for Dean Approval';
+    if (review_status === 'approved' && approval_status === 'approved') return 'Approved';
+    if (review_status === 'rejected' || approval_status === 'rejected') return 'Rejected';
+    if (review_status === 'pending') return 'Pending Review';
+    return 'Unknown';
   };
 
   const handleApprove = (id) => {
+    const syllabus = syllabusApprovals.find(syl => syl.syllabus_id === id);
+    if (!syllabus) {
+      Alert.alert('Error', 'Syllabus not found.');
+      return;
+    }
+    if (syllabus.review_status === 'approved') {
+      Alert.alert('Already Approved', 'This syllabus has already been approved.');
+      return;
+    }
     Alert.alert(
       'Approve Syllabus',
-      'Are you sure you want to approve this syllabus?',
+      'Are you sure you want to approve this syllabus for review?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -100,14 +120,19 @@ export default function ReviewSubmissions() {
           style: 'default',
           onPress: async () => {
             try {
-              await apiClient.put(`/api/syllabus/approval-status/${id}`, { approval_status: 'approved' });
+              const url = `/syllabus/approval-status/${id}`;
+              const payload = { reviewed_by: currentUser.user_id };
+              console.log('Approving syllabus:', { url, payload });
+              await apiClient.put(url, payload);
               setSyllabusApprovals(prev => prev.map(syl =>
                 syl.syllabus_id === id
-                  ? { ...syl, approval_status: 'approved' }
+                  ? { ...syl, review_status: 'approved', reviewed_by: currentUser.user_id, reviewed_at: new Date().toISOString() }
                   : syl
               ));
               setShowSyllabusModal(false);
+              Alert.alert('Success', 'Syllabus approved for review.');
             } catch (err) {
+              console.log('Error approving syllabus:', err);
               Alert.alert('Error', 'Failed to approve syllabus.');
             }
           }
@@ -117,6 +142,15 @@ export default function ReviewSubmissions() {
   };
 
   const handleReject = (id) => {
+    const syllabus = syllabusApprovals.find(syl => syl.syllabus_id === id);
+    if (!syllabus) {
+      Alert.alert('Error', 'Syllabus not found.');
+      return;
+    }
+    if (syllabus.review_status === 'rejected') {
+      Alert.alert('Already Rejected', 'This syllabus has already been rejected.');
+      return;
+    }
     Alert.alert(
       'Reject Syllabus',
       'Are you sure you want to reject this syllabus?',
@@ -127,14 +161,19 @@ export default function ReviewSubmissions() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await apiClient.put(`/api/syllabus/approval-status/${id}`, { approval_status: 'rejected' });
+              const url = `/syllabus/approval-status/${id}`;
+              const payload = { reviewed_by: currentUser.user_id, review_status: 'rejected' };
+              console.log('Rejecting syllabus:', { url, payload });
+              await apiClient.put(url, payload);
               setSyllabusApprovals(prev => prev.map(syl =>
                 syl.syllabus_id === id
-                  ? { ...syl, approval_status: 'rejected' }
+                  ? { ...syl, review_status: 'rejected', reviewed_by: currentUser.user_id, reviewer_name: currentUser.name, reviewed_at: new Date().toISOString() }
                   : syl
               ));
               setShowSyllabusModal(false);
+              Alert.alert('Rejected', 'Syllabus has been rejected.');
             } catch (err) {
+              console.log('Error rejecting syllabus:', err);
               Alert.alert('Error', 'Failed to reject syllabus.');
             }
           }
@@ -149,13 +188,14 @@ export default function ReviewSubmissions() {
       { label: 'Course Title', value: selectedSyllabus.course_title },
       { label: 'Term', value: selectedSyllabus.school_year && selectedSyllabus.semester ? `${selectedSyllabus.school_year} ${selectedSyllabus.semester}` : '' },
       { label: 'Syllabus Title', value: selectedSyllabus.title },
-      { label: 'Status', value: getStatusText(selectedSyllabus.approval_status) },
-      { label: 'Reviewed By', value: selectedSyllabus.reviewed_by },
+      { label: 'Status', value: getStatusText(selectedSyllabus.approval_status, selectedSyllabus.review_status, selectedSyllabus.approval_status) },
+      { label: 'Reviewed By', value: selectedSyllabus.reviewer_name || selectedSyllabus.reviewed_by || 'N/A' },
       { label: 'Approved By', value: selectedSyllabus.approved_by },
       { label: 'Date Created', value: safeText(selectedSyllabus.created_at) },
       { label: 'Date Reviewed', value: safeText(selectedSyllabus.reviewed_at) },
       { label: 'Date Approved', value: (!selectedSyllabus.approved_at || selectedSyllabus.approved_at === 'null') ? 'Pending' : (safeText(selectedSyllabus.approved_at) || 'Pending') },
     ] : [];
+    const isRejected = selectedSyllabus && (selectedSyllabus.review_status === 'rejected' || selectedSyllabus.approval_status === 'rejected');
     return (
       <Modal
         visible={showSyllabusModal && !!selectedSyllabus}
@@ -232,12 +272,14 @@ export default function ReviewSubmissions() {
                   )}
                   {/* Approve/Reject Buttons */}
                   <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 12, gap: 12 }}>
-                    <TouchableOpacity
-                      style={{ backgroundColor: '#10B981', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, marginRight: 8 }}
-                      onPress={() => handleApprove(selectedSyllabus.syllabus_id)}
-                    >
-                      <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Approve</Text>
-                    </TouchableOpacity>
+                    {isRejected && (
+                      <TouchableOpacity
+                        style={{ backgroundColor: '#10B981', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, marginRight: 8 }}
+                        onPress={() => handleApprove(selectedSyllabus.syllabus_id)}
+                      >
+                        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Approve</Text>
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity
                       style={{ backgroundColor: '#EF4444', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8 }}
                       onPress={() => handleReject(selectedSyllabus.syllabus_id)}
@@ -259,8 +301,23 @@ export default function ReviewSubmissions() {
     console.log('Searching for:', searchTerm);
   };
 
-  // Filter to only show pending syllabi (should already be filtered by backend)
-  const filteredSyllabi = syllabusApprovals;
+  // Filter syllabi by selected review_status
+  const filteredSyllabi = syllabusApprovals.filter(syl => {
+    if (selectedFilter === 'all') return true;
+    if (selectedFilter === 'pending') {
+      // Syllabi filled by faculty, awaiting Program Chair review
+      return syl.review_status === 'pending';
+    }
+    if (selectedFilter === 'approved') {
+      // Syllabi reviewed by Program Chair, awaiting Dean approval
+      return syl.review_status === 'approved' && syl.approval_status === 'pending';
+    }
+    if (selectedFilter === 'rejected') {
+      // Syllabi rejected by Program Chair
+      return syl.review_status === 'rejected' || syl.approval_status === 'rejected';
+    }
+    return false;
+  });
 
   const handleCardPress = (approval) => {
     // openModal(approval); // This was for the old modal, now handled by setShowSyllabusModal(true)
@@ -281,39 +338,31 @@ export default function ReviewSubmissions() {
       <View style={styles.content}>
         {showContainers && (
           <View style={styles.filterContainer}>
-            <Text style={styles.filterTitle}>Filter by Status</Text>
+            <Text style={styles.filterTitle}>Filter by Review Status</Text>
             <View style={styles.filterButtons}>
               <TouchableOpacity
                 style={[styles.filterButton, selectedFilter === 'all' && styles.filterButtonActive]}
                 onPress={() => setSelectedFilter('all')}
               >
-                <Text style={[styles.filterButtonText, selectedFilter === 'all' && styles.filterButtonTextActive]}>
-                  All
-                </Text>
+                <Text style={[styles.filterButtonText, selectedFilter === 'all' && styles.filterButtonTextActive]}>All</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.filterButton, selectedFilter === 'pending' && styles.filterButtonActive]}
                 onPress={() => setSelectedFilter('pending')}
               >
-                <Text style={[styles.filterButtonText, selectedFilter === 'pending' && styles.filterButtonTextActive]}>
-                  Pending
-                </Text>
+                <Text style={[styles.filterButtonText, selectedFilter === 'pending' && styles.filterButtonTextActive]}>Pending</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.filterButton, selectedFilter === 'approved' && styles.filterButtonActive]}
                 onPress={() => setSelectedFilter('approved')}
               >
-                <Text style={[styles.filterButtonText, selectedFilter === 'approved' && styles.filterButtonTextActive]}>
-                  Approved
-                </Text>
+                <Text style={[styles.filterButtonText, selectedFilter === 'approved' && styles.filterButtonTextActive]}>Pending for Dean Approval</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.filterButton, selectedFilter === 'rejected' && styles.filterButtonActive]}
                 onPress={() => setSelectedFilter('rejected')}
               >
-                <Text style={[styles.filterButtonText, selectedFilter === 'rejected' && styles.filterButtonTextActive]}>
-                  Rejected
-                </Text>
+                <Text style={[styles.filterButtonText, selectedFilter === 'rejected' && styles.filterButtonTextActive]}>Rejected</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -356,17 +405,7 @@ export default function ReviewSubmissions() {
             </ScrollView>
           ) : (
             filteredSyllabi.map((approval) => (
-              <TouchableOpacity key={approval.syllabus_id} style={styles.card} onPress={() => handleViewSyllabus(approval)} activeOpacity={0.85}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.cardInfo}>
-                    <Text style={styles.cardTitle}>{approval.course_title} <Text style={styles.cardCode}>({approval.course_code})</Text></Text>
-                    <Text style={styles.cardTerm}>{approval.semester} {approval.school_year}</Text>
-                  </View>
-                  <View style={styles.statusBadge}>
-                    <Text style={styles.statusText}>Pending</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
+              <SyllabusCard key={approval.syllabus_id} approval={approval} onCardPress={handleViewSyllabus} />
             ))
           )}
         </View>
