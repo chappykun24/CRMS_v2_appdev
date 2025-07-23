@@ -482,4 +482,26 @@ router.put('/update/:syllabus_id', async (req, res) => {
   }
 });
 
+// PUT /api/syllabus/approval-status/:syllabus_id
+router.put('/approval-status/:syllabus_id', async (req, res) => {
+  console.log('PUT /api/syllabus/approval-status/:syllabus_id', req.params, req.body);
+  const { syllabus_id } = req.params;
+  const { approval_status } = req.body;
+  if (!approval_status) {
+    return res.status(400).json({ error: 'Missing approval_status' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `UPDATE syllabi SET approval_status = $1 WHERE syllabus_id = $2`,
+      [approval_status, syllabus_id]
+    );
+    client.release();
+    res.json({ message: 'Approval status updated' });
+  } catch (err) {
+    client.release();
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+});
+
 module.exports = router; 

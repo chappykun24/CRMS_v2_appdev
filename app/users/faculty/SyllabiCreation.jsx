@@ -16,8 +16,8 @@ import {
     View
 } from 'react-native';
 import { useUser } from '../../../contexts/UserContext';
+import apiClient from '../../../utils/api';
 import FacultySyllabiCreationHeader from '../../components/FacultySyllabiCreationHeader';
-import { apiClient } from '../../utils/api';
 
 export default function SyllabiCreationScreen() {
   const { currentUser } = useUser();

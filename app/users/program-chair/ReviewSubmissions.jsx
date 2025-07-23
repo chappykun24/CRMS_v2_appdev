@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useUser } from '../../../contexts/UserContext';
+import apiClient from '../../../utils/api'; // adjust path as needed
 import ProgramChairSubmissionsHeader from '../../components/ProgramChairSubmissionsHeader';
-import { apiClient } from '../../utils/api'; // adjust path as needed
 
 // Syllabus Card Component
 const SyllabusCard = ({ approval, onCardPress }) => (
@@ -90,15 +90,57 @@ export default function ReviewSubmissions() {
   };
 
   const handleApprove = (id) => {
-    // Handle approval logic here
-    console.log('Program Chair approving submission:', id);
-    setShowSyllabusModal(false);
+    Alert.alert(
+      'Approve Syllabus',
+      'Are you sure you want to approve this syllabus?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Approve',
+          style: 'default',
+          onPress: async () => {
+            try {
+              await apiClient.put(`/api/syllabus/approval-status/${id}`, { approval_status: 'approved' });
+              setSyllabusApprovals(prev => prev.map(syl =>
+                syl.syllabus_id === id
+                  ? { ...syl, approval_status: 'approved' }
+                  : syl
+              ));
+              setShowSyllabusModal(false);
+            } catch (err) {
+              Alert.alert('Error', 'Failed to approve syllabus.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleReject = (id) => {
-    // Handle rejection logic here
-    console.log('Program Chair rejecting submission:', id);
-    setShowSyllabusModal(false);
+    Alert.alert(
+      'Reject Syllabus',
+      'Are you sure you want to reject this syllabus?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiClient.put(`/api/syllabus/approval-status/${id}`, { approval_status: 'rejected' });
+              setSyllabusApprovals(prev => prev.map(syl =>
+                syl.syllabus_id === id
+                  ? { ...syl, approval_status: 'rejected' }
+                  : syl
+              ));
+              setShowSyllabusModal(false);
+            } catch (err) {
+              Alert.alert('Error', 'Failed to reject syllabus.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const renderSyllabusModal = () => {

@@ -44,7 +44,9 @@ export default function LoginScreen() {
       
       debugger; // Debug point 2: Before API call
       
-      const user = await apiClient.post('/auth/login', { email, password });
+      const response = await apiClient.post('/auth/login', { email, password });
+      console.log('[Login] 📋 API response data:', response.data);
+      await login(response.data);
       
       debugger; // Debug point 3: After API call (success)
       

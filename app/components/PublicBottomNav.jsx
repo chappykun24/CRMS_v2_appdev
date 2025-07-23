@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios'; // Added axios import
 import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
@@ -17,7 +16,7 @@ import {
 } from 'react-native';
 import { useUser } from '../../contexts/UserContext';
 import { sampleUsers } from '../../types/sampleData';
-import { API_BASE_URL } from '../../utils/api';
+import apiClient from '../../utils/api';
 import { ROUTES } from '../../utils/routes';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -71,9 +70,14 @@ export default function PublicBottomNav({ activeRoute }) {
         return;
       }
       // Use backend API for authentication instead of sampleUsers
-      console.log('API_BASE_URL in use:', API_BASE_URL);
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
-      await login(response.data);
+      console.log('Using dynamic apiClient for login');
+      const user = await apiClient.post('/auth/login', { email, password });
+      console.log('Login response:', user);
+      if (!user || user.error) {
+        Alert.alert('Login Failed', user?.error || 'Unknown error');
+        return;
+      }
+      await login(user);
       handleHideLoginForm();
     } catch (error) {
       console.error('[SignIn] Error during login:', error);

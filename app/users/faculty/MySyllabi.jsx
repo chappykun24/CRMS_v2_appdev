@@ -13,8 +13,8 @@ import {
     View
 } from 'react-native';
 import { useUser } from '../../../contexts/UserContext';
+import apiClient from '../../../utils/api';
 import FacultyMySyllabusHeader from '../../components/FacultyMySyllabusHeader';
-import { apiClient } from '../../utils/api';
 
 export default function MySyllabiScreen() {
   const { currentUser } = useUser();
@@ -27,35 +27,17 @@ export default function MySyllabiScreen() {
 
   useEffect(() => {
     if (!currentUser) return;
-    apiClient
-      .get(`/syllabus/my?facultyId=${currentUser.user_id}`)
-      .then(response => {
-        const data = response.data;
-        const mapped = (Array.isArray(data) ? data : []).map(syl => ({
-          id: syl.syllabus_id,
-          syllabusId: syl.syllabus_id,
-          title: syl.title || 'Untitled Syllabus',
-          courseCode: syl.course_code || syl.course_id || 'N/A',
-          courseTitle: syl.course_title || 'N/A',
-          status: syl.approval_status || 'pending',
-          reviewStatus: syl.review_status || 'pending',
-          approvalStatus: syl.approval_status || 'pending',
-          dateCreated: syl.created_at || '',
-          dateReviewed: syl.reviewed_at || '',
-          dateApproved: syl.approved_at || '',
-          reviewedBy: syl.reviewer_name || syl.reviewed_by || '',
-          approvedBy: syl.approver_name || syl.approved_by || '',
-          term: syl.school_year && syl.semester ? `${syl.school_year} ${syl.semester}` : '',
-          selectedILOs: syl.ilos || [], // Use ilos from backend
-          assessments: syl.assessments || [] // Use real data from backend
-        }));
-        console.log('[MySyllabi] syllabi data:', mapped);
-        setSyllabi(mapped);
-      })
-      .catch(err => {
-        console.error('Failed to fetch syllabi:', err);
+    const fetchSyllabi = async () => {
+      try {
+        const data = await apiClient.get(`/syllabus/my?facultyId=${currentUser.user_id}`);
+        console.log('Fetched syllabi:', data);
+        setSyllabi(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.log('Error fetching syllabi:', err);
         setSyllabi([]);
-      });
+      }
+    };
+    fetchSyllabi();
   }, [currentUser]);
 
   if (!currentUser) {

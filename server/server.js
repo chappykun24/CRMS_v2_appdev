@@ -12,13 +12,8 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:19006', 'http://localhost:8081', 'http://localhost:8082', 'exp://localhost:19000', 'http://localhost:3001', 'http://localhost:19000', 'exp://localhost:19000', 'http://192.168.1.205:3000', 'http://192.168.1.205:19006', 'http://192.168.1.205:8081', 'http://192.168.1.205:8082', 'exp://192.168.1.205:19000', 'http://192.168.1.207:3000', 'http://192.168.1.207:19006', 'http://192.168.1.207:8081', 'http://192.168.1.207:8082', 'exp://192.168.1.207:19000', 'http://192.168.1.109:3000', 'http://192.168.1.109:19006', 'http://192.168.1.109:8081', 'http://192.168.1.109:8082', 'exp://192.168.1.109:19000', 'http://192.168.1.108:3000', 'http://192.168.1.108:19006', 'http://192.168.1.108:8081', 'http://192.168.1.108:8082', 'exp://192.168.1.108:19000'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
-  optionsSuccessStatus: 200
-}));
+// Allow all origins for development
+app.use(cors());
 app.use(express.json());
 
 // Register the syllabus router

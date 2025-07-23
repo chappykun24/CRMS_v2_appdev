@@ -4,9 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ClickableContainer from '../../../components/ClickableContainer';
 import ModalContainer from '../../../components/ModalContainer';
+import apiClient from '../../../utils/api';
 import { useModal } from '../../../utils/useModal';
 import StaffAssignFacultyHeader from '../../components/StaffAssignFacultyHeader';
-import { apiClient } from '../../utils/api';
 
 // Remove mock data for classes and faculty
 const mockClassList = [];
@@ -95,28 +95,49 @@ export default function AssignFaculty() {
   // Fetch dropdown data when modal opens
   useEffect(() => {
     if (showAssignmentModal) {
+      console.log('Opening Assign Faculty modal, starting API fetches...');
       // Fetch courses
-      apiClient.get('/courses').then(res => setCourses(Array.isArray(res.data) ? res.data : res.data.courses || [])).catch(() => setCourses([]));
+      console.log('Fetching courses from /courses');
+      apiClient.get('/courses').then(data => {
+        console.log('Fetched courses:', data);
+        setCourses(Array.isArray(data) ? data : data.courses || []);
+      }).catch((err) => {
+        console.log('Error fetching courses:', err);
+        setCourses([]);
+      });
       // Fetch all sections
+      console.log('Fetching sections from /section-courses/sections');
       apiClient.get('/section-courses/sections')
-        .then(res => {
-          console.log('Fetched sections:', res.data);
-          setSections(Array.isArray(res.data) ? res.data : res.data.sections || []);
+        .then(data => {
+          console.log('Fetched sections:', data);
+          setSections(Array.isArray(data) ? data : data.sections || []);
         })
-        .catch(() => setSections([]));
+        .catch((err) => {
+          console.log('Error fetching sections:', err);
+          setSections([]);
+        });
+      // Fetch terms
+      console.log('Fetching terms from /section-courses/school-terms');
       apiClient.get('/section-courses/school-terms')
-        .then(res => {
-          console.log('Fetched terms:', res.data);
-          setTerms(Array.isArray(res.data) ? res.data : res.data.terms || []);
+        .then(data => {
+          console.log('Fetched terms:', data);
+          setTerms(Array.isArray(data) ? data : data.terms || []);
         })
-        .catch(() => setTerms([]));
+        .catch((err) => {
+          console.log('Error fetching terms:', err);
+          setTerms([]);
+        });
       // Fetch faculty
+      console.log('Fetching faculty from /section-courses/faculty');
       apiClient.get('/section-courses/faculty')
-        .then(res => {
-          console.log('Fetched faculty:', res.data);
-          setFacultyList(Array.isArray(res.data) ? res.data : res.data.faculty || []);
+        .then(data => {
+          console.log('Fetched faculty:', data);
+          setFacultyList(Array.isArray(data) ? data : data.faculty || []);
         })
-        .catch(() => setFacultyList([]));
+        .catch((err) => {
+          console.log('Error fetching faculty:', err);
+          setFacultyList([]);
+        });
     }
   }, [showAssignmentModal]);
 
@@ -180,8 +201,14 @@ export default function AssignFaculty() {
   // Fetch assigned section_courses on mount
   useEffect(() => {
     apiClient.get('/section-courses/assigned')
-      .then(res => setAssignedSectionCourses(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setAssignedSectionCourses([]));
+      .then(data => {
+        console.log('Fetched assigned section courses:', data);
+        setAssignedSectionCourses(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        console.log('Error fetching assigned section courses:', err);
+        setAssignedSectionCourses([]);
+      });
   }, []);
 
   const handleDeleteAssignment = async (section_course_id) => {
@@ -194,13 +221,16 @@ export default function AssignFaculty() {
           text: 'Delete', style: 'destructive',
           onPress: async () => {
             try {
-              await apiClient.post('/section-courses/assign-instructor', {
+              console.log('Deleting assignment for section_course_id:', section_course_id);
+              const deleteRes = await apiClient.post('/section-courses/assign-instructor', {
                 section_course_id,
                 instructor_id: null
               });
+              console.log('Delete assignment response:', deleteRes);
               // Refresh the assigned list
-              const res = await apiClient.get('/section-courses/assigned');
-              setAssignedSectionCourses(Array.isArray(res.data) ? res.data : []);
+              const assignedList = await apiClient.get('/section-courses/assigned');
+              console.log('Refetched assigned section courses:', assignedList);
+              setAssignedSectionCourses(Array.isArray(assignedList) ? assignedList : []);
               Alert.alert('Success', 'Assignment removed.');
             } catch (err) {
               Alert.alert('Error', 'Failed to remove assignment.');
@@ -372,18 +402,26 @@ export default function AssignFaculty() {
   const handleConfirmAssignment = async () => {
     // Create draft syllabus and section_course after user confirms
     try {
-      const draftRes = await apiClient.post('/syllabus/draft', {
+      const payload = {
         course_id: selectedCourse,
         term_id: selectedTerm,
         section_id: selectedSection,
         created_by: selectedFaculty
-      });
-      setDraftSyllabusId(draftRes.data.syllabus.syllabus_id);
-      setDraftSectionCourseId(draftRes.data.section_course_id);
+      };
+      console.log('Creating draft syllabus with payload:', payload);
+      const draftRes = await apiClient.post('/syllabus/draft', payload);
+      console.log('Draft syllabus creation response:', draftRes);
+      setDraftSyllabusId(draftRes.syllabus?.syllabus_id);
+      setDraftSectionCourseId(draftRes.section_course_id);
+      Alert.alert('Success', 'Faculty assigned to section and draft syllabus created!');
+      // Refresh the assigned list
+      const assignedList = await apiClient.get('/section-courses/assigned');
+      console.log('Refetched assigned section courses after assignment:', assignedList);
+      setAssignedSectionCourses(Array.isArray(assignedList) ? assignedList : []);
       setShowAssignmentModal(false);
       setShowPreview(false);
-      Alert.alert('Success', 'Faculty assigned to section and draft syllabus created!');
     } catch (err) {
+      console.log('Error creating draft syllabus:', err);
       Alert.alert('Error', 'Failed to create draft syllabus.');
     }
   };
