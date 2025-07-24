@@ -8,6 +8,7 @@ const BACKEND_TO_FRONTEND_ROLES = {
   'admin': 'admin', // Add direct mapping for 'admin'
   'dean': 'dean',
   'program chair': 'program_chair', 
+  'program_chair': 'program_chair', // Accept both variants
   'faculty': 'faculty',
   'staff': 'staff'
 };
