@@ -5,6 +5,7 @@
 // Backend to Frontend role mapping
 const BACKEND_TO_FRONTEND_ROLES = {
   'administrator': 'admin',
+  'admin': 'admin', // Add direct mapping for 'admin'
   'dean': 'dean',
   'program chair': 'program_chair', 
   'faculty': 'faculty',
@@ -26,36 +27,17 @@ const FRONTEND_TO_BACKEND_ROLES = {
  * @returns {string} Frontend role value
  */
 const mapBackendRoleToFrontend = (backendRole) => {
-  console.log('[RoleMapping] === Starting role mapping ===');
-  console.log('[RoleMapping] Input backend role:', backendRole);
-  console.log('[RoleMapping] Input type:', typeof backendRole);
-  
-  debugger; // Debug point 1: Role mapping started
-  
   if (!backendRole) {
-    console.log('[RoleMapping] ⚠️  No backend role provided, returning null');
     return null;
   }
   
   const lowerCaseRole = backendRole.toLowerCase();
-  console.log('[RoleMapping] Lowercase role:', lowerCaseRole);
-  
-  debugger; // Debug point 2: Before lookup
-  
   const mappedRole = BACKEND_TO_FRONTEND_ROLES[lowerCaseRole];
-  console.log('[RoleMapping] Lookup result:', mappedRole);
-  console.log('[RoleMapping] Available mappings:', Object.keys(BACKEND_TO_FRONTEND_ROLES));
   
   if (!mappedRole) {
-    console.warn(`[RoleMapping] ⚠️  Unknown backend role: ${backendRole}`);
-    console.warn(`[RoleMapping] ⚠️  Available roles:`, Object.keys(BACKEND_TO_FRONTEND_ROLES));
+    console.warn(`[RoleMapping] Unknown backend role: ${backendRole}`);
     return backendRole; // Return original if no mapping found
   }
-  
-  console.log('[RoleMapping] ✅ Successfully mapped:', backendRole, '→', mappedRole);
-  console.log('[RoleMapping] === Role mapping completed ===');
-  
-  debugger; // Debug point 3: Role mapping completed
   
   return mappedRole;
 };

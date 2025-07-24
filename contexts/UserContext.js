@@ -57,46 +57,19 @@ export const UserProvider = ({ children }) => {
   };
 
   const login = async (userData) => {
-    console.log('[UserContext] === Starting login process ===');
-    console.log('[UserContext] User data:', userData);
-    console.log('[UserContext] User role:', userData.role);
-    console.log('[UserContext] User role type:', typeof userData.role);
-    console.log('[UserContext] Current state - user:', user);
-    console.log('[UserContext] Current state - isLoading:', isLoading);
-    console.log('[UserContext] Current state - isInitialized:', isInitialized);
-    console.log('[UserContext] Current state - loginLoading:', loginLoading);
-    
-    debugger; // Debug point 1: UserContext login started
-    
     // Ensure role is properly mapped from backend to frontend
     if (userData.role) {
-      console.log('[UserContext] 🎭 Processing role mapping...');
-      console.log('[UserContext] 🎭 Original role:', userData.role);
-      
-      debugger; // Debug point 2: Before role mapping
-      
       const mappedRole = mapBackendRoleToFrontend(userData.role);
-      console.log('[UserContext] 🎭 Mapped role:', mappedRole);
-      console.log('[UserContext] 🎭 Role mapping function result:', mappedRole);
       
       if (mappedRole !== userData.role) {
-        console.log('[UserContext] ✅ Role mapped from backend:', userData.role, 'to frontend:', mappedRole);
         userData.role = mappedRole;
-      } else {
-        console.log('[UserContext] ℹ️  No role mapping needed');
       }
-      
-      debugger; // Debug point 3: After role mapping
       
       // Validate that the role is a valid frontend role
       const isValidRole = isValidFrontendRole(userData.role);
-      console.log('[UserContext] 🎭 Role validation result:', isValidRole);
-      console.log('[UserContext] 🎭 Role validation function result:', isValidRole);
       
       if (!isValidRole) {
-        console.warn('[UserContext] ⚠️  Invalid role received:', userData.role);
-        console.warn('[UserContext] ⚠️  This may cause navigation issues');
-        // You might want to handle this case differently based on your requirements
+        console.warn('[UserContext] Invalid role received:', userData.role);
       }
     } else {
       console.log('[UserContext] ⚠️  No role found in user data');
@@ -104,106 +77,44 @@ export const UserProvider = ({ children }) => {
     }
     
     try {
-      console.log('[UserContext] 💾 Saving user to state and storage...');
-      console.log('[UserContext] 💾 About to set loginLoading to true');
-      
-      debugger; // Debug point 4: Before saving user
-      
       setLoginLoading(true);
-      console.log('[UserContext] 💾 loginLoading set to true');
-      
       setUser(userData);
-      console.log('[UserContext] 💾 User state updated');
-      
-      console.log('[UserContext] 💾 About to save to AsyncStorage...');
       await AsyncStorage.setItem('user', JSON.stringify(userData));
-      console.log('[UserContext] 💾 AsyncStorage save completed');
-      
-      debugger; // Debug point 5: After saving user
-      
-      console.log('[UserContext] ✅ User saved to storage successfully');
-      console.log('[UserContext] 💾 User data saved:', JSON.stringify(userData, null, 2));
-      
-      // Verify storage was successful
-      const savedUser = await AsyncStorage.getItem('user');
-      console.log('[UserContext] 💾 Verification - User in storage:', savedUser ? 'exists' : 'null');
       
     } catch (error) {
-      debugger; // Debug point 6: Error saving user
-      
-      console.error('[UserContext] ❌ Error saving user to storage:', error);
-      console.error('[UserContext] ❌ Error stack:', error.stack);
-      setLoginLoading(false); // Reset loading state on error
-      console.log('[UserContext] ❌ loginLoading reset to false due to error');
+      console.error('[UserContext] Error saving user to storage:', error);
+      setLoginLoading(false);
       return;
     }
     
     // Wait for initialization if not ready
     const waitForInit = async () => {
-      console.log('[UserContext] ⏳ Checking initialization status...');
-      console.log('[UserContext] ⏳ isInitialized:', isInitialized);
-      
       if (!isInitialized) {
-        console.log('[UserContext] ⏳ Waiting for initialization...');
         await new Promise(resolve => setTimeout(resolve, 100));
-        console.log('[UserContext] ⏳ After 100ms delay, checking again...');
         return waitForInit();
       }
       
-      console.log('[UserContext] ✅ Initialization complete, proceeding to navigation');
-      
-      debugger; // Debug point 7: Before navigation
-      
       // Navigation after initialization
-      console.log('[UserContext] 🚀 About to start navigation timeout...');
       setTimeout(() => {
-        console.log('[UserContext] 🚀 Navigation timeout triggered');
-        console.log('[UserContext] 🚀 Starting navigation process...');
-        console.log('[UserContext] 🚀 About to set loginLoading to false');
-        
         setLoginLoading(false);
-        console.log('[UserContext] 🚀 loginLoading set to false');
-        
-        console.log('[UserContext] 📱 Attempting navigation after login');
-        console.log('[UserContext] 📱 Router available:', !!router);
-        console.log('[UserContext] 📱 Router type:', typeof router);
-        console.log('[UserContext] 🎭 User role for navigation:', userData.role);
-        console.log('[UserContext] 🎭 User data at navigation time:', userData);
         
         if (router) {
-          console.log('[UserContext] 📱 Router is available, proceeding with navigation');
           try {
             let targetRoute;
-            console.log('[UserContext] 🎯 Determining target route...');
-            console.log('[UserContext] 🎯 UserRole constants:');
-            console.log('[UserContext] 🎯 UserRole.ADMIN:', UserRole.ADMIN);
-            console.log('[UserContext] 🎯 UserRole.STAFF:', UserRole.STAFF);
-            console.log('[UserContext] 🎯 UserRole.FACULTY:', UserRole.FACULTY);
-            console.log('[UserContext] 🎯 UserRole.DEAN:', UserRole.DEAN);
-            console.log('[UserContext] 🎯 UserRole.PROGRAM_CHAIR:', UserRole.PROGRAM_CHAIR);
             
             if (userData.role === UserRole.ADMIN) {
               targetRoute = ROUTES.ADMIN_DASHBOARD;
-              console.log('[UserContext] 🎯 Admin route selected');
             } else if (userData.role === UserRole.STAFF) {
               targetRoute = ROUTES.STAFF_DASHBOARD;
-              console.log('[UserContext] 🎯 Staff route selected');
             } else if (userData.role === UserRole.FACULTY) {
               targetRoute = ROUTES.FACULTY_DASHBOARD;
-              console.log('[UserContext] 🎯 Faculty route selected');
             } else if (userData.role === UserRole.DEAN) {
               targetRoute = ROUTES.DEAN_DASHBOARD;
-              console.log('[UserContext] 🎯 Dean route selected');
             } else if (userData.role === UserRole.PROGRAM_CHAIR) {
               targetRoute = ROUTES.PROGRAM_CHAIR_DASHBOARD;
-              console.log('[UserContext] 🎯 Program Chair route selected');
             } else {
               targetRoute = ROUTES.FACULTY_DASHBOARD; // Default fallback
-              console.log('[UserContext] 🎯 Default route selected (fallback)');
-              console.log('[UserContext] 🎯 This may indicate a role mapping issue');
             }
-            
-            console.log('[UserContext] 🎯 Target route:', targetRoute);
             console.log('[UserContext] 🎯 ROUTES object:', ROUTES);
             
             debugger; // Debug point 8: Before router navigation

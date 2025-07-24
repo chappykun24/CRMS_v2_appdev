@@ -4,23 +4,18 @@ import Constants from 'expo-constants';
 export class IPDetector {
   static async getLocalIP(onProgress) {
     try {
-      console.log('🔍 Starting IP detection...');
       // Method 1: Try to get LAN IP from Expo manifest
       if (Constants?.manifest?.debuggerHost) {
-        console.log('🔍 Found Expo debuggerHost:', Constants.manifest.debuggerHost);
         const lanIP = Constants.manifest.debuggerHost.split(':')[0];
         if (lanIP && lanIP !== '127.0.0.1' && lanIP !== 'localhost') {
-          console.log('✅ Using LAN IP from Expo manifest:', lanIP);
           if (onProgress) onProgress([lanIP], lanIP, 'Found LAN IP from Expo manifest');
           return lanIP;
         }
       } else {
-        console.log('⚠️ No Expo debuggerHost found');
         if (onProgress) onProgress([], '', 'No Expo debuggerHost found');
       }
       // Method 2: Try to detect via local network service
       try {
-        console.log('🔍 Trying local network detection...');
         if (onProgress) onProgress([], '192.168.1.1', 'Trying local network detection...');
         const response = await fetch('http://192.168.1.1:8080/ip', { 
           method: 'GET',
@@ -29,13 +24,11 @@ export class IPDetector {
         if (response.ok) {
           const data = await response.json();
           if (data && data.ip) {
-            console.log('✅ Using detected LAN IP:', data.ip);
             if (onProgress) onProgress([data.ip], data.ip, 'Detected LAN IP from local network');
             return data.ip;
           }
         }
       } catch (err) {
-        console.log('⚠️ Local network detection failed:', err.message);
         if (onProgress) onProgress([], '', 'Local network detection failed');
       }
       // Method 3: Try common local IP ranges (no ipconfig)

@@ -125,10 +125,8 @@ class APIClient {
   async testConnection() {
     try {
       const result = await this.get('/health');
-      console.log('✅ API connection test successful:', result);
       return true;
     } catch (error) {
-      console.error('❌ API connection test failed:', error);
       return false;
     }
   }

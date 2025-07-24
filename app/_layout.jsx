@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollProvider, useScrollContext } from '../contexts/ScrollContext';
 import { UserProvider, useUser } from '../contexts/UserContext';
 import { UserRole } from '../types/userRoles';
-import { initializeAPI, setAPIBaseURL } from '../utils/api';
+import { apiClient, initializeAPI, setAPIBaseURL } from '../utils/api';
 import { exitApp } from '../utils/appExit';
 import IPDetector from '../utils/ipDetector';
 import { setupNetworkListener } from '../utils/networkManager';
@@ -63,46 +63,83 @@ function AppContent() {
     headerTranslateY = undefined;
   }
   
-  // Initialize API configuration on app startup
+  // Initialize API configuration on app startup (only once)
   React.useEffect(() => {
     let isMounted = true;
+    let hasInitialized = false;
+    
     const checkAndDetect = async () => {
+      if (hasInitialized) return; // Prevent multiple initializations
+      hasInitialized = true;
+      
       const savedURL = await AsyncStorage.getItem('API_BASE_URL');
-      console.log('[AppContent] Saved API_BASE_URL from storage:', savedURL);
+      
       if (!savedURL) {
+        // No saved URL - start fresh IP detection
         setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Starting IP detection...' });
         IPDetector.getLocalIP((triedIPs, currentIP, status) => {
           if (isMounted) setIPDetection(prev => ({ ...prev, triedIPs, currentIP, status }));
         }).then((detectedIP) => {
           if (isMounted) setIPDetection(prev => ({ ...prev, loading: false, status: `Detected IP: ${detectedIP}` }));
-          initializeAPI().then((apiBaseURL) => {
-            console.log('[Layout] 🚦 Detected API Base URL:', apiBaseURL);
-          });
+          initializeAPI();
         });
       } else {
-        setIPDetection({ loading: false, triedIPs: [], currentIP: '', status: 'Loaded API base URL from storage.' });
-        initializeAPI().then((apiBaseURL) => {
-          console.log('[Layout] 🚦 Loaded API Base URL from storage:', apiBaseURL);
-        });
+        // Test connection with saved URL first
+        setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Testing saved connection...' });
+        
+        try {
+          // Initialize API with saved URL
+          await initializeAPI();
+          
+          // Test the connection
+          const isConnected = await apiClient.testConnection();
+          
+          if (isConnected) {
+            // Connection successful - hide loading screen
+            if (isMounted) setIPDetection({ loading: false, triedIPs: [], currentIP: '', status: 'Connection successful!' });
+          } else {
+            // Connection failed - show IP detection screen
+            if (isMounted) setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Connection failed. Starting IP detection...' });
+            IPDetector.getLocalIP((triedIPs, currentIP, status) => {
+              if (isMounted) setIPDetection(prev => ({ ...prev, triedIPs, currentIP, status }));
+            }).then((detectedIP) => {
+              if (isMounted) setIPDetection(prev => ({ ...prev, loading: false, status: `Detected IP: ${detectedIP}` }));
+              initializeAPI();
+            });
+          }
+        } catch (error) {
+          // Error occurred - show IP detection screen
+          if (isMounted) setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Connection error. Starting IP detection...' });
+          IPDetector.getLocalIP((triedIPs, currentIP, status) => {
+            if (isMounted) setIPDetection(prev => ({ ...prev, triedIPs, currentIP, status }));
+          }).then((detectedIP) => {
+            if (isMounted) setIPDetection(prev => ({ ...prev, loading: false, status: `Detected IP: ${detectedIP}` }));
+            initializeAPI();
+          });
+        }
       }
     };
+    
     checkAndDetect();
+    
     // Listen for network changes
     const unsubscribe = setupNetworkListener((newBaseURL) => {
-      console.log('API base URL changed to:', newBaseURL);
+      // Only log if there's an actual change
+      if (newBaseURL !== getAPIBaseURL()) {
+        console.log('API base URL changed to:', newBaseURL);
+      }
     });
-    return () => { isMounted = false; unsubscribe(); };
+    
+    return () => { 
+      isMounted = false; 
+      unsubscribe(); 
+    };
   }, []);
   
-  // Add detailed logging for debugging
-  console.log('[Layout] === AppContent render ===');
-  console.log('[Layout] pathname:', pathname);
-  console.log('[Layout] isLoggedIn:', isLoggedIn);
-  console.log('[Layout] currentUser:', currentUser);
-  console.log('[Layout] currentUser?.role:', currentUser?.role);
-  console.log('[Layout] isLoading:', isLoading);
-  console.log('[Layout] loginLoading:', loginLoading);
-  console.log('[Layout] isInitialized:', isInitialized);
+  // Minimal logging for debugging
+  if (__DEV__) {
+    console.log('[Layout] pathname:', pathname, 'isLoggedIn:', isLoggedIn, 'role:', currentUser?.role);
+  }
   
   // Normalize pathname to ensure consistent matching
   const normalizedPathname = pathname.startsWith('/') ? pathname : `/${pathname}`;
@@ -111,11 +148,6 @@ function AppContent() {
   const isWelcomePage = normalizedPathname === ROUTES.WELCOME || normalizedPathname === '/welcome';
   const isAuthenticatedPage = normalizedPathname.startsWith('/users') || normalizedPathname.startsWith('/pages');
   const isAdminDashboard = normalizedPathname === ROUTES.ADMIN_DASHBOARD;
-  
-  console.log('[Layout] normalizedPathname:', normalizedPathname);
-  console.log('[Layout] isWelcomePage:', isWelcomePage);
-  console.log('[Layout] isAuthenticatedPage:', isAuthenticatedPage);
-  console.log('[Layout] isAdminDashboard:', isAdminDashboard);
   
   // Handle logout - UserContext now handles navigation
   const handleLogout = async () => {
@@ -142,19 +174,12 @@ function AppContent() {
 
   // Render role-specific bottom navigation
   const renderBottomNav = () => {
-    console.log('MainLayout - renderBottomNav called');
-    console.log('MainLayout - isWelcomePage:', isWelcomePage);
-    console.log('MainLayout - isLoggedIn:', isLoggedIn);
-    console.log('MainLayout - currentUser?.role:', currentUser?.role);
-    
     if (isWelcomePage) {
-      console.log('MainLayout - Not showing nav (welcome page)');
       return null;
     }
     
     // For authenticated users with roles, render role-specific navigation
     if (isLoggedIn && currentUser?.role) {
-      console.log('MainLayout - Showing role-specific nav for:', currentUser.role);
       const commonProps = {
         activeRoute: normalizedPathname,
         onLogout: handleLogout
@@ -239,13 +264,11 @@ function AppContent() {
   
   // Show login loading screen when loginLoading is true
   if (loginLoading) {
-    console.log('[Layout] 🔄 Showing LoginLoadingScreen (loginLoading is true)');
     return <LoginLoadingScreen />;
   }
 
   // Show loading screen while app is initializing
   if (!isInitialized || isLoading) {
-    console.log('[Layout] 🔄 Showing loading screen (isInitialized:', isInitialized, 'isLoading:', isLoading, ')');
     return (
       <View style={{
         flex: 1,
@@ -258,11 +281,10 @@ function AppContent() {
     );
   }
 
-  if (ipDetection.loading) {
+  // Only show IP detection screen during initial app startup, not after login
+  if (ipDetection.loading && !isLoggedIn) {
     return <IPDetectionLoadingScreen triedIPs={ipDetection.triedIPs} currentIP={ipDetection.currentIP} status={ipDetection.status} onManualIPSubmit={handleManualIPSubmit} />;
   }
-  
-  console.log('[Layout] ✅ Rendering main app content');
   
   // For logged-in users, wrap with SafeAreaView and make scrollable
   if (isLoggedIn) {
