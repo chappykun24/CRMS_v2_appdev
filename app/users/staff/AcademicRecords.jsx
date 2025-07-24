@@ -9,7 +9,7 @@ import StaffAcademicRecordsHeader from '../../components/StaffAcademicRecordsHea
 
 export default function AcademicRecords() {
   const [search, setSearch] = useState('');
-  const [isTableView, setIsTableView] = useState(false);
+  // const [isTableView, setIsTableView] = useState(false); // Remove
   const [showSearch, setShowSearch] = useState(true);
   const [approvedClasses, setApprovedClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -48,8 +48,8 @@ export default function AcademicRecords() {
         title="Classes"
         search={search}
         setSearch={setSearch}
-        isTableView={isTableView}
-        setIsTableView={setIsTableView}
+        // isTableView={isTableView} // Remove
+        // setIsTableView={setIsTableView} // Remove
         showSearch={showSearch}
         setShowSearch={setShowSearch}
       />
@@ -58,29 +58,6 @@ export default function AcademicRecords() {
           <Text style={{ textAlign: 'center', marginTop: 32 }}>Loading approved classes...</Text>
         ) : filteredClasses.length === 0 ? (
           <Text style={{ textAlign: 'center', marginTop: 32 }}>No approved classes found.</Text>
-        ) : isTableView ? (
-          <View style={styles.tableViewContainer}>
-            <View style={styles.tableHeaderRow}>
-              <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Class</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Faculty</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Term</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Year</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 1 }]}>View</Text>
-            </View>
-            {filteredClasses.map(cls => (
-              <View key={cls.syllabus_id} style={styles.tableRow}>
-                <Text style={[styles.tableCell, { flex: 2 }]}>{cls.course_title} <Text style={{ color: '#6B7280' }}>({cls.course_code})</Text></Text>
-                <Text style={[styles.tableCell, { flex: 1 }]}>{cls.faculty_name}</Text>
-                <Text style={[styles.tableCell, { flex: 1 }]}>{cls.semester}</Text>
-                <Text style={[styles.tableCell, { flex: 1 }]}>{cls.school_year}</Text>
-                <View style={[styles.tableCell, { flex: 1 }]}> 
-                  <TouchableOpacity style={styles.viewButtonSmall}>
-                    <Ionicons name="eye-outline" size={18} color="#DC2626" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-          </View>
         ) : (
           filteredClasses.map(cls => (
             <TouchableOpacity
@@ -89,7 +66,6 @@ export default function AcademicRecords() {
               onPress={() => router.push({ pathname: '/users/staff/ClassStudents', params: { section_course_id: cls.section_course_id, syllabus_id: cls.syllabus_id } })}
             >
               <View style={styles.recordHeader}>
-                {/* <Ionicons name="book-outline" size={28} color="#DC2626" style={{ marginRight: 10 }} /> */}
                 <View>
                   <Text style={styles.subject}>{cls.course_title} <Text style={styles.code}>({cls.course_code})</Text></Text>
                   {cls.section_code && (
@@ -127,53 +103,55 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
   },
-  tableViewContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 8,
-    marginTop: 8,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  tableHeaderRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    paddingVertical: 8,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  tableHeaderCell: {
-    fontWeight: 'bold',
-    color: '#353A40',
-    fontSize: 15,
-    paddingHorizontal: 6,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
-  tableCell: {
-    fontSize: 15,
-    color: '#353A40',
-    paddingHorizontal: 6,
-  },
-  viewButtonSmall: {
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#DC2626',
-  },
+  // tableViewContainer: { // Remove
+  //   backgroundColor: '#FFFFFF',
+  //   borderRadius: 12,
+  //   padding: 8,
+  //   marginTop: 8,
+  //   marginBottom: 24,
+  //   borderWidth: 1,
+  //   borderColor: '#E5E7EB',
+  // },
+  // tableHeaderRow: { // Remove
+  //   flexDirection: 'row',
+  //   borderBottomWidth: 1,
+  //   borderBottomColor: '#E5E7EB',
+  //   paddingVertical: 8,
+  //   backgroundColor: '#FFFFFF',
+  //   borderTopLeftRadius: 12,
+  //   borderTopRightRadius: 12,
+  // },
+  // tableHeaderCell: { // Remove
+  //   fontWeight: 'bold',
+  //   color: '#353A40',
+  //   fontSize: 15,
+  //   paddingHorizontal: 12,
+  //   textAlign: 'left',
+  // },
+  // tableRow: { // Remove
+  //   flexDirection: 'row',
+  //   paddingVertical: 10,
+  //   paddingHorizontal: 4,
+  //   borderBottomWidth: 1,
+  //   borderBottomColor: '#E5E7EB',
+  //   backgroundColor: '#FFFFFF',
+  // },
+  // tableCell: { // Remove
+  //   fontSize: 15,
+  //   color: '#353A40',
+  //   paddingHorizontal: 12,
+  //   textAlign: 'left',
+  // },
+  // viewButtonSmall: { // Remove
+  //   backgroundColor: '#FEE2E2',
+  //   borderRadius: 8,
+  //   paddingVertical: 8,
+  //   paddingHorizontal: 12,
+  //   alignItems: 'center',
+  //   justifyContent: 'center',
+  //   borderWidth: 1,
+  //   borderColor: '#DC2626',
+  // },
   recordCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -248,4 +226,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#DC2626',
   },
+  // scrollIndicatorRow: { // Remove
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   justifyContent: 'center',
+  //   paddingVertical: 8,
+  //   backgroundColor: '#F9FAFB',
+  //   borderTopLeftRadius: 12,
+  //   borderTopRightRadius: 12,
+  //   borderBottomWidth: 1,
+  //   borderBottomColor: '#E5E7EB',
+  // },
+  // scrollIndicatorText: { // Remove
+  //   fontSize: 12,
+  //   color: '#6B7280',
+  //   marginHorizontal: 8,
+  //   fontStyle: 'italic',
+  // },
 }); 

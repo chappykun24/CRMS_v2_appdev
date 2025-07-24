@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useUser } from '../../../contexts/UserContext';
 import { UserRole } from '../../../types/userRoles';
 import { apiClient } from '../../../utils/api';
@@ -57,10 +57,37 @@ export default function AdminDashboard() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
+        {/* Top header row with profile, greeting, and notification */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Image
+              source={require('../../../assets/images/bsu-logo.png')}
+              style={{ width: 48, height: 48, borderRadius: 24, marginRight: 12 }}
+            />
+            <Text style={{ fontSize: 22, fontWeight: '600', color: '#353A40' }}>
+              Admin Dashboard
+            </Text>
+          </View>
+          <View style={{ position: 'relative' }}>
+            <Ionicons name="notifications-outline" size={28} color="#353A40" />
+            <View style={{
+              position: 'absolute',
+              top: -4,
+              right: -4,
+              backgroundColor: '#DC2626',
+              borderRadius: 8,
+              minWidth: 16,
+              height: 16,
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingHorizontal: 3,
+            }}>
+              <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>3</Text>
+            </View>
+          </View>
+        </View>
+
         <View style={styles.header}>
-          <Ionicons name="shield-checkmark-outline" size={32} color="#DC2626" />
-          <Text style={styles.title}>Admin Dashboard</Text>
-          <Text style={styles.subtitle}>Welcome back, {currentUser?.firstName || 'Admin'}</Text>
         </View>
 
         <View style={styles.statsContainer}>
@@ -134,7 +161,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingTop: 40,
+    paddingTop: 20,
   },
   header: {
     alignItems: 'center',

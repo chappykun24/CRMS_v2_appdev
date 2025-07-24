@@ -2,17 +2,25 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
-    Alert,
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    PanResponder,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  PanResponder,
+  Platform,
+  SafeAreaView // Added SafeAreaView
+  ,
+
+
+
+
+
+
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useUser } from '../../contexts/UserContext';
 import { sampleUsers } from '../../types/sampleData';
@@ -182,20 +190,10 @@ export default function PublicBottomNav({ activeRoute }) {
     bottom: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 24,
+    paddingHorizontal: 28,
+    marginBottom: 20,
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    ...(Platform.OS === 'web'
-      ? { boxShadow: '0px -2px 4px rgba(0,0,0,0.1)' }
-      : {
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-        }),
-    elevation: 3,
     zIndex: 10,
   };
 
@@ -209,73 +207,80 @@ export default function PublicBottomNav({ activeRoute }) {
 
   return (
     <>
-      <View style={bottomNavStyle}>
-        {publicNavItems.map((item, index) => {
-          if (!item || !item.route) {
-            return null;
-          }
-          
-          const isActive = activeRoute === item.route || 
-                            (activeRoute === '/' && item.route === ROUTES.PUBLIC);
-          const isLogin = item.route === ROUTES.LOGIN;
-          
-          if (isLogin) {
-            // Render draggable login button in nav bar
-            return (
-              <Animated.View
-                key={index}
-                style={[
-                  styles.bottomNavItem,
-                  {
-                    transform: [
-                      { translateX: dragXAnim },
-                      { translateY: dragYAnim },
-                      { scale: scaleAnim },
-                    ],
-                  },
-                ]}
-                {...panResponder.panHandlers}
-              >
-                <TouchableOpacity
-                  style={styles.loginNavItem}
-                  onPress={handleShowLoginForm}
-                  activeOpacity={0.8}
+      {/* White background container to cover content below the nav bar */}
+      <View style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: 80, // Adjust as needed to fully cover nav bar and safe area
+        backgroundColor: '#FFFFFF',
+        zIndex: 9, // Ensure it's below the nav bar (nav bar zIndex: 10)
+      }} />
+      <SafeAreaView edges={['bottom']} style={{backgroundColor: '#FFFFFF'}}>
+        <View style={bottomNavStyle}>
+          {publicNavItems.map((item, index) => {
+            if (!item || !item.route) {
+              return null;
+            }
+            
+            const isActive = activeRoute === item.route || 
+                              (activeRoute === '/' && item.route === ROUTES.PUBLIC);
+            const isLogin = item.route === ROUTES.LOGIN;
+            
+            if (isLogin) {
+              // Render draggable login button in nav bar
+              return (
+                <Animated.View
+                  key={index}
+                  style={[
+                    styles.bottomNavItem,
+                    {
+                      transform: [
+                        { translateX: dragXAnim },
+                        { translateY: dragYAnim },
+                        { scale: scaleAnim },
+                      ],
+                    },
+                  ]}
+                  {...panResponder.panHandlers}
                 >
-                  <View style={styles.loginContentWrapper}>
-                    <Ionicons
-                      name="chevron-up"
-                      size={28}
-                      color={'#FFFFFF'}
-                    />
-                  </View>
-                </TouchableOpacity>
-              </Animated.View>
+                  <TouchableOpacity
+                    style={styles.loginNavItem}
+                    onPress={handleShowLoginForm}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.loginContentWrapper}>
+                      <Ionicons
+                        name="chevron-up"
+                        size={28}
+                        color={'#FFFFFF'}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                </Animated.View>
+              );
+            }
+            
+            return (
+              <TouchableOpacity
+                key={index}
+                style={styles.bottomNavItem}
+                onPress={() => handleNavigation(item.route)}
+              >
+                <View>
+                  <Ionicons
+                    name={isActive && item.activeIcon ? item.activeIcon : item.icon}
+                    size={24}
+                    color={isActive ? '#DC2626' : '#6B7280'}
+                  />
+                </View>
+                {/* Removed the Text label below the icon */}
+              </TouchableOpacity>
             );
-          }
-          
-          return (
-            <TouchableOpacity
-              key={index}
-              style={styles.bottomNavItem}
-              onPress={() => handleNavigation(item.route)}
-            >
-              <View>
-                <Ionicons
-                  name={isActive && item.activeIcon ? item.activeIcon : item.icon}
-                  size={24}
-                  color={isActive ? '#DC2626' : '#6B7280'}
-                />
-              </View>
-              <Text style={[
-                styles.bottomNavText,
-                isActive && styles.activeText
-              ]}>
-                {item.title}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+          })}
+        </View>
+      </SafeAreaView>
 
       {/* Sliding Login Form Overlay */}
       {showLoginForm && (
@@ -418,7 +423,7 @@ const styles = StyleSheet.create({
   bottomNavItem: {
     flexDirection: 'column',
     alignItems: 'center',
-    marginHorizontal: 20,
+    marginHorizontal: 32, // Increased for wider icon spacing
   },
   loginNavItem: {
     backgroundColor: '#DC2626',

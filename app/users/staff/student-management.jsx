@@ -689,17 +689,11 @@ export default function StudentManagement() {
                 style={styles.studentCard}
                 onPress={() => openViewModal(s)}
               >
-                <View style={styles.studentHeader}>
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>
-                      {s.full_name ? s.full_name.charAt(0).toUpperCase() : 'S'}
-                    </Text>
-                  </View>
+                <View style={styles.studentHeaderSimple}>
                   <View style={styles.studentInfo}>
                     <Text style={styles.studentName}>{s.full_name}</Text>
                     <Text style={styles.studentNumber}>{s.student_number}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="#6B7280" />
                 </View>
               </ClickableContainer>
             ))}
@@ -1733,5 +1727,12 @@ const styles = StyleSheet.create({
   paginationNumberTextActive: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  studentHeaderSimple: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingVertical: 0,
+    marginBottom: 0,
   },
 }); 
