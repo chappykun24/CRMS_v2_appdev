@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
-import { Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, SafeAreaView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ROUTES } from '../../utils/routes';
 
 export default function BottomNavFaculty({ activeRoute, onLogout }) {
@@ -70,20 +70,18 @@ export default function BottomNavFaculty({ activeRoute, onLogout }) {
         left: 0,
         right: 0,
         bottom: 0,
-        height: 80, // Adjust as needed to fully cover nav bar and safe area
+        height: 80, // Match staff/dean nav bar height
         backgroundColor: '#FFFFFF',
         zIndex: 9,
       }} />
       <SafeAreaView edges={['bottom']} style={{backgroundColor: '#FFFFFF'}}>
-        <View style={bottomNavStyle}>
+        <View style={styles.bottomNavBar}>
           {facultyNavItems.map((item, index) => {
             if (!item || !item.route) {
               return null;
             }
-            
             const isActive = activeRoute === item.route;
             const isLogout = item.route === '/logout';
-            
             return (
               <TouchableOpacity
                 key={index}
@@ -96,47 +94,42 @@ export default function BottomNavFaculty({ activeRoute, onLogout }) {
                   }
                 }}
               >
-                <View>
-                  <Ionicons
-                    name={isActive && item.activeIcon ? item.activeIcon : item.icon}
-                    size={24}
-                    color={isActive ? '#DC2626' : '#6B7280'}
-                  />
-                </View>
-                <Text style={[
-                  styles.bottomNavText,
-                  isActive && styles.activeText
-                ]}>
-                  {item.title}
-                </Text>
+                <Ionicons
+                  name={isActive && item.activeIcon ? item.activeIcon : item.icon}
+                  size={24}
+                  color={isActive ? '#DC2626' : '#6B7280'}
+                  style={styles.icon}
+                />
               </TouchableOpacity>
             );
           })}
         </View>
       </SafeAreaView>
-      {/* Example usage for scroll-to-top button: */}
-      {/* <View style={scrollToTopButtonStyle}> */}
-      {/*   <TouchableOpacity onPress={handleScrollToTop}> */}
-      {/*     <Ionicons name="arrow-up" size={32} color="#374151" /> */}
-      {/*   </TouchableOpacity> */}
-      {/* </View> */}
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  bottomNavBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 24, // Match staff/dean
+    paddingHorizontal: 28, // Match staff/dean
+    marginBottom: 20, // Match staff/dean
+    zIndex: 10,
+  },
   bottomNavItem: {
     flexDirection: 'column',
     alignItems: 'center',
-    marginHorizontal: 20,
+    marginHorizontal: 32, // Match staff/dean spacing
   },
-  bottomNavText: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 4,
-    fontWeight: '600',
-  },
-  activeText: {
-    color: '#DC2626',
+  icon: {
+    marginBottom: 0,
   },
 }); 

@@ -31,90 +31,50 @@ export default function GradeManagementScreen() {
   const [studentViewMode, setStudentViewMode] = useState('card'); // 'card' or 'table'
   const [classSearchQuery, setClassSearchQuery] = useState('');
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  const [classData, setClassData] = useState(null);
+  const [assessments, setAssessments] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const selectedClassId = params.selectedClassId;
-    if (selectedClassId) {
-      const foundClass = classes.find(cls => cls.id === selectedClassId);
-      if (foundClass) {
-        setSelectedClass(foundClass);
-        setCurrentView('classDetails');
-      }
-    }
-  }, [params.selectedClassId]);
+    const section_course_id = params.section_course_id;
+    const syllabus_id = params.syllabus_id;
+    if (!section_course_id || !syllabus_id) return;
+    setLoading(true);
+    // Fetch class info (students)
+    Promise.all([
+      require('../../../utils/api').default.get(`/section-courses/${section_course_id}/students`),
+      require('../../../utils/api').default.get(`/syllabus/one/${syllabus_id}`)
+    ]).then(([studentsRes, syllabusRes]) => {
+      setStudents(Array.isArray(studentsRes) ? studentsRes : []);
+      setClassData(syllabusRes);
+      setAssessments(Array.isArray(syllabusRes.assessments) ? syllabusRes.assessments : []);
+      setSelectedClass({
+        id: section_course_id,
+        courseCode: syllabusRes.course_code,
+        courseTitle: syllabusRes.course_title,
+        schedule: syllabusRes.schedule || '',
+        students: Array.isArray(studentsRes) ? studentsRes : [],
+        assessments: Array.isArray(syllabusRes.assessments) ? syllabusRes.assessments : []
+      });
+      setCurrentView('classDetails');
+      setLoading(false);
+    }).catch(() => {
+      setStudents([]);
+      setClassData(null);
+      setAssessments([]);
+      setSelectedClass(null);
+      setLoading(false);
+    });
+  }, [params.section_course_id, params.syllabus_id]);
 
   if (!currentUser) {
     router.replace('/');
     return null;
   }
 
-  // Sample classes data
-  const classes = [
-    {
-      id: 'class-001',
-      courseCode: 'IT101',
-      courseTitle: 'Introduction to Information Technology',
-      schedule: 'MWF 9:00-10:30 AM',
-      studentCount: 40,
-      assessments: [
-        {
-          id: 'assess-001',
-          title: 'Midterm Exam',
-          type: 'Exam',
-          totalPoints: 100,
-          date: '2024-10-15'
-        },
-        {
-          id: 'assess-002',
-          title: 'Programming Assignment 1',
-          type: 'Assignment',
-          totalPoints: 50,
-          date: '2024-10-20'
-        },
-        {
-          id: 'assess-003',
-          title: 'Final Project',
-          type: 'Project',
-          totalPoints: 100,
-          date: '2024-12-10'
-        }
-      ],
-      students: [
-        { id: 'student-001', name: 'John Doe', studentId: '22-123456', score: 85 },
-        { id: 'student-002', name: 'Jane Smith', studentId: '22-234567', score: 92 },
-        { id: 'student-003', name: 'Mike Johnson', studentId: '22-345678' },
-        { id: 'student-004', name: 'Sarah Wilson', studentId: '22-456789', score: 78 }
-      ]
-    },
-    {
-      id: 'class-002',
-      courseCode: 'IT201',
-      courseTitle: 'Database Management Systems',
-      schedule: 'TTh 10:00-11:30 AM',
-      studentCount: 35,
-      assessments: [
-        {
-          id: 'assess-004',
-          title: 'Database Design Quiz',
-          type: 'Quiz',
-          totalPoints: 30,
-          date: '2024-10-18'
-        },
-        {
-          id: 'assess-005',
-          title: 'SQL Project',
-          type: 'Project',
-          totalPoints: 80,
-          date: '2024-11-15'
-        }
-      ],
-      students: [
-        { id: 'student-005', name: 'Alex Brown', studentId: '22-567890', score: 88 },
-        { id: 'student-006', name: 'Emily Davis', studentId: '22-678901' },
-        { id: 'student-007', name: 'Chris Lee', studentId: '22-789012', score: 95 }
-      ]
-    }
-  ];
+  // Remove mock data, use real data
+  // ... rest of the file remains unchanged, but use students, assessments, and selectedClass from state ...
 
   const handleClassSelect = (cls) => {
     setSelectedClass(cls);
@@ -142,21 +102,17 @@ export default function GradeManagementScreen() {
 
   const handleBackNavigation = () => {
     if (currentView === 'classes') {
-      // If we have a selectedClassId parameter, we came from MyClasses
-      if (params.selectedClassId) {
-        handleBackToMyClasses();
-      } else {
-        handleBackToDashboard();
-      }
+      handleBackToMyClasses(); // Always go to MyClasses
     } else if (currentView === 'classDetails') {
-      // If we came from MyClasses, go back to MyClasses instead of classes list
-      if (params.selectedClassId) {
-        handleBackToMyClasses();
-      } else {
-        handleBackToClasses();
-      }
+      handleBackToMyClasses(); // Always go to MyClasses
     } else if (currentView === 'assessmentDetails') {
-      handleBackToClassDetails();
+      setCurrentView('classDetails');
+      setSelectedAssessment(null);
+      setShowStudentSearch(false);
+      setStudentSearchQuery('');
+      setStudentViewMode('card');
+    } else {
+      handleBackToMyClasses(); // Fallback
     }
   };
 
@@ -200,20 +156,15 @@ export default function GradeManagementScreen() {
     setSelectedStudent(null);
   };
 
-  const filteredAssessments = selectedClass?.assessments?.filter(assessment =>
+  const filteredAssessments = assessments.filter(assessment =>
     assessment.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     assessment.type.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
-
-  const filteredClasses = classes.filter(cls =>
-    cls.courseCode.toLowerCase().includes(classSearchQuery.toLowerCase()) ||
-    cls.courseTitle.toLowerCase().includes(classSearchQuery.toLowerCase())
   );
 
-  const filteredStudents = selectedClass?.students?.filter(student =>
-    student.name.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
-    student.studentId.toLowerCase().includes(studentSearchQuery.toLowerCase())
-  ) || [];
+  const filteredStudents = students.filter(student =>
+    (student.name || student.full_name || '').toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
+    (student.studentId || student.student_number || '').toLowerCase().includes(studentSearchQuery.toLowerCase())
+  );
 
   const renderClassCard = (cls) => (
     <TouchableOpacity
@@ -330,7 +281,7 @@ export default function GradeManagementScreen() {
             <Text style={styles.sectionTitle}>My Classes</Text>
             
             <View style={styles.classesContainer}>
-              {filteredClasses.map(renderClassCard)}
+              {selectedClass && renderClassCard(selectedClass)}
             </View>
           </View>
         )}

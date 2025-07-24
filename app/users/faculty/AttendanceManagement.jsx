@@ -13,11 +13,14 @@ import {
     View
 } from 'react-native';
 import { useUser } from '../../../contexts/UserContext';
+import apiClient from '../../../utils/api';
 import FacultyAttendanceManagementHeader from '../../components/FacultyAttendanceManagementHeader';
 
 export default function AttendanceManagementScreen() {
   const { currentUser } = useUser();
   const params = useLocalSearchParams();
+  const [approvedClasses, setApprovedClasses] = useState([]);
+  const [students, setStudents] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
@@ -41,98 +44,54 @@ export default function AttendanceManagementScreen() {
   const [classSearchQuery, setClassSearchQuery] = useState('');
   const [sessionSearchQuery, setSessionSearchQuery] = useState('');
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    setLoading(true);
+    apiClient.get(`/syllabus/approved?facultyId=${currentUser.user_id}`)
+      .then(data => {
+        setApprovedClasses(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setApprovedClasses([]);
+        setLoading(false);
+      });
+  }, [currentUser]);
 
   useEffect(() => {
     const selectedClassId = params.selectedClassId;
     if (selectedClassId) {
-      const foundClass = classes.find(cls => cls.id === selectedClassId);
+      const foundClass = approvedClasses.find(cls => cls.id === selectedClassId);
       if (foundClass) {
         setSelectedClass(foundClass);
         setCurrentView('classDetails');
       }
     }
-  }, [params.selectedClassId]);
+  }, [params.selectedClassId, approvedClasses]);
 
   if (!currentUser) {
     router.replace('/');
     return null;
   }
 
-  // Sample classes data
-  const classes = [
-    {
-      id: 'class-001',
-      courseCode: 'IT101',
-      courseTitle: 'Introduction to Information Technology',
-      schedule: 'MWF 9:00-10:30 AM',
-      studentCount: 40,
-      sessions: [
-        {
-          id: 'session-003',
-          title: 'Week 3 - Lab Session',
-          date: '2024-12-15',
-          time: '9:00-10:30 AM',
-          type: 'Laboratory'
-        },
-        {
-          id: 'session-002',
-          title: 'Week 2 - Programming Basics',
-          date: '2024-12-13',
-          time: '9:00-10:30 AM',
-          type: 'Lecture'
-        },
-        {
-          id: 'session-001',
-          title: 'Week 1 - Introduction',
-          date: '2024-12-11',
-          time: '9:00-10:30 AM',
-          type: 'Lecture'
-        }
-      ],
-      students: [
-        { id: 'student-001', name: 'John Doe', studentId: '22-123456', attendance: 'present' },
-        { id: 'student-002', name: 'Jane Smith', studentId: '22-234567', attendance: 'absent' },
-        { id: 'student-003', name: 'Mike Johnson', studentId: '22-345678', attendance: 'late' },
-        { id: 'student-004', name: 'Sarah Wilson', studentId: '22-456789', attendance: 'present' }
-      ]
-    },
-    {
-      id: 'class-002',
-      courseCode: 'IT201',
-      courseTitle: 'Database Management Systems',
-      schedule: 'TTh 10:00-11:30 AM',
-      studentCount: 35,
-      sessions: [
-        {
-          id: 'session-005',
-          title: 'Week 2 - SQL Basics',
-          date: '2024-12-14',
-          time: '10:00-11:30 AM',
-          type: 'Laboratory'
-        },
-        {
-          id: 'session-004',
-          title: 'Week 1 - Database Concepts',
-          date: '2024-12-12',
-          time: '10:00-11:30 AM',
-          type: 'Lecture'
-        }
-      ],
-      students: [
-        { id: 'student-005', name: 'Alex Brown', studentId: '22-567890', attendance: 'present' },
-        { id: 'student-006', name: 'Emily Davis', studentId: '22-678901', attendance: 'present' },
-        { id: 'student-007', name: 'Chris Lee', studentId: '22-789012', attendance: 'absent' }
-      ]
-    }
-  ];
-
-  const handleClassSelect = (cls) => {
+  // When a class is selected, fetch students
+  const handleClassSelect = async (cls) => {
     setSelectedClass(cls);
     setSelectedSession(null);
     setSearchQuery('');
     setShowSessionSearch(false);
     setSessionSearchQuery('');
     setCurrentView('classDetails');
+    setLoading(true);
+    try {
+      const studentsRes = await apiClient.get(`/section-courses/${cls.section_course_id}/students`);
+      setStudents(Array.isArray(studentsRes) ? studentsRes : []);
+    } catch {
+      setStudents([]);
+    }
+    setLoading(false);
   };
 
   const handleBackToClasses = () => {
@@ -280,20 +239,23 @@ export default function AttendanceManagementScreen() {
     setPendingStatus('');
   };
 
-  const filteredClasses = classes.filter(cls =>
-    cls.courseCode.toLowerCase().includes(classSearchQuery.toLowerCase()) ||
-    cls.courseTitle.toLowerCase().includes(classSearchQuery.toLowerCase())
+  // Filter by search
+  const filteredClasses = approvedClasses.filter(cls =>
+    (cls.course_title || '').toLowerCase().includes(classSearchQuery.toLowerCase()) ||
+    (cls.course_code || '').toLowerCase().includes(classSearchQuery.toLowerCase())
   );
 
-  const filteredSessions = selectedClass?.sessions?.filter(session =>
-    session.title.toLowerCase().includes(sessionSearchQuery.toLowerCase()) ||
-    session.type.toLowerCase().includes(sessionSearchQuery.toLowerCase())
-  ).sort((a, b) => new Date(b.date) - new Date(a.date)) || [];
+  // Fix filteredSessions to always use an array
+  const filteredSessions = (selectedClass?.sessions || []).filter(session =>
+    (session.title || '').toLowerCase().includes(sessionSearchQuery.toLowerCase()) ||
+    (session.type || '').toLowerCase().includes(sessionSearchQuery.toLowerCase())
+  ).sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  const filteredStudents = selectedClass?.students?.filter(student =>
-    student.name.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
-    student.studentId.toLowerCase().includes(studentSearchQuery.toLowerCase())
-  ) || [];
+  // filteredStudents already uses students, which is always an array
+  const filteredStudents = (students || []).filter(student =>
+    (student.name || student.full_name || '').toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
+    (student.studentId || student.student_number || '').toLowerCase().includes(studentSearchQuery.toLowerCase())
+  );
 
   const getAttendanceColor = (status) => {
     switch (status) {
@@ -326,11 +288,11 @@ export default function AttendanceManagementScreen() {
         </View>
         <View style={styles.studentCountBadge}>
           <Ionicons name="people-outline" size={16} color="#DC2626" />
-          <Text style={styles.studentCountText}>{cls.studentCount} students</Text>
+          <Text style={styles.studentCountText}>{cls.studentCount || (cls.students ? (cls.students || []).length : 0)} students</Text>
         </View>
       </View>
       <View style={styles.classStats}>
-        <Text style={styles.classStatsText}>{cls.sessions.length} sessions</Text>
+        <Text style={styles.classStatsText}>{(cls.sessions || []).length} sessions</Text>
       </View>
     </TouchableOpacity>
   );
@@ -433,7 +395,13 @@ export default function AttendanceManagementScreen() {
             <Text style={styles.sectionTitle}>My Classes</Text>
             
             <View style={styles.classesContainer}>
-              {filteredClasses.map(renderClassCard)}
+              {loading ? (
+                <Text>Loading classes...</Text>
+              ) : (filteredClasses || []).length === 0 ? (
+                <Text>No approved classes found.</Text>
+              ) : (
+                filteredClasses.map(renderClassCard)
+              )}
             </View>
           </View>
         )}
@@ -444,7 +412,13 @@ export default function AttendanceManagementScreen() {
             <Text style={styles.sectionTitle}>Sessions</Text>
             
             <View style={styles.sessionsContainer}>
-              {filteredSessions.map(renderSessionCard)}
+              {loading ? (
+                <Text>Loading sessions...</Text>
+              ) : (filteredSessions || []).length === 0 ? (
+                <Text>No sessions found for this class.</Text>
+              ) : (
+                filteredSessions.map(renderSessionCard)
+              )}
             </View>
           </View>
         )}
@@ -456,11 +430,23 @@ export default function AttendanceManagementScreen() {
             
             {studentViewMode === 'card' ? (
               <ScrollView style={styles.studentsList} showsVerticalScrollIndicator={false}>
-                {filteredStudents.map(renderStudentAttendanceRow)}
+                {loading ? (
+                  <Text>Loading students...</Text>
+                ) : (filteredStudents || []).length === 0 ? (
+                  <Text>No students found for this session.</Text>
+                ) : (
+                  filteredStudents.map(renderStudentAttendanceRow)
+                )}
               </ScrollView>
             ) : (
               <ScrollView style={styles.studentsList} showsVerticalScrollIndicator={false}>
-                {renderStudentAttendanceTable()}
+                {loading ? (
+                  <Text>Loading students...</Text>
+                ) : (filteredStudents || []).length === 0 ? (
+                  <Text>No students found for this session.</Text>
+                ) : (
+                  renderStudentAttendanceTable()
+                )}
               </ScrollView>
             )}
           </View>

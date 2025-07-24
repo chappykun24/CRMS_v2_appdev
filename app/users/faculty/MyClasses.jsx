@@ -9,90 +9,59 @@ import {
     View
 } from 'react-native';
 import { useUser } from '../../../contexts/UserContext';
+import apiClient from '../../../utils/api';
 import FacultyMyClassesHeader from '../../components/FacultyMyClassesHeader';
 
 export default function MyClassesScreen() {
   const { currentUser } = useUser();
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [approvedClasses, setApprovedClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [studentCounts, setStudentCounts] = useState({});
+
+  React.useEffect(() => {
+    if (!currentUser) return;
+    setLoading(true);
+    apiClient.get(`/syllabus/approved?facultyId=${currentUser.user_id}`)
+      .then(async data => {
+        const classes = Array.isArray(data) ? data : [];
+        setApprovedClasses(classes);
+        // Fetch student counts for each class
+        const counts = {};
+        await Promise.all(classes.map(async (cls) => {
+          if (cls.section_course_id) {
+            try {
+              const students = await apiClient.get(`/section-courses/${cls.section_course_id}/students`);
+              counts[cls.section_course_id] = Array.isArray(students) ? students.length : 0;
+            } catch {
+              counts[cls.section_course_id] = 0;
+            }
+          }
+        }));
+        setStudentCounts(counts);
+        setLoading(false);
+      })
+      .catch(() => {
+        setApprovedClasses([]);
+        setLoading(false);
+      });
+  }, [currentUser]);
 
   if (!currentUser) {
     router.replace('/');
     return null;
   }
 
-  // Sample classes data - using the same structure as Grade Management
-  const classes = [
-    {
-      id: 'class-001',
-      courseCode: 'IT101',
-      courseTitle: 'Introduction to Information Technology',
-      schedule: 'MWF 9:00-10:30 AM',
-      studentCount: 40,
-      assessments: [
-        {
-          id: 'assess-001',
-          title: 'Midterm Exam',
-          type: 'Exam',
-          totalPoints: 100,
-          date: '2024-10-15'
-        },
-        {
-          id: 'assess-002',
-          title: 'Programming Assignment 1',
-          type: 'Assignment',
-          totalPoints: 50,
-          date: '2024-10-20'
-        },
-        {
-          id: 'assess-003',
-          title: 'Final Project',
-          type: 'Project',
-          totalPoints: 100,
-          date: '2024-12-10'
-        }
-      ],
-      students: [
-        { id: 'student-001', name: 'John Doe', studentId: '22-123456', score: 85 },
-        { id: 'student-002', name: 'Jane Smith', studentId: '22-234567', score: 92 },
-        { id: 'student-003', name: 'Mike Johnson', studentId: '22-345678' },
-        { id: 'student-004', name: 'Sarah Wilson', studentId: '22-456789', score: 78 }
-      ]
-    },
-    {
-      id: 'class-002',
-      courseCode: 'IT201',
-      courseTitle: 'Database Management Systems',
-      schedule: 'TTh 10:00-11:30 AM',
-      studentCount: 35,
-      assessments: [
-        {
-          id: 'assess-004',
-          title: 'Database Design Quiz',
-          type: 'Quiz',
-          totalPoints: 30,
-          date: '2024-10-18'
-        },
-        {
-          id: 'assess-005',
-          title: 'SQL Project',
-          type: 'Project',
-          totalPoints: 80,
-          date: '2024-11-15'
-        }
-      ],
-      students: [
-        { id: 'student-005', name: 'Alex Brown', studentId: '22-567890', score: 88 },
-        { id: 'student-006', name: 'Emily Davis', studentId: '22-678901' },
-        { id: 'student-007', name: 'Chris Lee', studentId: '22-789012', score: 95 }
-      ]
-    }
-  ];
-
-  const filteredClasses = classes.filter(cls =>
-    cls.courseCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    cls.courseTitle.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter by search
+  const filteredClasses = approvedClasses.filter(cls => {
+    const q = searchQuery.toLowerCase();
+    return (
+      (cls.course_title || '').toLowerCase().includes(q) ||
+      (cls.course_code || '').toLowerCase().includes(q) ||
+      (cls.section_code || '').toLowerCase().includes(q)
+    );
+  });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -104,7 +73,9 @@ export default function MyClassesScreen() {
       />
 
       <View style={styles.content}>
-        {filteredClasses.length === 0 ? (
+        {loading ? (
+          <Text style={styles.emptyStateText}>Loading approved classes...</Text>
+        ) : filteredClasses.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="school-outline" size={64} color="#9CA3AF" />
             <Text style={styles.emptyStateTitle}>
@@ -113,33 +84,36 @@ export default function MyClassesScreen() {
             <Text style={styles.emptyStateText}>
               {searchQuery 
                 ? 'Try adjusting your search terms.'
-                : 'You are not assigned to any classes yet.'
+                : 'You are not assigned to any approved classes yet.'
               }
             </Text>
           </View>
         ) : (
           <View style={styles.classesContainer}>
             {filteredClasses.map((cls) => (
-              <View key={cls.id} style={styles.classCard}>
+              <View key={cls.section_course_id} style={styles.classCard}>
                 <View style={styles.classHeader}>
                   <View style={styles.classInfo}>
-                    <Text style={styles.classTitle}>{cls.courseCode} - {cls.courseTitle}</Text>
-                    <Text style={styles.classSchedule}>{cls.schedule}</Text>
+                    <Text style={styles.classTitle}>{cls.course_code} - {cls.course_title}</Text>
+                    <Text style={styles.classSchedule}>{cls.schedule || ''}</Text>
                   </View>
                   <View style={styles.studentCountBadge}>
                     <Ionicons name="people-outline" size={16} color="#DC2626" />
-                    <Text style={styles.studentCountText}>{cls.studentCount} students</Text>
+                    <Text style={styles.studentCountText}>{studentCounts[cls.section_course_id] ?? 0} students</Text>
                   </View>
                 </View>
                 <View style={styles.classStats}>
-                  <Text style={styles.classStatsText}>{cls.assessments.length} assessments</Text>
+                  <Text style={styles.classStatsText}>{cls.syllabus_id ? 'Approved Syllabus' : ''}</Text>
                 </View>
                 <View style={styles.classActions}>
                   <TouchableOpacity 
                     style={styles.actionButton}
                     onPress={() => router.push({
                       pathname: '/users/faculty/GradeManagement',
-                      params: { selectedClassId: cls.id }
+                      params: { 
+                        section_course_id: cls.section_course_id,
+                        syllabus_id: cls.syllabus_id
+                      }
                     })}
                   >
                     <Ionicons name="document-text-outline" size={16} color="#DC2626" />
@@ -149,11 +123,21 @@ export default function MyClassesScreen() {
                     style={styles.actionButton}
                     onPress={() => router.push({
                       pathname: '/users/faculty/AttendanceManagement',
-                      params: { selectedClassId: cls.id }
+                      params: { selectedClassId: cls.section_course_id }
                     })}
                   >
                     <Ionicons name="people-outline" size={16} color="#6B7280" />
                     <Text style={styles.actionButtonText}>Attendance</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => router.push({
+                      pathname: '/users/faculty/ClassStudents',
+                      params: { section_course_id: cls.section_course_id }
+                    })}
+                  >
+                    <Ionicons name="eye-outline" size={16} color="#2563EB" />
+                    <Text style={styles.actionButtonText}>View Students</Text>
                   </TouchableOpacity>
                 </View>
               </View>
