@@ -5,19 +5,28 @@ require('dotenv').config();
 
 // GET /api/users?role=student&search=...&limit=...&offset=...
 router.get('/', async (req, res) => {
-  const { role, search = '', limit = 100, offset = 0 } = req.query;
-  let query = 'SELECT user_id, name, sr_code, email, role_name FROM users WHERE 1=1';
+  const { role, search = '', limit = 100, offset = 0, is_approved } = req.query;
+  let query = `
+    SELECT u.user_id, u.name, u.email, u.is_approved, r.name as role_name 
+    FROM users u 
+    LEFT JOIN roles r ON u.role_id = r.role_id 
+    WHERE 1=1
+  `;
   const params = [];
 
   if (role) {
-    query += ' AND role_name = $' + (params.length + 1);
+    query += ' AND r.name = $' + (params.length + 1);
     params.push(role);
   }
+  if (is_approved !== undefined) {
+    query += ' AND u.is_approved = $' + (params.length + 1);
+    params.push(is_approved === 'true');
+  }
   if (search) {
-    query += ' AND (LOWER(name) LIKE $' + (params.length + 1) + ' OR LOWER(email) LIKE $' + (params.length + 1) + ' OR LOWER(sr_code) LIKE $' + (params.length + 1) + ')';
+    query += ' AND (LOWER(u.name) LIKE $' + (params.length + 1) + ' OR LOWER(u.email) LIKE $' + (params.length + 1) + ')';
     params.push(`%${search.toLowerCase()}%`);
   }
-  query += ' ORDER BY name ASC LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
+  query += ' ORDER BY u.name ASC LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
   params.push(Number(limit));
   params.push(Number(offset));
 
@@ -25,6 +34,7 @@ router.get('/', async (req, res) => {
     const result = await pool.query(query, params);
     res.json({ users: result.rows });
   } catch (err) {
+    console.error('Error in users route:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
