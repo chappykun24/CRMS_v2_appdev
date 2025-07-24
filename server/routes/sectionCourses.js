@@ -88,15 +88,15 @@ router.get('/:section_course_id/students', async (req, res) => {
   }
   try {
     const result = await pool.query(`
-      SELECT e.enrollment_id, u.user_id, u.name
-      FROM enrollments e
-      JOIN users u ON e.user_id = u.user_id
-      WHERE e.section_course_id = $1
-      ORDER BY u.name
+      SELECT ce.enrollment_id, s.student_id, s.full_name, s.student_number, ce.enrollment_date, ce.status
+      FROM course_enrollments ce
+      JOIN students s ON ce.student_id = s.student_id
+      WHERE ce.section_course_id = $1
+      ORDER BY s.full_name
     `, [section_course_id]);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Server error', details: err.message });
   }
 });
 

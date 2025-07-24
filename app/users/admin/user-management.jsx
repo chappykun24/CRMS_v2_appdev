@@ -222,9 +222,17 @@ const UserManagement = () => {
     }
   };
 
+  const getStatusBadgeColor = (role, is_approved) => {
+    if (role === 'Faculty') {
+      return is_approved ? '#22c55e' : '#facc15'; // green for approved, yellow for pending
+    } else {
+      return is_approved ? '#22c55e' : '#ef4444'; // green for active, red for inactive
+    }
+  };
+
   const getRoleColor = (role) => {
-    // All roles use the main red for consistency
-    return '#dc2626';
+    // Use grey for all roles
+    return '#6B7280';
   };
 
   const formatDate = (dateString) => {
@@ -239,41 +247,19 @@ const UserManagement = () => {
         style={styles.userCard}
         onPress={() => openUserModal(user)}
       >
+        {/* Large status dot at top right as a View */}
+        <View style={[
+          styles.statusDotCircle,
+          { backgroundColor: getStatusBadgeColor(user.role_name, user.is_approved) }
+        ]} />
         <View style={styles.userHeader}>
-          <View style={styles.avatar}>
-            {user.profile_pic ? (
-              <Image source={{ uri: user.profile_pic }} style={styles.avatarImage} />
-            ) : (
-              <Text style={styles.avatarText}>
-                {user.name.charAt(0).toUpperCase()}
-              </Text>
-            )}
-          </View>
+          {/* No avatar */}
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{user.name}</Text>
             <Text style={styles.userEmail}>{user.email}</Text>
-          </View>
-          <View style={styles.badgeContainer}>
-            <View 
-              style={[
-                styles.roleBadge, 
-                { backgroundColor: getRoleColor(user.role_name) }
-              ]}
-            >
-              <Text style={styles.roleText}>
-                {user.role_name || 'Unknown Role'}
-              </Text>
-            </View>
-            <View style={[
-              styles.approvalBadge,
-              { backgroundColor: user.is_approved ? '#dc2626' : '#f87171' }
-            ]}>
-              <Text style={styles.approvalText}>
-                {user.role_name === 'Faculty'
-                  ? (user.is_approved ? 'Approved' : 'Pending')
-                  : (user.is_approved ? 'Active' : 'Inactive')}
-              </Text>
-            </View>
+            <Text style={styles.roleTextBelow}>
+              {user.role_name ? user.role_name.toUpperCase() : 'UNKNOWN ROLE'}
+            </Text>
           </View>
         </View>
       </ClickableContainer>
@@ -407,78 +393,6 @@ const UserManagement = () => {
     </View>
   );
 
-  const renderPagination = () => {
-    if (totalPages <= 1) return null;
-
-    const getVisiblePages = () => {
-      const delta = 2;
-      const range = [];
-      const rangeWithDots = [];
-
-      for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
-        range.push(i);
-      }
-
-      if (currentPage - delta > 2) {
-        rangeWithDots.push(1, '...');
-      } else {
-        rangeWithDots.push(1);
-      }
-
-      rangeWithDots.push(...range);
-
-      if (currentPage + delta < totalPages - 1) {
-        rangeWithDots.push('...', totalPages);
-      } else {
-        rangeWithDots.push(totalPages);
-      }
-
-      return rangeWithDots;
-    };
-
-    return (
-      <View style={styles.paginationContainer}>
-        <TouchableOpacity
-          style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
-          onPress={handlePreviousPage}
-          disabled={currentPage === 1}
-        >
-          <Ionicons name="arrow-back" size={20} color={currentPage === 1 ? "#9CA3AF" : "#DC2626"} />
-        </TouchableOpacity>
-
-        <View style={styles.paginationNumbers}>
-          {getVisiblePages().map((page, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.paginationNumber,
-                page === currentPage && styles.paginationNumberActive,
-                page === '...' && styles.paginationDots
-              ]}
-              onPress={() => page !== '...' && handlePageChange(page)}
-              disabled={page === '...'}
-            >
-              <Text style={[
-                styles.paginationNumberText,
-                page === currentPage && styles.paginationNumberTextActive
-              ]}>
-                {page}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <TouchableOpacity
-          style={[styles.paginationButton, currentPage === totalPages && styles.paginationButtonDisabled]}
-          onPress={handleNextPage}
-          disabled={currentPage === totalPages}
-        >
-          <Ionicons name="arrow-forward" size={20} color={currentPage === totalPages ? "#9CA3AF" : "#DC2626"} />
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
   const renderStickyRoleFilter = () => (
     <Animated.View 
       style={[
@@ -587,7 +501,41 @@ const UserManagement = () => {
     </View>
   );
               
-              return (
+  // Increased max width and centered for table view
+  const renderTableView = () => (
+    <View style={styles.tableViewContainer}> 
+      <View style={styles.scrollIndicator}>
+        <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
+        <Text style={styles.scrollIndicatorText}>Scroll to see more</Text>
+        <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
+      </View>
+      <ScrollView style={styles.tableView} horizontal showsHorizontalScrollIndicator>
+        <View>
+          <View style={styles.tableHeaderRow}>
+            <Text style={[styles.tableHeaderCell, { width: 200 }]}>Name</Text>
+            <Text style={[styles.tableHeaderCell, { width: 220 }]}>Email</Text>
+            <Text style={[styles.tableHeaderCell, { width: 120 }]}>Role</Text>
+            <Text style={[styles.tableHeaderCell, { width: 80 }]}>Status</Text>
+          </View>
+          {filteredUsers.map(user => (
+            <View key={user.user_id} style={styles.tableRow}>
+              <Text style={[styles.tableCell, { width: 200 }]} numberOfLines={1}>{user.name}</Text>
+              <Text style={[styles.tableCell, { width: 220 }]} numberOfLines={1}>{user.email}</Text>
+              <Text style={[styles.tableCell, { width: 120 }]}>{user.role_name ? user.role_name.toUpperCase() : 'UNKNOWN'}</Text>
+              <View style={[styles.tableCell, { width: 80, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }]}> 
+                <View style={[
+                  styles.statusDotCircle,
+                  { backgroundColor: getStatusBadgeColor(user.role_name, user.is_approved), position: 'relative', top: 0, right: 0, marginLeft: 0 }
+                ]} />
+              </View>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+
+  return (
     <View style={styles.container}>
       <UserManagementHeader
         showContainers={showContainers}
@@ -632,57 +580,11 @@ const UserManagement = () => {
             <Text style={styles.emptyText}>No users found</Text>
           </View>
         ) : isTableView ? (
-          <View style={styles.tableViewContainer}>
-            <View style={styles.scrollIndicator}>
-              <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
-              <Text style={styles.scrollIndicatorText}>Scroll to see more</Text>
-              <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
-            </View>
-            <ScrollView style={styles.tableView} horizontal={true} showsHorizontalScrollIndicator={true}>
-              <View>
-              <View style={styles.tableHeaderRow}>
-                <Text style={[styles.tableHeaderCell, {width: 180}]}>Name</Text>
-                <Text style={[styles.tableHeaderCell, {width: 220}]}>Email</Text>
-                <Text style={[styles.tableHeaderCell, {width: 120}]}>Role</Text>
-                <Text style={[styles.tableHeaderCell, {width: 120}]}>Status</Text>
-                <Text style={[styles.tableHeaderCell, {width: 140}]}>Action</Text>
-              </View>
-              {currentUsers.map((user, idx) => (
-                <View key={user.user_id || idx} style={styles.tableRow}>
-                  <Text style={[styles.tableCell, {width: 180}]}>{user.name}</Text>
-                  <Text style={[styles.tableCell, {width: 220}]}>{user.email}</Text>
-                  <Text style={[styles.tableCell, {width: 120}]}>{user.role_name || 'Unknown'}</Text>
-                  <Text style={[styles.tableCell, {width: 120}]}>{user.role_name === 'Faculty' ? (user.is_approved ? 'Approved' : 'Pending') : (user.is_approved ? 'Active' : 'Inactive')}</Text>
-                  <View style={[styles.tableCell, {width: 140}]}> 
-                    <TouchableOpacity
-                      style={[
-                        styles.approvalButton,
-                        { backgroundColor: user.is_approved ? '#f87171' : '#dc2626' }
-                      ]}
-                      onPress={() => handleApprovalToggle(user.user_id, user.is_approved)}
-                      disabled={approvingUser === user.user_id}
-                    >
-                      {approvingUser === user.user_id ? (
-                        <ActivityIndicator size="small" color="white" />
-                      ) : (
-                        <Text style={styles.approvalButtonText}>
-                          {user.role_name === 'Faculty'
-                            ? (user.is_approved ? 'Disapprove' : 'Approve')
-                            : (user.is_approved ? 'Deactivate' : 'Activate')}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-          </View>
+          renderTableView()
         ) : (
           currentUsers.map(renderUserCard)
         )}
         
-        {renderPagination()}
         {renderUserModal()}
       </Animated.ScrollView>
     </View>
@@ -803,6 +705,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    position: 'relative', // Needed for absolute positioning of status dot
   },
   userHeader: {
     flexDirection: 'row',
@@ -856,6 +759,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    backgroundColor: '#6B7280', // grey
   },
   roleText: {
     fontSize: 10,
@@ -867,10 +771,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    // backgroundColor set dynamically
   },
   approvalText: {
     fontSize: 10,
-    color: 'white',
+    color: '#fff', // always white for contrast
     fontWeight: '600',
   },
   actionButtons: {
@@ -1006,15 +911,24 @@ const styles = StyleSheet.create({
   tableViewContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    marginHorizontal: 0,
+    marginBottom: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+    width: '100%',
   },
   scrollIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   scrollIndicatorText: {
     fontSize: 12,
@@ -1032,33 +946,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     paddingVertical: 14,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
   tableHeaderCell: {
-    flex: 1,
     fontWeight: 'bold',
     color: '#353A40',
-    fontSize: 16,
-    paddingHorizontal: 16,
+    fontSize: 14,
+    paddingHorizontal: 12,
     textAlign: 'left',
   },
   tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
     backgroundColor: '#FFFFFF',
     minHeight: 48,
   },
   tableCell: {
-    flex: 1,
-    fontSize: 15,
+    fontSize: 13,
     color: '#353A40',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     textAlign: 'left',
   },
   modalOverlay: {
@@ -1206,6 +1116,38 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: '600',
+  },
+  statusDot: {
+    fontSize: 12,
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  statusDotLarge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    fontSize: 20,
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  statusDotCircle: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    zIndex: 10,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  roleTextBelow: {
+    marginTop: 6,
+    color: '#6366F1',
+    fontWeight: 'bold',
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 
 
