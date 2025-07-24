@@ -40,6 +40,8 @@ export default function AcademicRecords() {
     );
   });
 
+  console.log('filteredClasses:', filteredClasses);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <StaffAcademicRecordsHeader
@@ -87,9 +89,12 @@ export default function AcademicRecords() {
               onPress={() => router.push({ pathname: '/users/staff/ClassStudents', params: { section_course_id: cls.section_course_id, syllabus_id: cls.syllabus_id } })}
             >
               <View style={styles.recordHeader}>
-                <Ionicons name="book-outline" size={28} color="#DC2626" style={{ marginRight: 10 }} />
+                {/* <Ionicons name="book-outline" size={28} color="#DC2626" style={{ marginRight: 10 }} /> */}
                 <View>
                   <Text style={styles.subject}>{cls.course_title} <Text style={styles.code}>({cls.course_code})</Text></Text>
+                  {cls.section_code && (
+                    <Text style={styles.section}>Section: <Text style={styles.sectionValue}>{cls.section_code}</Text></Text>
+                  )}
                   <Text style={styles.year}>Year: <Text style={styles.yearValue}>{cls.school_year}</Text></Text>
                   <Text style={styles.year}>Term: <Text style={styles.yearValue}>{cls.semester}</Text></Text>
                 </View>
@@ -233,5 +238,14 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontSize: 15,
     fontWeight: '600',
+  },
+  section: {
+    fontSize: 15,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  sectionValue: {
+    fontWeight: '600',
+    color: '#DC2626',
   },
 }); 

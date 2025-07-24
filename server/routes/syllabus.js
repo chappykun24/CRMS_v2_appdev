@@ -587,9 +587,11 @@ router.get('/approved', async (req, res) => {
   try {
     const client = await pool.connect();
     const result = await client.query(
-      `SELECT s.*, c.title AS course_title, c.course_code, u.name AS faculty_name, t.semester, t.school_year, reviewer.name AS reviewer_name
+      `SELECT s.*, c.title AS course_title, c.course_code, sc.section_course_id, sec.section_code, u.name AS faculty_name, t.semester, t.school_year, reviewer.name AS reviewer_name
        FROM syllabi s
        LEFT JOIN courses c ON s.course_id = c.course_id
+       LEFT JOIN section_courses sc ON s.section_course_id = sc.section_course_id
+       LEFT JOIN sections sec ON sc.section_id = sec.section_id
        LEFT JOIN users u ON s.created_by = u.user_id
        LEFT JOIN users reviewer ON s.reviewed_by = reviewer.user_id
        LEFT JOIN school_terms t ON s.term_id = t.term_id

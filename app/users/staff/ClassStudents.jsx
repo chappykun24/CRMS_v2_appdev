@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import ModalContainer from '../../../components/ModalContainer';
 import apiClient from '../../../utils/api.js';
 import StaffAcademicRecordsHeader from '../../components/StaffAcademicRecordsHeader';
 
@@ -20,6 +21,8 @@ export default function ClassStudents() {
   const [confirming, setConfirming] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [showStudentModal, setShowStudentModal] = useState(false);
 
   // Remove fetchAvailableStudents, allAvailableStudents, filteredAddStudents, and any add student modal logic
 
@@ -77,6 +80,16 @@ export default function ClassStudents() {
     </View>
   );
 
+  // Handler to open modal with student details
+  const handleStudentPress = (student) => {
+    setSelectedStudent(student);
+    setShowStudentModal(true);
+  };
+  const closeStudentModal = () => {
+    setShowStudentModal(false);
+    setSelectedStudent(null);
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <StaffAcademicRecordsHeader
@@ -99,14 +112,30 @@ export default function ClassStudents() {
             <Text style={styles.info}>No students enrolled in this class.</Text>
           ) : (
             filteredStudents.map(student => (
-              <View key={student.enrollment_id} style={styles.studentCard}>
+              <TouchableOpacity key={student.enrollment_id} style={styles.studentCard} onPress={() => handleStudentPress(student)}>
                 <Text style={styles.studentName}>{student.full_name || student.name || 'Unnamed Student'}</Text>
                 <Text style={styles.studentId}>SR Code: {student.student_number || 'N/A'}</Text>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </ScrollView>
       )}
+      {/* Student Details Modal */}
+      <ModalContainer
+        visible={showStudentModal}
+        onClose={closeStudentModal}
+        title="Student Details"
+      >
+        {selectedStudent && (
+          <View>
+            <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 8 }}>{selectedStudent.full_name || selectedStudent.name || 'Unnamed Student'}</Text>
+            <Text style={{ fontSize: 15, marginBottom: 4 }}>SR Code: {selectedStudent.student_number || 'N/A'}</Text>
+            {selectedStudent.email && <Text style={{ fontSize: 15, marginBottom: 4 }}>Email: {selectedStudent.email}</Text>}
+            {selectedStudent.status && <Text style={{ fontSize: 15, marginBottom: 4 }}>Status: {selectedStudent.status}</Text>}
+            {/* Add more fields as needed */}
+          </View>
+        )}
+      </ModalContainer>
       {/* Remove ModalContainer and related modal rendering */}
     </View>
   );
