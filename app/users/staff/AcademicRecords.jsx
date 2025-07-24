@@ -43,6 +43,7 @@ export default function AcademicRecords() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <StaffAcademicRecordsHeader
+        title="Classes"
         search={search}
         setSearch={setSearch}
         isTableView={isTableView}

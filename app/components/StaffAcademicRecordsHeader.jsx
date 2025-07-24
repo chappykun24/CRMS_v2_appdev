@@ -4,6 +4,7 @@ import React from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function StaffAcademicRecordsHeader({ 
+  title,
   search, 
   setSearch, 
   isTableView, 
@@ -23,7 +24,7 @@ export default function StaffAcademicRecordsHeader({
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={24} color="#dc2626" />
           </TouchableOpacity>
-          <Text style={styles.title}>Enrolled</Text>
+          <Text style={styles.title}>{title}</Text>
         </View>
         <View style={styles.headerButtons}>
           <TouchableOpacity style={styles.toggleButton} onPress={() => setShowSearch((prev) => !prev)}>
