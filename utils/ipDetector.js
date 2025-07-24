@@ -2,33 +2,26 @@ import Constants from 'expo-constants';
 
 // IP detection utility for mobile development
 export class IPDetector {
-  static async getLocalIP() {
+  static async getLocalIP(onProgress) {
     try {
       console.log('🔍 Starting IP detection...');
-      
-      // Manual override for testing (set this to your PC's IP if auto-detection fails)
-      // For Android development, we need to use the PC's IP so the Android device can connect
-      const MANUAL_IP_OVERRIDE = '192.168.1.207'; // PC's IP for Android device to connect to
-      if (MANUAL_IP_OVERRIDE) {
-        console.log('🔧 Using manual IP override:', MANUAL_IP_OVERRIDE);
-        return MANUAL_IP_OVERRIDE;
-      }
-      
       // Method 1: Try to get LAN IP from Expo manifest
       if (Constants?.manifest?.debuggerHost) {
         console.log('🔍 Found Expo debuggerHost:', Constants.manifest.debuggerHost);
         const lanIP = Constants.manifest.debuggerHost.split(':')[0];
         if (lanIP && lanIP !== '127.0.0.1' && lanIP !== 'localhost') {
           console.log('✅ Using LAN IP from Expo manifest:', lanIP);
+          if (onProgress) onProgress([lanIP], lanIP, 'Found LAN IP from Expo manifest');
           return lanIP;
         }
       } else {
         console.log('⚠️ No Expo debuggerHost found');
+        if (onProgress) onProgress([], '', 'No Expo debuggerHost found');
       }
-
       // Method 2: Try to detect via local network service
       try {
         console.log('🔍 Trying local network detection...');
+        if (onProgress) onProgress([], '192.168.1.1', 'Trying local network detection...');
         const response = await fetch('http://192.168.1.1:8080/ip', { 
           method: 'GET',
           timeout: 2000 
@@ -37,51 +30,38 @@ export class IPDetector {
           const data = await response.json();
           if (data && data.ip) {
             console.log('✅ Using detected LAN IP:', data.ip);
+            if (onProgress) onProgress([data.ip], data.ip, 'Detected LAN IP from local network');
             return data.ip;
           }
         }
       } catch (err) {
         console.log('⚠️ Local network detection failed:', err.message);
+        if (onProgress) onProgress([], '', 'Local network detection failed');
       }
-
-      // Method 3: Try common local IP ranges
+      // Method 3: Try common local IP ranges (no ipconfig)
       const commonIPs = [
-        '192.168.1.207', // Current detected IP (moved to top priority)
-        '192.168.1.108', // Android device IP (from server logs)
-        '192.168.1.109', // Previous manual override
-        '192.168.1.205', // Actual connecting IP from logs
-        '192.168.1.11', // Previous detected IP
-        '192.168.193.146', // Previous server IP
-        '192.168.192.118', // Frontend device IP
-        '192.168.1.36', // From your Metro logs
-        '192.168.1.104', // Newly added IP
-        '192.168.1.1',
-        '192.168.0.1',
-        '10.0.0.1'
+        '192.168.1.207', '192.168.1.108', '192.168.1.109', '192.168.1.205',
+        '192.168.1.11', '192.168.193.146', '192.168.192.118', '192.168.1.36',
+        '192.168.1.104', '192.168.1.1', '192.168.0.1', '10.0.0.1'
       ];
-
+      let triedIPs = [];
       for (const ip of commonIPs) {
+        triedIPs.push(ip);
+        if (onProgress) onProgress([...triedIPs], ip, `Testing IP: ${ip}`);
         try {
-          console.log(`🔍 Testing common IP: ${ip}`);
-          const response = await fetch(`http://${ip}:3001/api/test`, {
-            method: 'GET',
-            timeout: 1000
-          });
+          const response = await fetch(`http://${ip}:3001/api/test`, { method: 'GET', timeout: 1000 });
           if (response.ok) {
-            console.log(`✅ Found working IP: ${ip}`);
+            if (onProgress) onProgress([...triedIPs], ip, `Found working IP: ${ip}`);
             return ip;
           }
         } catch (err) {
-          console.log(`❌ IP ${ip} not reachable`);
+          // continue
         }
       }
-
-      // Fallback to LAN IP for dev
-      console.log('⚠️ Using fallback: 192.168.1.9');
+      if (onProgress) onProgress([...triedIPs], '192.168.1.9', 'Using fallback IP');
       return '192.168.1.9';
     } catch (error) {
-      console.error('❌ IP detection failed:', error);
-      // Fallback to localhost
+      if (onProgress) onProgress([], 'localhost', 'IP detection failed');
       return 'localhost';
     }
   }

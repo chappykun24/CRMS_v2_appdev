@@ -20,8 +20,8 @@ export default function AdminDashboard() {
       const { stats: facultyStats } = await userService.getFacultyApprovalData();
       setStats(facultyStats);
       // Fetch departments from backend
-      const departmentsRes = await apiClient.get('/collections/departments');
-      setDepartmentCount(departmentsRes.documents ? departmentsRes.documents.length : 0);
+      const departmentsRes = await apiClient.get('/departments');
+      setDepartmentCount(departmentsRes.departments ? departmentsRes.departments.length : 0);
     } catch (error) {
       console.error('Error loading faculty stats or departments:', error);
     }

@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, Stack, usePathname } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, Alert, BackHandler, ScrollView, View } from 'react-native';
@@ -5,8 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollProvider, useScrollContext } from '../contexts/ScrollContext';
 import { UserProvider, useUser } from '../contexts/UserContext';
 import { UserRole } from '../types/userRoles';
-import { initializeAPI } from '../utils/api';
+import { initializeAPI, setAPIBaseURL } from '../utils/api';
 import { exitApp } from '../utils/appExit';
+import IPDetector from '../utils/ipDetector';
 import { setupNetworkListener } from '../utils/networkManager';
 import { ROUTES } from '../utils/routes';
 import BottomNavAdmin from './components/BottomNavAdmin';
@@ -15,12 +17,38 @@ import BottomNavFaculty from './components/BottomNavFaculty';
 import BottomNavProgramChair from './components/BottomNavProgramChair';
 import BottomNavStaff from './components/BottomNavStaff';
 import GlobalHeader from './components/GlobalHeader';
+import IPDetectionLoadingScreen from './components/IPDetectionLoadingScreen';
 import LoginLoadingScreen from './components/LoginLoadingScreen';
 import PublicBottomNav from './components/PublicBottomNav';
 
 function AppContent() {
   const pathname = usePathname();
   const { isLoggedIn, currentUser, isLoading, loginLoading, logout, isInitialized } = useUser();
+  const [ipDetection, setIPDetection] = React.useState({ loading: true, triedIPs: [], currentIP: '', status: '' });
+  const [manualIPTesting, setManualIPTesting] = React.useState(false);
+
+  // Handler for manual IP input
+  const handleManualIPSubmit = async (ip) => {
+    setManualIPTesting(true);
+    setIPDetection(prev => ({ ...prev, status: `Testing manual IP: ${ip}`, currentIP: ip, triedIPs: [...prev.triedIPs, ip] }));
+    try {
+      const response = await fetch(`http://${ip}:3001/api/test`, { method: 'GET', timeout: 2000 });
+      if (response.ok) {
+        setAPIBaseURL(`http://${ip}:3001/api`);
+        setIPDetection({ loading: false, triedIPs: [...ipDetection.triedIPs, ip], currentIP: ip, status: `Manual IP successful: ${ip}` });
+        initializeAPI().then((apiBaseURL) => {
+          console.log('[Layout] 🚦 Detected API Base URL (manual):', apiBaseURL);
+        });
+        setManualIPTesting(false);
+        return;
+      } else {
+        setIPDetection(prev => ({ ...prev, status: `Manual IP failed: ${ip}` }));
+      }
+    } catch (e) {
+      setIPDetection(prev => ({ ...prev, status: `Manual IP failed: ${ip}` }));
+    }
+    setManualIPTesting(false);
+  };
   
   // Check if we're on user management page
   const isUserManagementPage = pathname.includes('/users/admin/user-management');
@@ -37,17 +65,33 @@ function AppContent() {
   
   // Initialize API configuration on app startup
   React.useEffect(() => {
-    // On app start
-    initializeAPI();
-
+    let isMounted = true;
+    const checkAndDetect = async () => {
+      const savedURL = await AsyncStorage.getItem('API_BASE_URL');
+      console.log('[AppContent] Saved API_BASE_URL from storage:', savedURL);
+      if (!savedURL) {
+        setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Starting IP detection...' });
+        IPDetector.getLocalIP((triedIPs, currentIP, status) => {
+          if (isMounted) setIPDetection(prev => ({ ...prev, triedIPs, currentIP, status }));
+        }).then((detectedIP) => {
+          if (isMounted) setIPDetection(prev => ({ ...prev, loading: false, status: `Detected IP: ${detectedIP}` }));
+          initializeAPI().then((apiBaseURL) => {
+            console.log('[Layout] 🚦 Detected API Base URL:', apiBaseURL);
+          });
+        });
+      } else {
+        setIPDetection({ loading: false, triedIPs: [], currentIP: '', status: 'Loaded API base URL from storage.' });
+        initializeAPI().then((apiBaseURL) => {
+          console.log('[Layout] 🚦 Loaded API Base URL from storage:', apiBaseURL);
+        });
+      }
+    };
+    checkAndDetect();
     // Listen for network changes
     const unsubscribe = setupNetworkListener((newBaseURL) => {
-      // Optionally update state/UI here
       console.log('API base URL changed to:', newBaseURL);
     });
-
-    // Cleanup on unmount
-    return () => unsubscribe();
+    return () => { isMounted = false; unsubscribe(); };
   }, []);
   
   // Add detailed logging for debugging
@@ -212,6 +256,10 @@ function AppContent() {
         <ActivityIndicator size="large" color="#DC2626" />
       </View>
     );
+  }
+
+  if (ipDetection.loading) {
+    return <IPDetectionLoadingScreen triedIPs={ipDetection.triedIPs} currentIP={ipDetection.currentIP} status={ipDetection.status} onManualIPSubmit={handleManualIPSubmit} />;
   }
   
   console.log('[Layout] ✅ Rendering main app content');

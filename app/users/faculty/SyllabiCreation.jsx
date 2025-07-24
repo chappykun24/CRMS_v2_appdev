@@ -241,24 +241,22 @@ export default function SyllabiCreationScreen() {
 
   // Debug: Direct fetch for courses, terms, and ILOs
   useEffect(() => {
-    fetch('http://192.168.1.207:3001/api/section-courses/courses')
-      .then(res => res.json())
+    // Replace direct fetch with apiClient
+    apiClient.get('/section-courses/courses')
       .then(data => {
-        console.log('Direct fetch courses:', data);
+        console.log('Debug: apiClient courses:', data);
       })
-      .catch(err => console.error('Direct fetch error (courses):', err));
-    fetch('http://192.168.1.207:3001/api/syllabus/terms')
-      .then(res => res.json())
+      .catch(err => console.error('Debug: apiClient error (courses):', err));
+    apiClient.get('/syllabus/terms')
       .then(data => {
-        console.log('Direct fetch terms:', data);
+        console.log('Debug: apiClient terms:', data);
       })
-      .catch(err => console.error('Direct fetch error (terms):', err));
-    fetch('http://192.168.1.207:3001/api/syllabus/ilos')
-      .then(res => res.json())
+      .catch(err => console.error('Debug: apiClient error (terms):', err));
+    apiClient.get('/syllabus/ilos')
       .then(data => {
-        console.log('Direct fetch ILOs:', data);
+        console.log('Debug: apiClient ILOs:', data);
       })
-      .catch(err => console.error('Direct fetch error (ILOs):', err));
+      .catch(err => console.error('Debug: apiClient error (ILOs):', err));
   }, []);
 
   if (!currentUser) {

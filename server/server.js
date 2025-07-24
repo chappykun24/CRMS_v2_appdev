@@ -83,17 +83,16 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'API is working!' });
 });
 
-// IP restriction middleware (move this after public endpoints)
-app.use((req, res, next) => {
-  const ip = req.ip || req.connection.remoteAddress;
-  const normalizedIp = ip.startsWith('::ffff:') ? ip.replace('::ffff:', '') : ip;
-  console.log(`[IP CHECK] Incoming request from IP: ${ip} (normalized: ${normalizedIp})`);
-  // Temporarily allow all IPs for debugging
-  // if (!ALLOWED_IPS.includes(ip) && !ALLOWED_IPS.includes(normalizedIp)) {
-  //   return res.status(403).json({ error: `Access denied: Your IP (${ip}, normalized: ${normalizedIp}) is not allowed. Add it to ALLOWED_IPS if needed.` });
-  // }
-  next();
-});
+// Remove or permanently comment out the IP restriction middleware so all IPs are allowed
+// app.use((req, res, next) => {
+//   const ip = req.ip || req.connection.remoteAddress;
+//   const normalizedIp = ip.startsWith('::ffff:') ? ip.replace('::ffff:', '') : ip;
+//   console.log(`[IP CHECK] Incoming request from IP: ${ip} (normalized: ${normalizedIp})`);
+//   if (!ALLOWED_IPS.includes(ip) && !ALLOWED_IPS.includes(normalizedIp)) {
+//     return res.status(403).json({ error: `Access denied: Your IP (${ip}, normalized: ${normalizedIp}) is not allowed. Add it to ALLOWED_IPS if needed.` });
+//   }
+//   next();
+// });
 
 // PostgreSQL configuration
 const pool = new Pool({

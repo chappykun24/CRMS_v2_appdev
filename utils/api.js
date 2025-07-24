@@ -1,5 +1,6 @@
 // API utility for making requests to backend PostgreSQL server
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeAPIConfig } from './ipDetector';
 
 // Dynamic API base URL that will be set on app startup
@@ -14,13 +15,19 @@ const getLocalIP = () => {
 // Initialize API configuration on app startup
 export const initializeAPI = async () => {
   try {
+    // Check AsyncStorage for saved API base URL
+    const savedURL = await AsyncStorage.getItem('API_BASE_URL');
+    if (savedURL) {
+      API_BASE_URL = savedURL;
+      apiClient.updateBaseURL(API_BASE_URL);
+      console.log('✅ API Base URL loaded from storage:', API_BASE_URL);
+      return API_BASE_URL;
+    }
     console.log('🚀 Initializing API configuration...');
     API_BASE_URL = await initializeAPIConfig();
     console.log('✅ API Base URL set to:', API_BASE_URL);
-    
-    // Update the apiClient instance
     apiClient.updateBaseURL(API_BASE_URL);
-    
+    AsyncStorage.setItem('API_BASE_URL', API_BASE_URL);
     return API_BASE_URL;
   } catch (error) {
     console.error('❌ API initialization failed:', error);
@@ -35,6 +42,14 @@ export const getAPIBaseURL = () => API_BASE_URL;
 
 // Legacy export for backward compatibility
 export { API_BASE_URL };
+
+// Set the API base URL directly (for manual IP input)
+export const setAPIBaseURL = (url) => {
+  API_BASE_URL = url;
+  apiClient.updateBaseURL(API_BASE_URL);
+  AsyncStorage.setItem('API_BASE_URL', API_BASE_URL);
+  console.log('✅ API Base URL manually set to:', API_BASE_URL);
+};
 
 // Helper function to get current IP (for manual updates)
 export const getCurrentIP = () => {
