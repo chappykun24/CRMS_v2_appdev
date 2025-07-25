@@ -14,6 +14,7 @@ import {
     View
 } from 'react-native';
 import { useUser } from '../../contexts/UserContext';
+import apiClient from '../../utils/api';
 import { ROUTES } from '../../utils/routes';
 
 export default function LoginScreen() {

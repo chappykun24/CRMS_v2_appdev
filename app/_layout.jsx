@@ -1,3 +1,4 @@
+import NetInfo from '@react-native-community/netinfo';
 import { router, Stack, usePathname } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, Alert, BackHandler, ScrollView, View } from 'react-native';
@@ -23,6 +24,8 @@ function AppContent() {
   const { isLoggedIn, currentUser, isLoading, loginLoading, logout, isInitialized } = useUser();
   const [ipDetection, setIPDetection] = React.useState({ loading: true, triedIPs: [], currentIP: '', status: '' });
   const [manualIPTesting, setManualIPTesting] = React.useState(false);
+  const [networkSSID, setNetworkSSID] = React.useState(null);
+  const [lastSSID, setLastSSID] = React.useState(null);
 
   // Handler for manual IP input
   const handleManualIPSubmit = async (ip) => {
@@ -64,18 +67,44 @@ function AppContent() {
     headerTranslateY = undefined;
   }
   
-  // Remove automatic detection: Only show manual input
+  // Listen for network changes
   React.useEffect(() => {
-    import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
-      AsyncStorage.getItem('API_BASE_URL').then((url) => {
-        if (url) {
-          setIPDetection({ loading: false, triedIPs: [], currentIP: '', status: '' });
-        } else {
-          setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Please enter your backend IP address below.' });
+    import('@react-native-async-storage/async-storage').then(async ({ default: AsyncStorage }) => {
+      const unsubscribe = NetInfo.addEventListener(async (state) => {
+        if (state.type === 'wifi' && state.details && state.details.ssid) {
+          setNetworkSSID(state.details.ssid);
+          const prevSSID = await AsyncStorage.getItem('LAST_WIFI_SSID');
+          if (prevSSID && prevSSID !== state.details.ssid) {
+            // Network changed, clear API_BASE_URL and prompt for new IP
+            await AsyncStorage.removeItem('API_BASE_URL');
+            await AsyncStorage.setItem('LAST_WIFI_SSID', state.details.ssid);
+            setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'WiFi changed. Please enter your backend IP address below.' });
+          } else if (!prevSSID) {
+            await AsyncStorage.setItem('LAST_WIFI_SSID', state.details.ssid);
+          }
         }
       });
+      return () => unsubscribe();
     });
   }, []);
+
+  // One-time IP input logic
+  React.useEffect(() => {
+    import('@react-native-async-storage/async-storage').then(async ({ default: AsyncStorage }) => {
+      const forceInput = await AsyncStorage.getItem('FORCE_IP_INPUT');
+      if (forceInput === 'true') {
+        setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Please enter your backend IP address below.' });
+        await AsyncStorage.removeItem('FORCE_IP_INPUT');
+        return;
+      }
+      const url = await AsyncStorage.getItem('API_BASE_URL');
+      if (!url) {
+        setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Please enter your backend IP address below.' });
+      } else {
+        setIPDetection({ loading: false, triedIPs: [], currentIP: '', status: '' });
+      }
+    });
+  }, [networkSSID]);
   
   // Minimal logging for debugging
   if (__DEV__) {

@@ -74,6 +74,17 @@ export default function WelcomeScreen() {
     <SafeAreaView style={welcomeStyles.container}> 
       {/* Minimal Header */}
       <View style={welcomeStyles.fixedHeader}>
+        {/* Transparent IP Detection Button (top left) */}
+        <TouchableOpacity
+          style={welcomeStyles.ipButton}
+          onPress={async () => {
+            await AsyncStorage.removeItem('API_BASE_URL');
+            await AsyncStorage.setItem('FORCE_IP_INPUT', 'true');
+            router.replace('/'); // Go to root, which will trigger IP detection
+          }}
+        >
+          <Ionicons name="settings-outline" size={24} color="#6B7280" style={{ opacity: 0.5 }} />
+        </TouchableOpacity>
         <TouchableOpacity style={welcomeStyles.skipButton} onPress={handleSkip}>
           <Text style={welcomeStyles.skipText}>Skip</Text>
         </TouchableOpacity>
@@ -146,6 +157,14 @@ const welcomeStyles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
     backgroundColor: '#fff',
+  },
+  ipButton: {
+    position: 'absolute',
+    left: 8,
+    top: 16,
+    padding: 8,
+    zIndex: 10,
+    backgroundColor: 'transparent',
   },
   skipButton: {
     padding: 8,
