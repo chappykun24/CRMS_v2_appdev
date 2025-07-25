@@ -100,4 +100,22 @@ router.get('/:section_course_id/students', async (req, res) => {
   }
 });
 
+// GET /api/section-courses/:section_course_id/sessions - get all sessions for a section_course
+router.get('/:section_course_id/sessions', async (req, res) => {
+  const { section_course_id } = req.params;
+  if (!section_course_id) {
+    return res.status(400).json({ error: 'Missing section_course_id' });
+  }
+  try {
+    // Adjust the query to match your actual sessions table and schema
+    const result = await pool.query(
+      'SELECT * FROM sessions WHERE section_course_id = $1 ORDER BY date',
+      [section_course_id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+});
+
 module.exports = router; 

@@ -32,7 +32,7 @@ export default function FacultyAttendanceManagementHeader({
 
   const getTitle = () => {
     if (currentView === 'classes') return 'Attendance Management';
-    if (currentView === 'classDetails') return `${selectedClass?.courseCode} - Attendance`;
+    if (currentView === 'classDetails') return `${selectedClass?.course_code || ''} - ${selectedClass?.section_code || ''}`;
     if (currentView === 'sessionDetails') return selectedSession?.title;
     return 'Attendance Management';
   };

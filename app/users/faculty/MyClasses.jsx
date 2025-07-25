@@ -19,6 +19,7 @@ export default function MyClassesScreen() {
   const [approvedClasses, setApprovedClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [studentCounts, setStudentCounts] = useState({});
+  const [isNavigatingAway, setIsNavigatingAway] = useState(false);
 
   React.useEffect(() => {
     if (!currentUser) return;
@@ -53,6 +54,8 @@ export default function MyClassesScreen() {
     return null;
   }
 
+  if (isNavigatingAway) return null;
+
   // Filter by search
   const filteredClasses = approvedClasses.filter(cls => {
     const q = searchQuery.toLowerCase();
@@ -63,6 +66,23 @@ export default function MyClassesScreen() {
     );
   });
 
+  const handleAttendancePress = async (cls) => {
+    setIsNavigatingAway(true);
+    try {
+      const sessions = await apiClient.get(`/section-courses/${cls.section_course_id}/sessions`);
+      router.push({
+        pathname: '/users/faculty/SessionList',
+        params: {
+          section_course_id: cls.section_course_id,
+          sessions: JSON.stringify(sessions),
+        }
+      });
+    } catch (error) {
+      setIsNavigatingAway(false);
+      // Optionally show an error message
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <FacultyMyClassesHeader
@@ -70,6 +90,7 @@ export default function MyClassesScreen() {
         setSearchQuery={setSearchQuery}
         showSearch={showSearch}
         setShowSearch={setShowSearch}
+        onNavigateAway={() => setIsNavigatingAway(true)}
       />
 
       <View style={styles.content}>
@@ -108,6 +129,13 @@ export default function MyClassesScreen() {
                 <View style={styles.classActions}>
                   <TouchableOpacity 
                     style={styles.actionButton}
+                    onPress={() => handleAttendancePress(cls)}
+                  >
+                    <Ionicons name="people-outline" size={16} color="#6B7280" />
+                    <Text style={styles.actionButtonText}>Attendance</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.actionButton}
                     onPress={() => router.push({
                       pathname: '/users/faculty/GradeManagement',
                       params: { 
@@ -118,16 +146,6 @@ export default function MyClassesScreen() {
                   >
                     <Ionicons name="document-text-outline" size={16} color="#DC2626" />
                     <Text style={styles.actionButtonText}>Grades</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => router.push({
-                      pathname: '/users/faculty/AttendanceManagement',
-                      params: { selectedClassId: cls.section_course_id }
-                    })}
-                  >
-                    <Ionicons name="people-outline" size={16} color="#6B7280" />
-                    <Text style={styles.actionButtonText}>Attendance</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.actionButton}

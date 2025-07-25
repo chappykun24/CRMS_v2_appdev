@@ -7,10 +7,12 @@ export default function FacultyMyClassesHeader({
   searchQuery, 
   setSearchQuery, 
   showSearch, 
-  setShowSearch 
+  setShowSearch,
+  onNavigateAway
 }) {
   const handleBack = () => {
-    router.back();
+    if (onNavigateAway) onNavigateAway();
+    router.push('/users/faculty/dashboard');
   };
 
   return (

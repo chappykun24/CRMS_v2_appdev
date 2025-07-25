@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Modal,
+    Platform,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -45,6 +47,8 @@ export default function AttendanceManagementScreen() {
   const [sessionSearchQuery, setSessionSearchQuery] = useState('');
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isNavigatingAway, setIsNavigatingAway] = useState(false);
+  const [showNewSessionDatePicker, setShowNewSessionDatePicker] = useState(false);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -63,7 +67,7 @@ export default function AttendanceManagementScreen() {
   useEffect(() => {
     const selectedClassId = params.selectedClassId;
     if (selectedClassId) {
-      const foundClass = approvedClasses.find(cls => cls.id === selectedClassId);
+      const foundClass = approvedClasses.find(cls => String(cls.section_course_id) === String(selectedClassId));
       if (foundClass) {
         setSelectedClass(foundClass);
         setCurrentView('classDetails');
@@ -75,6 +79,8 @@ export default function AttendanceManagementScreen() {
     router.replace('/');
     return null;
   }
+
+  if (isNavigatingAway) return null;
 
   // When a class is selected, fetch students
   const handleClassSelect = async (cls) => {
@@ -104,26 +110,22 @@ export default function AttendanceManagementScreen() {
   };
 
   const handleBackToMyClasses = () => {
+    setIsNavigatingAway(true);
     router.push('/users/faculty/MyClasses');
   };
 
   const handleBackNavigation = () => {
-    if (currentView === 'classes') {
-      // If we have a selectedClassId parameter, we came from MyClasses
-      if (params.selectedClassId) {
-        handleBackToMyClasses();
-      } else {
-        router.push('/users/faculty/dashboard');
-      }
+    if (currentView === 'sessionDetails') {
+      handleBackToClassDetails();
     } else if (currentView === 'classDetails') {
-      // If we came from MyClasses, go back to MyClasses instead of classes list
       if (params.selectedClassId) {
         handleBackToMyClasses();
       } else {
         handleBackToClasses();
       }
-    } else if (currentView === 'sessionDetails') {
-      handleBackToClassDetails();
+    } else if (currentView === 'classes') {
+      setIsNavigatingAway(true);
+      router.push('/users/faculty/dashboard');
     }
   };
 
@@ -277,18 +279,22 @@ export default function AttendanceManagementScreen() {
 
   const renderClassCard = (cls) => (
     <TouchableOpacity
-      key={cls.id}
+      key={cls.id || cls.section_course_id}
       style={[styles.classCard, selectedClass?.id === cls.id && styles.selectedClassCard]}
       onPress={() => handleClassSelect(cls)}
     >
       <View style={styles.classHeader}>
         <View style={styles.classInfo}>
-          <Text style={styles.classTitle}>{cls.courseCode} - {cls.courseTitle}</Text>
-          <Text style={styles.classSchedule}>{cls.schedule}</Text>
+          <Text style={styles.classTitle}>
+            {cls.course_code && cls.section_code ? `${cls.course_code} - ${cls.section_code}` : '-'}
+          </Text>
+          <Text style={styles.classSchedule}>{cls.schedule || ''}</Text>
         </View>
         <View style={styles.studentCountBadge}>
           <Ionicons name="people-outline" size={16} color="#DC2626" />
-          <Text style={styles.studentCountText}>{cls.studentCount || (cls.students ? (cls.students || []).length : 0)} students</Text>
+          <Text style={styles.studentCountText}>
+            {cls.studentCount || (cls.students ? (cls.students || []).length : 0)} students
+          </Text>
         </View>
       </View>
       <View style={styles.classStats}>
@@ -667,34 +673,36 @@ export default function AttendanceManagementScreen() {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Date</Text>
-                <TextInput
+                <TouchableOpacity
+                  onPress={() => setShowNewSessionDatePicker(true)}
                   style={styles.inputField}
-                  value={newSessionDate}
-                  onChangeText={setNewSessionDate}
-                  placeholder="YYYY-MM-DD"
-                />
+                >
+                  <Text style={{ color: newSessionDate ? '#222' : '#888' }}>{newSessionDate || 'Select Date'}</Text>
+                </TouchableOpacity>
+                {showNewSessionDatePicker && (
+                  <DateTimePicker
+                    value={newSessionDate ? new Date(newSessionDate) : new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={(event, selectedDate) => {
+                      setShowNewSessionDatePicker(false);
+                      if (selectedDate) {
+                        const iso = selectedDate.toISOString();
+                        setNewSessionDate(iso.slice(0, 10));
+                      }
+                    }}
+                  />
+                )}
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Session Type</Text>
-                <View style={styles.typeOptions}>
-                  <TouchableOpacity 
-                    style={[styles.typeOption, newSessionType === 'Lecture' && styles.typeOptionSelected]}
-                    onPress={() => setNewSessionType('Lecture')}
-                  >
-                    <Text style={[styles.typeOptionText, newSessionType === 'Lecture' && styles.typeOptionTextSelected]}>
-                      Lecture
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.typeOption, newSessionType === 'Laboratory' && styles.typeOptionSelected]}
-                    onPress={() => setNewSessionType('Laboratory')}
-                  >
-                    <Text style={[styles.typeOptionText, newSessionType === 'Laboratory' && styles.typeOptionTextSelected]}>
-                      Laboratory
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                <TextInput
+                  style={styles.inputField}
+                  value={newSessionType}
+                  onChangeText={setNewSessionType}
+                  placeholder="Session Type (e.g., Lecture, Lab)"
+                />
               </View>
             </View>
 
@@ -706,7 +714,7 @@ export default function AttendanceManagementScreen() {
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveButton} onPress={handleSaveNewSession}>
-                <Text style={styles.saveButtonText}>Create Session</Text>
+                <Text style={styles.saveButtonText}>Add</Text>
               </TouchableOpacity>
             </View>
           </View>
