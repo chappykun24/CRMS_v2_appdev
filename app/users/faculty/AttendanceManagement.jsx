@@ -1,21 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    FlatList,
-    Image,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Dimensions,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useUser } from '../../../contexts/UserContext';
 import apiClient from '../../../utils/api';
@@ -30,7 +28,6 @@ export default function AttendanceManagementScreen() {
   const [selectedClass, setSelectedClass] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
-  const [showSlideshowModal, setShowSlideshowModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [attendanceStatus, setAttendanceStatus] = useState('present');
   const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
@@ -55,6 +52,43 @@ export default function AttendanceManagementScreen() {
   const [showNewSessionDatePicker, setShowNewSessionDatePicker] = useState(false);
   const [newSessionMeetingType, setNewSessionMeetingType] = useState('');
   const [sessions, setSessions] = useState([]);
+  const router = useRouter();
+
+  // Fetch sessions for the selected class
+  const fetchSessions = async (section_course_id) => {
+    if (!section_course_id) return;
+    try {
+      const res = await apiClient.get(`/section-courses/${section_course_id}/sessions`);
+      setSessions(Array.isArray(res) ? res : []);
+      console.log('Fetched sessions:', res);
+    } catch (err) {
+      setSessions([]);
+      console.log('Error fetching sessions:', err);
+    }
+  };
+
+  // When a class is selected, fetch students and sessions
+  const handleClassSelect = async (cls) => {
+    setSelectedClass(cls);
+    setSelectedSession(null);
+    setSearchQuery('');
+    setShowSessionSearch(false);
+    setSessionSearchQuery('');
+    setCurrentView('classDetails');
+    setLoading(true);
+    try {
+      const [studentsRes, sessionsRes] = await Promise.all([
+        apiClient.get(`/section-courses/${cls.section_course_id}/students`),
+        apiClient.get(`/section-courses/${cls.section_course_id}/sessions`)
+      ]);
+      setStudents(Array.isArray(studentsRes) ? studentsRes : []);
+      setSessions(Array.isArray(sessionsRes) ? sessionsRes : []);
+    } catch {
+      setStudents([]);
+      setSessions([]);
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
     if (!currentUser) return;
@@ -98,48 +132,44 @@ export default function AttendanceManagementScreen() {
     }
   }, [currentView, selectedClass, selectedSession]);
 
+  useEffect(() => {
+    const { selectedClassId, selectedSessionId } = params;
+    if (
+      selectedClassId &&
+      selectedSessionId &&
+      approvedClasses.length > 0 &&
+      sessions.length > 0
+    ) {
+      const foundClass = approvedClasses.find(
+        (cls) => String(cls.section_course_id) === String(selectedClassId)
+      );
+      if (foundClass) {
+        setSelectedClass(foundClass);
+        const foundSession = sessions.find(
+          (sess) => String(sess.session_id) === String(selectedSessionId)
+        );
+        if (foundSession) {
+          setSelectedSession(foundSession);
+          setCurrentView('sessionDetails');
+        }
+      }
+    }
+  }, [params.selectedClassId, params.selectedSessionId, approvedClasses, sessions]);
+
+  // After useEffect for params and before return
+  const { selectedClassId, selectedSessionId } = params;
+  const navigatingToSessionDetails = !!(selectedClassId && selectedSessionId);
+  if (navigatingToSessionDetails && (!selectedClass || !selectedSession || currentView !== 'sessionDetails')) {
+    // Optionally, show a loading spinner here
+    return null;
+  }
+
   if (!currentUser) {
     router.replace('/');
     return null;
   }
 
   if (isNavigatingAway) return null;
-
-  // Fetch sessions for the selected class
-  const fetchSessions = async (section_course_id) => {
-    if (!section_course_id) return;
-    try {
-      const res = await apiClient.get(`/section-courses/${section_course_id}/sessions`);
-      setSessions(Array.isArray(res) ? res : []);
-      console.log('Fetched sessions:', res);
-    } catch (err) {
-      setSessions([]);
-      console.log('Error fetching sessions:', err);
-    }
-  };
-
-  // When a class is selected, fetch students and sessions
-  const handleClassSelect = async (cls) => {
-    setSelectedClass(cls);
-    setSelectedSession(null);
-    setSearchQuery('');
-    setShowSessionSearch(false);
-    setSessionSearchQuery('');
-    setCurrentView('classDetails');
-    setLoading(true);
-    try {
-      const [studentsRes, sessionsRes] = await Promise.all([
-        apiClient.get(`/section-courses/${cls.section_course_id}/students`),
-        apiClient.get(`/section-courses/${cls.section_course_id}/sessions`)
-      ]);
-      setStudents(Array.isArray(studentsRes) ? studentsRes : []);
-      setSessions(Array.isArray(sessionsRes) ? sessionsRes : []);
-    } catch {
-      setStudents([]);
-      setSessions([]);
-    }
-    setLoading(false);
-  };
 
   const handleBackToClasses = () => {
     setCurrentView('classes');
@@ -223,8 +253,15 @@ export default function AttendanceManagementScreen() {
   };
 
   const handleCreateNewAttendance = () => {
-    setCurrentStudentIndex(0);
-    setShowSlideshowModal(true);
+    router.push({
+      pathname: '/users/faculty/SlideshowPage',
+      params: {
+        students: JSON.stringify(students),
+        initialIndex: 0,
+        selectedClassId: selectedClass?.section_course_id,
+        selectedSessionId: selectedSession?.session_id,
+      }
+    });
   };
 
   const handleCreateNewSession = () => {
@@ -554,6 +591,9 @@ export default function AttendanceManagementScreen() {
           /* Session Details View */
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Students</Text>
+
+            {/* Student Name Carousel */}
+            {/* End Student Name Carousel */}
             
             {studentViewMode === 'card' ? (
               <ScrollView
@@ -676,69 +716,6 @@ export default function AttendanceManagementScreen() {
                 <Text style={styles.saveButtonText}>Save Attendance</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Slideshow Modal */}
-      <Modal
-        visible={showSlideshowModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowSlideshowModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.slideshowModalContent}>
-            <View style={styles.slideshowModalHeader}>
-              <View style={{ flex: 1 }}>
-                {/* No title, just close button */}
-              </View>
-              <TouchableOpacity onPress={() => setShowSlideshowModal(false)}>
-                <Ionicons name="close" size={24} color="#374151" />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={filteredStudents}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={item => item.enrollment_id?.toString() || item.id?.toString()}
-              renderItem={({ item }) => (
-                <View style={{
-                  width: CARD_WIDTH,
-                  height: 260,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 16,
-                  borderWidth: 2,
-                  borderColor: '#D1D5DB',
-                  backgroundColor: '#E5E7EB',
-                  marginHorizontal: CARD_MARGIN / 2
-                }}>
-                  <View style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}>
-                    {item.student_photo ? (
-                      <Image
-                        source={{ uri: item.student_photo }}
-                        style={{ width: 120, height: 120, borderRadius: 60, marginTop: 24, marginBottom: 12, alignSelf: 'center' }}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <Ionicons name="person" size={120} color="#9CA3AF" style={{ marginTop: 24, marginBottom: 12, alignSelf: 'center' }} />
-                    )}
-                  </View>
-                  <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#374151', textAlign: 'center', marginBottom: 4 }}>{item.name || item.full_name}</Text>
-                  <Text style={{ fontSize: 16, color: '#888', textAlign: 'center' }}>{item.studentId || item.student_number}</Text>
-                  <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginTop: 2 }}>Enrollment ID: {item.enrollment_id}</Text>
-                </View>
-              )}
-              snapToInterval={TOTAL_CARD_WIDTH}
-              decelerationRate="fast"
-              snapToAlignment="center"
-              contentContainerStyle={{
-                alignItems: 'center',
-                paddingHorizontal: (screenWidth - CARD_WIDTH) / 2
-              }}
-            />
           </View>
         </View>
       </Modal>

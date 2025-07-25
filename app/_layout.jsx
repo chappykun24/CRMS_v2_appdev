@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, Stack, usePathname } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, Alert, BackHandler, ScrollView, View } from 'react-native';
@@ -6,10 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollProvider, useScrollContext } from '../contexts/ScrollContext';
 import { UserProvider, useUser } from '../contexts/UserContext';
 import { UserRole } from '../types/userRoles';
-import { apiClient, initializeAPI, setAPIBaseURL } from '../utils/api';
+import { initializeAPI, setAPIBaseURL } from '../utils/api';
 import { exitApp } from '../utils/appExit';
-import IPDetector from '../utils/ipDetector';
-import { setupNetworkListener } from '../utils/networkManager';
 import { ROUTES } from '../utils/routes';
 import BottomNavAdmin from './components/BottomNavAdmin';
 import BottomNavDean from './components/BottomNavDean';
@@ -36,6 +33,10 @@ function AppContent() {
       if (response.ok) {
         setAPIBaseURL(`http://${ip}:3001/api`);
         setIPDetection({ loading: false, triedIPs: [...ipDetection.triedIPs, ip], currentIP: ip, status: `Manual IP successful: ${ip}` });
+        // Persist the last used IP in AsyncStorage
+        import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
+          AsyncStorage.setItem('API_BASE_URL', `http://${ip}:3001/api`);
+        });
         initializeAPI().then((apiBaseURL) => {
           console.log('[Layout] 🚦 Detected API Base URL (manual):', apiBaseURL);
         });
@@ -63,77 +64,9 @@ function AppContent() {
     headerTranslateY = undefined;
   }
   
-  // Initialize API configuration on app startup (only once)
+  // Remove automatic detection: Only show manual input
   React.useEffect(() => {
-    let isMounted = true;
-    let hasInitialized = false;
-    
-    const checkAndDetect = async () => {
-      if (hasInitialized) return; // Prevent multiple initializations
-      hasInitialized = true;
-      
-      const savedURL = await AsyncStorage.getItem('API_BASE_URL');
-      
-      if (!savedURL) {
-        // No saved URL - start fresh IP detection
-        setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Starting IP detection...' });
-        IPDetector.getLocalIP((triedIPs, currentIP, status) => {
-          if (isMounted) setIPDetection(prev => ({ ...prev, triedIPs, currentIP, status }));
-        }).then((detectedIP) => {
-          if (isMounted) setIPDetection(prev => ({ ...prev, loading: false, status: `Detected IP: ${detectedIP}` }));
-          initializeAPI();
-        });
-      } else {
-        // Test connection with saved URL first
-        setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Testing saved connection...' });
-        
-        try {
-          // Initialize API with saved URL
-          await initializeAPI();
-          
-          // Test the connection
-          const isConnected = await apiClient.testConnection();
-          
-          if (isConnected) {
-            // Connection successful - hide loading screen
-            if (isMounted) setIPDetection({ loading: false, triedIPs: [], currentIP: '', status: 'Connection successful!' });
-          } else {
-            // Connection failed - show IP detection screen
-            if (isMounted) setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Connection failed. Starting IP detection...' });
-            IPDetector.getLocalIP((triedIPs, currentIP, status) => {
-              if (isMounted) setIPDetection(prev => ({ ...prev, triedIPs, currentIP, status }));
-            }).then((detectedIP) => {
-              if (isMounted) setIPDetection(prev => ({ ...prev, loading: false, status: `Detected IP: ${detectedIP}` }));
-              initializeAPI();
-            });
-          }
-        } catch (error) {
-          // Error occurred - show IP detection screen
-          if (isMounted) setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Connection error. Starting IP detection...' });
-          IPDetector.getLocalIP((triedIPs, currentIP, status) => {
-            if (isMounted) setIPDetection(prev => ({ ...prev, triedIPs, currentIP, status }));
-          }).then((detectedIP) => {
-            if (isMounted) setIPDetection(prev => ({ ...prev, loading: false, status: `Detected IP: ${detectedIP}` }));
-            initializeAPI();
-          });
-        }
-      }
-    };
-    
-    checkAndDetect();
-    
-    // Listen for network changes
-    const unsubscribe = setupNetworkListener((newBaseURL) => {
-      // Only log if there's an actual change
-      if (newBaseURL !== getAPIBaseURL()) {
-        console.log('API base URL changed to:', newBaseURL);
-      }
-    });
-    
-    return () => { 
-      isMounted = false; 
-      unsubscribe(); 
-    };
+    setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Please enter your backend IP address below.' });
   }, []);
   
   // Minimal logging for debugging
@@ -283,7 +216,7 @@ function AppContent() {
 
   // Only show IP detection screen during initial app startup, not after login
   if (ipDetection.loading && !isLoggedIn) {
-    return <IPDetectionLoadingScreen triedIPs={ipDetection.triedIPs} currentIP={ipDetection.currentIP} status={ipDetection.status} onManualIPSubmit={handleManualIPSubmit} />;
+    return <IPDetectionLoadingScreen triedIPs={[]} currentIP={''} status={ipDetection.status} onManualIPSubmit={handleManualIPSubmit} />;
   }
   
   // For logged-in users, wrap with SafeAreaView and make scrollable

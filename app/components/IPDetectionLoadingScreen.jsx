@@ -1,11 +1,25 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function IPDetectionLoadingScreen({ triedIPs = [], currentIP = '', status = '', onManualIPSubmit }) {
   const [manualIP, setManualIP] = useState('');
   const [error, setError] = useState('');
   const [consoleLogs, setConsoleLogs] = useState([]);
   const scrollViewRef = useRef();
+
+  // On mount, load the last used IP from AsyncStorage
+  useEffect(() => {
+    AsyncStorage.getItem('API_BASE_URL').then((url) => {
+      if (url) {
+        // Extract just the IP address from the URL
+        const match = url.match(/^http:\/\/(.*?):\d+/);
+        if (match && match[1]) {
+          setManualIP(match[1]);
+        }
+      }
+    });
+  }, []);
 
   // Update console log when status changes
   useEffect(() => {
@@ -40,7 +54,8 @@ export default function IPDetectionLoadingScreen({ triedIPs = [], currentIP = ''
             <ActivityIndicator size="large" color="#DC2626" style={styles.spinner} />
             <Text style={styles.loadingText}>Detecting API Server...</Text>
             <Text style={styles.subText}>{status || 'Trying to find a working IP address for the backend...'}</Text>
-            <View style={styles.ipListContainer}>
+            {/* Remove the IPs Tried section */}
+            {/* <View style={styles.ipListContainer}>
               <Text style={styles.ipListTitle}>IPs Tried:</Text>
               <FlatList
                 data={triedIPs}
@@ -51,7 +66,7 @@ export default function IPDetectionLoadingScreen({ triedIPs = [], currentIP = ''
                 style={styles.ipList}
                 scrollEnabled={false}
               />
-            </View>
+            </View> */}
             <View style={styles.consoleLogContainer}>
               <Text style={styles.consoleLogTitle}>Console Log:</Text>
               <ScrollView
