@@ -100,12 +100,12 @@ router.get('/:section_course_id/students', async (req, res) => {
   }
 });
 
-// GET /api/section-courses/:section_course_id/sessions - get all sessions for a section_course
+// GET /api/section-courses/:section_course_id/sessions - get all sessions for a section_course (simple fields)
 router.get('/:section_course_id/sessions', async (req, res) => {
   const { section_course_id } = req.params;
   try {
     const result = await pool.query(
-      `SELECT * FROM sessions WHERE section_course_id = $1 ORDER BY session_date`,
+      `SELECT session_id, title, session_date, session_type, meeting_type FROM sessions WHERE section_course_id = $1 ORDER BY session_date`,
       [section_course_id]
     );
     res.json(result.rows);

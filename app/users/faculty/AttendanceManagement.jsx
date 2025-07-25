@@ -50,6 +50,7 @@ export default function AttendanceManagementScreen() {
   const [isNavigatingAway, setIsNavigatingAway] = useState(false);
   const [showNewSessionDatePicker, setShowNewSessionDatePicker] = useState(false);
   const [newSessionMeetingType, setNewSessionMeetingType] = useState('');
+  const [sessions, setSessions] = useState([]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -76,6 +77,12 @@ export default function AttendanceManagementScreen() {
     }
   }, [params.selectedClassId, approvedClasses]);
 
+  useEffect(() => {
+    if (selectedClass && selectedClass.section_course_id) {
+      fetchSessions(selectedClass.section_course_id);
+    }
+  }, [selectedClass]);
+
   if (!currentUser) {
     router.replace('/');
     return null;
@@ -83,7 +90,20 @@ export default function AttendanceManagementScreen() {
 
   if (isNavigatingAway) return null;
 
-  // When a class is selected, fetch students
+  // Fetch sessions for the selected class
+  const fetchSessions = async (section_course_id) => {
+    if (!section_course_id) return;
+    try {
+      const res = await apiClient.get(`/section-courses/${section_course_id}/sessions`);
+      setSessions(Array.isArray(res) ? res : []);
+      console.log('Fetched sessions:', res);
+    } catch (err) {
+      setSessions([]);
+      console.log('Error fetching sessions:', err);
+    }
+  };
+
+  // When a class is selected, fetch students and sessions
   const handleClassSelect = async (cls) => {
     setSelectedClass(cls);
     setSelectedSession(null);
@@ -93,10 +113,15 @@ export default function AttendanceManagementScreen() {
     setCurrentView('classDetails');
     setLoading(true);
     try {
-      const studentsRes = await apiClient.get(`/section-courses/${cls.section_course_id}/students`);
+      const [studentsRes, sessionsRes] = await Promise.all([
+        apiClient.get(`/section-courses/${cls.section_course_id}/students`),
+        apiClient.get(`/section-courses/${cls.section_course_id}/sessions`)
+      ]);
       setStudents(Array.isArray(studentsRes) ? studentsRes : []);
+      setSessions(Array.isArray(sessionsRes) ? sessionsRes : []);
     } catch {
       setStudents([]);
+      setSessions([]);
     }
     setLoading(false);
   };
@@ -187,6 +212,7 @@ export default function AttendanceManagementScreen() {
       console.log('Creating session with payload:', payload);
       const res = await apiClient.post(`/section-courses/${selectedClass.section_course_id}/sessions`, payload);
       console.log('Session creation response:', res);
+      await fetchSessions(selectedClass.section_course_id);
       Alert.alert('Success', `New session "${newSessionTitle}" created for ${newSessionDate}`);
       setShowNewSessionModal(false);
       setNewSessionTitle('');
@@ -255,11 +281,11 @@ export default function AttendanceManagementScreen() {
     (cls.course_code || '').toLowerCase().includes(classSearchQuery.toLowerCase())
   );
 
-  // Fix filteredSessions to always use an array
-  const filteredSessions = (selectedClass?.sessions || []).filter(session =>
+  // Use sessions state for filteredSessions
+  const filteredSessions = (sessions || []).filter(session =>
     (session.title || '').toLowerCase().includes(sessionSearchQuery.toLowerCase()) ||
-    (session.type || '').toLowerCase().includes(sessionSearchQuery.toLowerCase())
-  ).sort((a, b) => new Date(b.date) - new Date(a.date));
+    (session.session_type || '').toLowerCase().includes(sessionSearchQuery.toLowerCase())
+  ).sort((a, b) => new Date(b.session_date) - new Date(a.session_date));
 
   // filteredStudents already uses students, which is always an array
   const filteredStudents = (students || []).filter(student =>
@@ -288,53 +314,69 @@ export default function AttendanceManagementScreen() {
   const renderClassCard = (cls) => (
     <TouchableOpacity
       key={cls.id || cls.section_course_id}
-      style={[styles.classCard, selectedClass?.id === cls.id && styles.selectedClassCard]}
+      style={{
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 4,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#eee',
+      }}
       onPress={() => handleClassSelect(cls)}
     >
-      <View style={styles.classHeader}>
-        <View style={styles.classInfo}>
-          <Text style={styles.classTitle}>
-            {cls.course_code && cls.section_code ? `${cls.course_code} - ${cls.section_code}` : '-'}
-          </Text>
-          <Text style={styles.classSchedule}>{cls.schedule || ''}</Text>
-        </View>
-        <View style={styles.studentCountBadge}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#DC2626' }}>
+          {cls.course_code && cls.section_code ? `${cls.course_code} - ${cls.section_code}` : '-'}
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 }}>
           <Ionicons name="people-outline" size={16} color="#DC2626" />
-          <Text style={styles.studentCountText}>
-            {cls.studentCount || (cls.students ? (cls.students || []).length : 0)} students
-          </Text>
+          <Text style={{ color: '#222', marginLeft: 4, fontSize: 13 }}>{cls.studentCount || (cls.students ? (cls.students || []).length : 0)} students</Text>
         </View>
       </View>
-      <View style={styles.classStats}>
-        <Text style={styles.classStatsText}>{(cls.sessions || []).length} sessions</Text>
-      </View>
+      <Text style={{ color: '#888', marginTop: 8, fontSize: 13 }}>
+        {selectedClass && selectedClass.section_course_id === cls.section_course_id ? sessions.length : 0} sessions
+      </Text>
     </TouchableOpacity>
   );
 
   const renderSessionCard = (session) => (
     <TouchableOpacity
-      key={session.id}
-      style={[styles.sessionCard, selectedSession?.id === session.id && styles.selectedSessionCard]}
+      key={session.session_id}
+      style={{
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        padding: 16,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 4,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#eee',
+      }}
       onPress={() => handleSessionSelect(session)}
     >
-      <View style={styles.sessionHeader}>
-        <View style={styles.sessionInfo}>
-          <Text style={styles.sessionTitle}>{session.title}</Text>
-          <Text style={styles.sessionType}>{session.type}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View>
+          <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#222' }}>{session.title}</Text>
+          <Text style={{ color: '#888', marginTop: 2 }}>{session.session_type} {session.meeting_type ? `| ${session.meeting_type}` : ''}</Text>
         </View>
-        <View style={styles.sessionDate}>
-          <Text style={styles.dateText}>{session.date}</Text>
-        </View>
+        <Text style={{ color: '#DC2626', fontWeight: 'bold', fontSize: 15 }}>{session.session_date}</Text>
       </View>
-      <Text style={styles.sessionTime}>{session.time}</Text>
     </TouchableOpacity>
   );
 
   const renderStudentAttendanceRow = (student) => (
-    <View key={student.id} style={styles.studentAttendanceRow}>
+    <View key={student.student_id} style={styles.studentAttendanceRow}>
       <View style={styles.studentInfo}>
-        <Text style={styles.studentName}>{student.name}</Text>
-        <Text style={styles.studentId}>{student.studentId}</Text>
+        <Text style={styles.studentName}>{student.full_name}</Text>
+        <Text style={styles.studentId}>{student.student_number}</Text>
       </View>
       <View style={styles.studentAttendanceInfo}>
         {student.attendance ? (
@@ -443,7 +485,11 @@ export default function AttendanceManagementScreen() {
             <Text style={styles.sectionTitle}>Students</Text>
             
             {studentViewMode === 'card' ? (
-              <ScrollView style={styles.studentsList} showsVerticalScrollIndicator={false}>
+              <ScrollView
+                style={styles.studentsList}
+                contentContainerStyle={{ paddingBottom: 16 }}
+                showsVerticalScrollIndicator={false}
+              >
                 {loading ? (
                   <Text>Loading students...</Text>
                 ) : (filteredStudents || []).length === 0 ? (
@@ -453,7 +499,11 @@ export default function AttendanceManagementScreen() {
                 )}
               </ScrollView>
             ) : (
-              <ScrollView style={styles.studentsList} showsVerticalScrollIndicator={false}>
+              <ScrollView
+                style={styles.studentsList}
+                contentContainerStyle={{ paddingBottom: 16 }}
+                showsVerticalScrollIndicator={false}
+              >
                 {loading ? (
                   <Text>Loading students...</Text>
                 ) : (filteredStudents || []).length === 0 ? (
@@ -855,7 +905,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   studentsList: {
-    maxHeight: 300,
+    // maxHeight: 300, // Removed as per edit hint
   },
   studentAttendanceRow: {
     flexDirection: 'row',
