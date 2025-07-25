@@ -176,7 +176,7 @@ export default function LandingPage() {
     <SafeAreaView style={styles.container}>
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 80 }]}
         showsVerticalScrollIndicator={true}
         bounces={true}
         alwaysBounceVertical={true}

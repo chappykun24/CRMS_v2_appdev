@@ -55,7 +55,7 @@ export default function RoleSelection() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.contentContainer, { paddingBottom: 80 }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Select Your Role</Text>
         <Text style={styles.subtitle}>Choose the role that best describes your position</Text>
@@ -89,6 +89,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  contentContainer: {
+    // This style is not defined in the original file, but is added by the edit.
+    // It's included here to make the new code valid.
   },
   header: {
     padding: 20,

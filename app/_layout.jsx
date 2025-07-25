@@ -66,7 +66,15 @@ function AppContent() {
   
   // Remove automatic detection: Only show manual input
   React.useEffect(() => {
-    setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Please enter your backend IP address below.' });
+    import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
+      AsyncStorage.getItem('API_BASE_URL').then((url) => {
+        if (url) {
+          setIPDetection({ loading: false, triedIPs: [], currentIP: '', status: '' });
+        } else {
+          setIPDetection({ loading: true, triedIPs: [], currentIP: '', status: 'Please enter your backend IP address below.' });
+        }
+      });
+    });
   }, []);
   
   // Minimal logging for debugging
@@ -225,7 +233,7 @@ function AppContent() {
       <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
         <ScrollView 
           style={{ flex: 1, backgroundColor: 'transparent' }}
-          contentContainerStyle={{ flexGrow: 1, backgroundColor: 'transparent' }}
+          contentContainerStyle={{ flexGrow: 1, backgroundColor: 'transparent', paddingBottom: 80 }}
           showsVerticalScrollIndicator={false}
         >
           {/* Always show the Stack to prevent content from disappearing */}
@@ -261,7 +269,7 @@ function AppContent() {
       
       <ScrollView 
         style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Always show the Stack to prevent content from disappearing */}

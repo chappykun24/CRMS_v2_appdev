@@ -104,7 +104,7 @@ export default function DeanProfileScreen() {
 
       <ScrollView 
         style={styles.content} 
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: 80 }]}
         showsVerticalScrollIndicator={false}
         bounces={true}
       >

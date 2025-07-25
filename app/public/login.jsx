@@ -258,7 +258,7 @@ export default function LoginScreen() {
       <KeyboardAvoidingView style={styles.keyboardView} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView 
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 80 }]}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.formContainer}>
