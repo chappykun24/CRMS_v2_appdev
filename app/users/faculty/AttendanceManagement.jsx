@@ -49,6 +49,7 @@ export default function AttendanceManagementScreen() {
   const [loading, setLoading] = useState(true);
   const [isNavigatingAway, setIsNavigatingAway] = useState(false);
   const [showNewSessionDatePicker, setShowNewSessionDatePicker] = useState(false);
+  const [newSessionMeetingType, setNewSessionMeetingType] = useState('');
 
   useEffect(() => {
     if (!currentUser) return;
@@ -168,27 +169,34 @@ export default function AttendanceManagementScreen() {
     setNewSessionTitle('');
     setNewSessionDate('');
     setNewSessionType('Lecture');
+    setNewSessionMeetingType('');
   };
 
-  const handleSaveNewSession = () => {
+  const handleSaveNewSession = async () => {
     if (!newSessionTitle.trim() || !newSessionDate.trim()) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
-
-    const newSession = {
-      id: `session-${Date.now()}`,
-      title: newSessionTitle,
-      date: newSessionDate,
-      time: selectedClass?.schedule?.split(' ').slice(1).join(' ') || '9:00-10:30 AM',
-      type: newSessionType
-    };
-
-    Alert.alert('Success', `New session "${newSessionTitle}" created for ${newSessionDate}`);
-    setShowNewSessionModal(false);
-    setNewSessionTitle('');
-    setNewSessionDate('');
-    setNewSessionType('Lecture');
+    try {
+      const payload = {
+        title: newSessionTitle,
+        date: newSessionDate,
+        session_type: newSessionType,
+        meeting_type: newSessionMeetingType,
+      };
+      console.log('Creating session with payload:', payload);
+      const res = await apiClient.post(`/section-courses/${selectedClass.section_course_id}/sessions`, payload);
+      console.log('Session creation response:', res);
+      Alert.alert('Success', `New session "${newSessionTitle}" created for ${newSessionDate}`);
+      setShowNewSessionModal(false);
+      setNewSessionTitle('');
+      setNewSessionDate('');
+      setNewSessionType('Lecture');
+      setNewSessionMeetingType('');
+    } catch (err) {
+      console.log('Session creation error:', err);
+      Alert.alert('Error', 'Failed to create session');
+    }
   };
 
   const handleNextStudent = () => {
@@ -702,6 +710,15 @@ export default function AttendanceManagementScreen() {
                   value={newSessionType}
                   onChangeText={setNewSessionType}
                   placeholder="Session Type (e.g., Lecture, Lab)"
+                />
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Meeting Type</Text>
+                <TextInput
+                  style={styles.inputField}
+                  value={newSessionMeetingType}
+                  onChangeText={setNewSessionMeetingType}
+                  placeholder="Meeting Type (e.g., Face-to-Face, Online, Hybrid)"
                 />
               </View>
             </View>

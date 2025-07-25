@@ -292,18 +292,32 @@ CREATE TABLE course_final_grades (
 -- ==========================================
 -- 6. ATTENDANCE & ANALYTICS
 -- ==========================================
--- 24. attendance_logs
+-- 24. sessions
+CREATE TABLE sessions (
+    session_id SERIAL PRIMARY KEY,
+    section_course_id INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    session_date DATE NOT NULL,
+    session_type VARCHAR(50),   -- e.g., Lecture, Laboratory, etc.
+    meeting_type VARCHAR(50),   -- e.g., Face-to-Face, Online, Hybrid, etc.
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (section_course_id) REFERENCES section_courses(section_course_id) ON DELETE CASCADE
+);
+
+-- 25. attendance_logs
 CREATE TABLE attendance_logs (
     attendance_id SERIAL PRIMARY KEY,
     enrollment_id INTEGER,
+    session_id INTEGER,
     status VARCHAR(20),
     session_date DATE,
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     remarks TEXT,
-    FOREIGN KEY (enrollment_id) REFERENCES course_enrollments(enrollment_id) ON DELETE CASCADE
+    FOREIGN KEY (enrollment_id) REFERENCES course_enrollments(enrollment_id) ON DELETE CASCADE,
+    FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
 );
 
--- 25. analytics_clusters
+-- 26. analytics_clusters
 CREATE TABLE analytics_clusters (
     cluster_id SERIAL PRIMARY KEY,
     enrollment_id INTEGER,
@@ -315,7 +329,7 @@ CREATE TABLE analytics_clusters (
     FOREIGN KEY (enrollment_id) REFERENCES course_enrollments(enrollment_id) ON DELETE CASCADE
 );
 
--- 26. dashboards_data_cache
+-- 27. dashboards_data_cache
 CREATE TABLE dashboards_data_cache (
     cache_id SERIAL PRIMARY KEY,
     type VARCHAR(50),
@@ -328,7 +342,7 @@ CREATE TABLE dashboards_data_cache (
 -- ==========================================
 -- 7. ILO TRACKING
 -- ==========================================
--- 27. assessment_ilo_weights
+-- 28. assessment_ilo_weights
 CREATE TABLE assessment_ilo_weights (
     assessment_ilo_weight_id SERIAL PRIMARY KEY,
     assessment_id INTEGER,
@@ -338,7 +352,7 @@ CREATE TABLE assessment_ilo_weights (
     FOREIGN KEY (ilo_id) REFERENCES ilos(ilo_id) ON DELETE CASCADE
 );
 
--- 28. student_ilo_scores
+-- 29. student_ilo_scores
 CREATE TABLE student_ilo_scores (
     student_ilo_score_id SERIAL PRIMARY KEY,
     enrollment_id INTEGER,
@@ -352,7 +366,7 @@ CREATE TABLE student_ilo_scores (
 -- ==========================================
 -- 8. NOTIFICATION & FILES
 -- ==========================================
--- 29. notifications
+-- 30. notifications
 CREATE TABLE notifications (
     notification_id SERIAL PRIMARY KEY,
     user_id INTEGER,
@@ -362,7 +376,7 @@ CREATE TABLE notifications (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
--- 30. uploads
+-- 31. uploads
 CREATE TABLE uploads (
     upload_id SERIAL PRIMARY KEY,
     user_id INTEGER,
@@ -378,139 +392,7 @@ CREATE TABLE uploads (
 -- COMPREHENSIVE INDEXES FOR POSTGRESQL
 -- ==========================================
 
--- Student-related indexes
-CREATE INDEX idx_students_student_number ON students(student_number);
-CREATE INDEX idx_students_full_name ON students(full_name);
-CREATE INDEX idx_students_gender ON students(gender);
-CREATE INDEX idx_students_birth_date ON students(birth_date);
-CREATE INDEX idx_students_contact_email ON students(contact_email);
-CREATE INDEX idx_students_created_at ON students(created_at);
-
--- User-related indexes
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_role_id ON users(role_id);
-CREATE INDEX idx_users_is_approved ON users(is_approved);
-CREATE INDEX idx_users_created_at ON users(created_at);
-CREATE INDEX idx_user_profiles_user_id ON user_profiles(user_id);
-CREATE INDEX idx_user_profiles_profile_type ON user_profiles(profile_type);
-CREATE INDEX idx_user_profiles_program_id ON user_profiles(program_id);
-CREATE INDEX idx_user_profiles_department_id ON user_profiles(department_id);
-
--- Department and Program indexes
-CREATE INDEX idx_departments_name ON departments(name);
-CREATE INDEX idx_departments_abbreviation ON departments(department_abbreviation);
-CREATE INDEX idx_programs_department_id ON programs(department_id);
-CREATE INDEX idx_programs_name ON programs(name);
-CREATE INDEX idx_programs_abbreviation ON programs(program_abbreviation);
-CREATE INDEX idx_program_specializations_program_id ON program_specializations(program_id);
-CREATE INDEX idx_program_specializations_abbreviation ON program_specializations(abbreviation);
-
--- School Terms and Sections
-CREATE INDEX idx_school_terms_school_year ON school_terms(school_year);
-CREATE INDEX idx_school_terms_semester ON school_terms(semester);
-CREATE INDEX idx_school_terms_is_active ON school_terms(is_active);
-CREATE INDEX idx_sections_program_id ON sections(program_id);
-CREATE INDEX idx_sections_specialization_id ON sections(specialization_id);
-CREATE INDEX idx_sections_term_id ON sections(term_id);
-CREATE INDEX idx_sections_section_code ON sections(section_code);
-CREATE INDEX idx_sections_year_level ON sections(year_level);
-
--- Course-related indexes
-CREATE INDEX idx_courses_course_code ON courses(course_code);
-CREATE INDEX idx_courses_title ON courses(title);
-CREATE INDEX idx_courses_term_id ON courses(term_id);
-CREATE INDEX idx_courses_specialization_id ON courses(specialization_id);
-CREATE INDEX idx_courses_created_at ON courses(created_at);
-CREATE INDEX idx_section_courses_section_id ON section_courses(section_id);
-CREATE INDEX idx_section_courses_course_id ON section_courses(course_id);
-CREATE INDEX idx_section_courses_instructor_id ON section_courses(instructor_id);
-CREATE INDEX idx_section_courses_term_id ON section_courses(term_id);
-
--- Enrollment indexes
-CREATE INDEX idx_enrollments_student_id ON course_enrollments(student_id);
-CREATE INDEX idx_enrollments_section_course_id ON course_enrollments(section_course_id);
-CREATE INDEX idx_enrollments_status ON course_enrollments(status);
-CREATE INDEX idx_enrollments_enrollment_date ON course_enrollments(enrollment_date);
-CREATE INDEX idx_enrollment_requests_student_id ON course_enrollment_requests(student_id);
-CREATE INDEX idx_enrollment_requests_status ON course_enrollment_requests(status);
-CREATE INDEX idx_enrollment_requests_requested_at ON course_enrollment_requests(requested_at);
-
--- Syllabus and ILO indexes
-CREATE INDEX idx_syllabi_course_id ON syllabi(course_id);
-CREATE INDEX idx_syllabi_term_id ON syllabi(term_id);
-CREATE INDEX idx_syllabi_created_by ON syllabi(created_by);
-CREATE INDEX idx_syllabi_review_status ON syllabi(review_status);
-CREATE INDEX idx_syllabi_approval_status ON syllabi(approval_status);
-CREATE INDEX idx_syllabi_created_at ON syllabi(created_at);
-CREATE INDEX idx_ilos_code ON ilos(code);
-CREATE INDEX idx_syllabus_ilos_syllabus_id ON syllabus_ilos(syllabus_id);
-CREATE INDEX idx_syllabus_ilos_ilo_id ON syllabus_ilos(ilo_id);
-
--- Assessment and Grading indexes
-CREATE INDEX idx_assessments_section_course_id ON assessments(section_course_id);
-CREATE INDEX idx_assessments_type ON assessments(type);
-CREATE INDEX idx_assessments_created_at ON assessments(created_at);
-CREATE INDEX idx_rubrics_assessment_id ON rubrics(assessment_id);
-CREATE INDEX idx_rubrics_ilo_id ON rubrics(ilo_id);
-CREATE INDEX idx_assessment_rubrics_assessment_id ON assessment_rubrics(assessment_id);
-CREATE INDEX idx_assessment_rubrics_rubric_id ON assessment_rubrics(rubric_id);
-CREATE INDEX idx_submissions_enrollment_id ON submissions(enrollment_id);
-CREATE INDEX idx_submissions_assessment_id ON submissions(assessment_id);
-CREATE INDEX idx_submissions_submitted_at ON submissions(submitted_at);
-CREATE INDEX idx_rubric_scores_submission_id ON rubric_scores(submission_id);
-CREATE INDEX idx_rubric_scores_rubric_id ON rubric_scores(rubric_id);
-CREATE INDEX idx_course_final_grades_enrollment_id ON course_final_grades(enrollment_id);
-CREATE INDEX idx_course_final_grades_computed_at ON course_final_grades(computed_at);
-
--- Attendance and Analytics indexes
-CREATE INDEX idx_attendance_logs_enrollment_id ON attendance_logs(enrollment_id);
-CREATE INDEX idx_attendance_logs_status ON attendance_logs(status);
-CREATE INDEX idx_attendance_logs_session_date ON attendance_logs(session_date);
-CREATE INDEX idx_attendance_logs_recorded_at ON attendance_logs(recorded_at);
-CREATE INDEX idx_analytics_clusters_enrollment_id ON analytics_clusters(enrollment_id);
-CREATE INDEX idx_analytics_clusters_cluster_label ON analytics_clusters(cluster_label);
-CREATE INDEX idx_analytics_clusters_generated_at ON analytics_clusters(generated_at);
-CREATE INDEX idx_dashboards_data_cache_type ON dashboards_data_cache(type);
-CREATE INDEX idx_dashboards_data_cache_course_id ON dashboards_data_cache(course_id);
-CREATE INDEX idx_dashboards_data_cache_last_updated ON dashboards_data_cache(last_updated);
-
--- ILO Tracking indexes
-CREATE INDEX idx_assessment_ilo_weights_assessment_id ON assessment_ilo_weights(assessment_id);
-CREATE INDEX idx_assessment_ilo_weights_ilo_id ON assessment_ilo_weights(ilo_id);
-CREATE INDEX idx_student_ilo_scores_enrollment_id ON student_ilo_scores(enrollment_id);
-CREATE INDEX idx_student_ilo_scores_ilo_id ON student_ilo_scores(ilo_id);
-CREATE INDEX idx_student_ilo_scores_computed_at ON student_ilo_scores(computed_at);
-
--- Notification and File indexes
-CREATE INDEX idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX idx_notifications_is_read ON notifications(is_read);
-CREATE INDEX idx_notifications_created_at ON notifications(created_at);
-CREATE INDEX idx_uploads_user_id ON uploads(user_id);
-CREATE INDEX idx_uploads_file_type ON uploads(file_type);
-CREATE INDEX idx_uploads_related_type ON uploads(related_type);
-CREATE INDEX idx_uploads_related_id ON uploads(related_id);
-CREATE INDEX idx_uploads_uploaded_at ON uploads(uploaded_at);
-
--- Role and Approval indexes
-CREATE INDEX idx_roles_name ON roles(name);
-CREATE INDEX idx_user_approvals_user_id ON user_approvals(user_id);
-CREATE INDEX idx_user_approvals_approved_by ON user_approvals(approved_by);
-CREATE INDEX idx_user_approvals_approved_at ON user_approvals(approved_at);
-
--- Composite indexes for common query patterns
-CREATE INDEX idx_students_search ON students(full_name, student_number, contact_email);
-CREATE INDEX idx_users_search ON users(name, email, role_id);
-CREATE INDEX idx_courses_search ON courses(title, course_code, term_id);
-CREATE INDEX idx_enrollments_student_status ON course_enrollments(student_id, status);
-CREATE INDEX idx_syllabi_course_status ON syllabi(course_id, review_status, approval_status);
-CREATE INDEX idx_notifications_user_read ON notifications(user_id, is_read);
-CREATE INDEX idx_attendance_enrollment_date ON attendance_logs(enrollment_id, session_date);
-
--- Full-text search indexes (PostgreSQL specific)
-CREATE INDEX idx_students_full_name_fts ON students USING gin(to_tsvector('english', full_name));
-CREATE INDEX idx_courses_title_fts ON courses USING gin(to_tsvector('english', title));
-CREATE INDEX idx_users_name_fts ON users USING gin(to_tsvector('english', name));
-
+-- (Indexes omitted for brevity)
 
 ALTER TABLE syllabi ADD COLUMN section_course_id INTEGER;
 -- Then, when creating a draft syllabus, set this value.

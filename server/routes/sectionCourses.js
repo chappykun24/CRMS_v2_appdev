@@ -103,17 +103,62 @@ router.get('/:section_course_id/students', async (req, res) => {
 // GET /api/section-courses/:section_course_id/sessions - get all sessions for a section_course
 router.get('/:section_course_id/sessions', async (req, res) => {
   const { section_course_id } = req.params;
-  if (!section_course_id) {
-    return res.status(400).json({ error: 'Missing section_course_id' });
-  }
   try {
-    // Adjust the query to match your actual sessions table and schema
     const result = await pool.query(
-      'SELECT * FROM sessions WHERE section_course_id = $1 ORDER BY date',
+      `SELECT * FROM sessions WHERE section_course_id = $1 ORDER BY session_date`,
       [section_course_id]
     );
     res.json(result.rows);
   } catch (err) {
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+});
+
+// POST /api/section-courses/:section_course_id/sessions - create a new session for a section_course
+router.post('/:section_course_id/sessions', async (req, res) => {
+  console.log('--- Create Session Request ---');
+  const { section_course_id } = req.params;
+  const { date, title, session_type, meeting_type } = req.body;
+  console.log('section_course_id:', section_course_id);
+  console.log('Request body:', req.body);
+  if (!section_course_id || !date || !title) {
+    console.log('Missing required fields');
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  try {
+    // Insert the new session
+    console.log('Inserting into sessions...');
+    const sessionRes = await pool.query(
+      `INSERT INTO sessions (section_course_id, title, session_date, session_type, meeting_type)
+       VALUES ($1, $2, $3, $4, $5) RETURNING session_id`,
+      [section_course_id, title, date, session_type, meeting_type]
+    );
+    const session_id = sessionRes.rows[0].session_id;
+    console.log('Inserted session_id:', session_id);
+
+    // Get all enrollments for this section_course
+    console.log('Fetching enrollments...');
+    const enrollmentsRes = await pool.query(
+      'SELECT enrollment_id FROM course_enrollments WHERE section_course_id = $1 AND status = $2',
+      [section_course_id, 'enrolled']
+    );
+    const enrollments = enrollmentsRes.rows;
+    console.log('Enrollments:', enrollments);
+
+    // Insert an attendance log for each student for the new session
+    console.log('Inserting attendance logs...');
+    const insertPromises = enrollments.map(e =>
+      pool.query(
+        'INSERT INTO attendance_logs (enrollment_id, session_id, status) VALUES ($1, $2, $3)',
+        [e.enrollment_id, session_id, 'not-marked']
+      )
+    );
+    await Promise.all(insertPromises);
+    console.log('Attendance logs inserted.');
+
+    res.status(201).json({ message: 'Session created and attendance logs initialized.' });
+  } catch (err) {
+    console.error('Error creating session:', err);
     res.status(500).json({ error: 'Server error', details: err.message });
   }
 });
