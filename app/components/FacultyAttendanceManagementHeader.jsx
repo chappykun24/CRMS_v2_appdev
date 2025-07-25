@@ -141,7 +141,7 @@ export default function FacultyAttendanceManagementHeader({
                 <Ionicons name={showStudentSearch ? 'close-outline' : 'search-outline'} size={20} color="#dc2626" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.addButton} onPress={onCreateNewAttendance}>
-                <Ionicons name="add" size={20} color="#FFFFFF" />
+                <Ionicons name="images-outline" size={20} color="#FFFFFF" />
               </TouchableOpacity>
             </>
           )}

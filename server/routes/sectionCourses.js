@@ -163,4 +163,52 @@ router.post('/:section_course_id/sessions', async (req, res) => {
   }
 });
 
+// PUT /api/section-courses/:section_course_id/sessions/:session_id/attendance/:enrollment_id - update attendance status and remarks
+router.put('/:section_course_id/sessions/:session_id/attendance/:enrollment_id', async (req, res) => {
+  const { section_course_id, session_id, enrollment_id } = req.params;
+  const { status, remarks } = req.body;
+  if (!status) {
+    return res.status(400).json({ error: 'Missing status' });
+  }
+  try {
+    // Update attendance_logs for the given session and enrollment
+    const result = await pool.query(
+      `UPDATE attendance_logs SET status = $1, remarks = $2, recorded_at = NOW()
+       WHERE session_id = $3 AND enrollment_id = $4 RETURNING *`,
+      [status, remarks || null, session_id, enrollment_id]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Attendance log not found' });
+    }
+    res.json({ message: 'Attendance updated', attendance: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+});
+
+// GET /api/section-courses/:section_course_id/sessions/:session_id/attendance
+router.get('/:section_course_id/sessions/:session_id/attendance', async (req, res) => {
+  const { section_course_id, session_id } = req.params;
+  try {
+    const result = await pool.query(`
+      SELECT
+        ce.enrollment_id,
+        s.student_id,
+        s.full_name,
+        s.student_number,
+        s.student_photo,
+        COALESCE(al.status, 'not-marked') as attendance_status
+      FROM course_enrollments ce
+      JOIN students s ON ce.student_id = s.student_id
+      LEFT JOIN attendance_logs al
+        ON al.enrollment_id = ce.enrollment_id AND al.session_id = $2
+      WHERE ce.section_course_id = $1
+      ORDER BY s.full_name
+    `, [section_course_id, session_id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+});
+
 module.exports = router; 

@@ -4,6 +4,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
+    Dimensions,
+    FlatList,
+    Image,
     Modal,
     Platform,
     SafeAreaView,
@@ -19,6 +22,7 @@ import apiClient from '../../../utils/api';
 import FacultyAttendanceManagementHeader from '../../components/FacultyAttendanceManagementHeader';
 
 export default function AttendanceManagementScreen() {
+  console.log('AttendanceManagementScreen rendered');
   const { currentUser } = useUser();
   const params = useLocalSearchParams();
   const [approvedClasses, setApprovedClasses] = useState([]);
@@ -82,6 +86,17 @@ export default function AttendanceManagementScreen() {
       fetchSessions(selectedClass.section_course_id);
     }
   }, [selectedClass]);
+
+  // When a session is selected, fetch students with attendance status for that session
+  useEffect(() => {
+    if (currentView === 'sessionDetails' && selectedClass && selectedSession) {
+      setLoading(true);
+      apiClient.get(`/section-courses/${selectedClass.section_course_id}/sessions/${selectedSession.session_id}/attendance`)
+        .then(res => setStudents(Array.isArray(res) ? res : []))
+        .catch(() => setStudents([]))
+        .finally(() => setLoading(false));
+    }
+  }, [currentView, selectedClass, selectedSession]);
 
   if (!currentUser) {
     router.replace('/');
@@ -173,15 +188,38 @@ export default function AttendanceManagementScreen() {
 
   const handleMarkAttendance = (student) => {
     setSelectedStudent(student);
-    setAttendanceStatus(student.attendance || 'present');
+    setAttendanceStatus(student.status || student.attendance || 'present');
+    setRemarks(student.remarks || '');
+    if (!selectedSession && sessions && sessions.length === 1) {
+      setSelectedSession(sessions[0]);
+    }
     setShowAttendanceModal(true);
   };
 
-  const handleSaveAttendance = () => {
-    Alert.alert('Success', `Attendance marked as ${attendanceStatus} for ${selectedStudent.name}`);
-    setShowAttendanceModal(false);
-    setAttendanceStatus('present');
-    setSelectedStudent(null);
+  const handleSaveAttendance = async () => {
+    if (!selectedStudent || !selectedSession) {
+      Alert.alert('Error', 'No student or session selected');
+      return;
+    }
+    try {
+      const res = await apiClient.put(
+        `/section-courses/${selectedClass.section_course_id}/sessions/${selectedSession.session_id}/attendance/${selectedStudent.enrollment_id}`,
+        {
+          status: attendanceStatus,
+          remarks: remarks,
+        }
+      );
+      // Optionally update local state here to reflect the change
+      Alert.alert('Success', `Attendance marked as ${attendanceStatus} for ${selectedStudent.full_name}`);
+      setShowAttendanceModal(false);
+      setAttendanceStatus('present');
+      setSelectedStudent(null);
+      // Optionally, refresh students list or session data here
+      // await fetchStudents(selectedSession.session_id);
+    } catch (err) {
+      console.error('Attendance update error:', err);
+      Alert.alert('Error', 'Failed to update attendance');
+    }
   };
 
   const handleCreateNewAttendance = () => {
@@ -372,31 +410,41 @@ export default function AttendanceManagementScreen() {
     </TouchableOpacity>
   );
 
-  const renderStudentAttendanceRow = (student) => (
-    <View key={student.student_id} style={styles.studentAttendanceRow}>
-      <View style={styles.studentInfo}>
-        <Text style={styles.studentName}>{student.full_name}</Text>
-        <Text style={styles.studentId}>{student.student_number}</Text>
-      </View>
-      <View style={styles.studentAttendanceInfo}>
-        {student.attendance ? (
-          <View style={[styles.attendanceBadge, { backgroundColor: getAttendanceColor(student.attendance) + '20' }]}>
-            <Text style={[styles.attendanceText, { color: getAttendanceColor(student.attendance) }]}>
-              {getAttendanceText(student.attendance)}
-            </Text>
-          </View>
-        ) : (
-          <TouchableOpacity 
-            style={styles.markAttendanceButton}
-            onPress={() => handleMarkAttendance(student)}
-          >
-            <Ionicons name="checkmark-circle-outline" size={20} color="#DC2626" />
-            <Text style={styles.markAttendanceText}>Mark Attendance</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
+  const renderStudentAttendanceRow = (student) => {
+    const attendanceStatus = student.attendance_status || 'not-marked';
+    return (
+      <TouchableOpacity
+        key={student.student_id}
+        style={{
+          backgroundColor: '#fff',
+          borderRadius: 10,
+          padding: 16,
+          marginBottom: 16,
+          borderWidth: 1,
+          borderColor: '#eee',
+        }}
+        activeOpacity={0.7}
+        onPress={() => {
+          // Always allow opening the modal for editing attendance
+          if (!selectedSession && sessions && sessions.length === 1) {
+            setSelectedSession(sessions[0]);
+          }
+          setSelectedStudent(student);
+          setAttendanceStatus(attendanceStatus);
+          setRemarks(student.remarks || '');
+          setShowAttendanceModal(true);
+        }}
+      >
+        <View>
+          <Text style={{ fontWeight: 'bold' }}>{student.full_name}</Text>
+          <Text>{student.student_number}</Text>
+          <Text style={{ color: attendanceStatus && attendanceStatus !== 'not-marked' ? '#10B981' : '#DC2626', marginTop: 8 }}>
+            {getAttendanceText(attendanceStatus)}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderStudentAttendanceTable = () => (
     <View style={styles.studentTableContainer}>
@@ -405,17 +453,40 @@ export default function AttendanceManagementScreen() {
         <Text style={styles.studentTableHeaderCell}>Student ID</Text>
         <Text style={styles.studentTableHeaderCell}>Status</Text>
       </View>
-      {filteredStudents.map((student) => (
-        <View key={student.id} style={styles.studentTableRow}>
-          <Text style={styles.studentTableCell}>{student.name}</Text>
-          <Text style={styles.studentTableCell}>{student.studentId}</Text>
-          <Text style={[styles.studentTableStatusText, { color: getAttendanceColor(student.attendance || 'not-marked') }]}>
-            {getAttendanceText(student.attendance || 'not-marked')}
-          </Text>
-        </View>
-      ))}
+      {filteredStudents.map((student) => {
+        const status = (student.attendance_status || 'not-marked');
+        let displayStatus = '';
+        switch (status) {
+          case 'present':
+            displayStatus = 'Present';
+            break;
+          case 'absent':
+            displayStatus = 'Absent';
+            break;
+          case 'late':
+            displayStatus = 'Late';
+            break;
+          case 'excuse':
+            displayStatus = 'Excuse';
+            break;
+          default:
+            displayStatus = 'Not Marked';
+        }
+        return (
+          <View key={student.enrollment_id || student.id} style={styles.studentTableRow}>
+            <Text style={styles.studentTableCell}>{student.full_name || student.name}</Text>
+            <Text style={styles.studentTableCell}>{student.student_number || student.studentId}</Text>
+            <Text style={styles.studentTableCell}>{displayStatus}</Text>
+          </View>
+        );
+      })}
     </View>
   );
+
+  const screenWidth = Dimensions.get('window').width;
+  const CARD_WIDTH = 200;
+  const CARD_MARGIN = 24; // 12px on each side
+  const TOTAL_CARD_WIDTH = CARD_WIDTH + CARD_MARGIN;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -568,6 +639,29 @@ export default function AttendanceManagementScreen() {
                     Late
                   </Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.attendanceOption, attendanceStatus === 'excuse' && styles.attendanceOptionSelected]}
+                  onPress={() => setAttendanceStatus('excuse')}
+                >
+                  <Ionicons name="help-circle" size={24} color={attendanceStatus === 'excuse' ? '#6366F1' : '#6B7280'} />
+                  <Text style={[styles.attendanceOptionText, attendanceStatus === 'excuse' && styles.attendanceOptionTextSelected]}>
+                    Excuse
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Remarks Textbox */}
+              <View style={{ marginTop: 16 }}>
+                <Text style={styles.remarksLabel}>Remarks</Text>
+                <TextInput
+                  style={styles.remarksInput}
+                  placeholder="Enter remarks (optional)"
+                  value={remarks}
+                  onChangeText={setRemarks}
+                  multiline
+                  numberOfLines={3}
+                />
               </View>
             </View>
 
@@ -596,108 +690,55 @@ export default function AttendanceManagementScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.slideshowModalContent}>
             <View style={styles.slideshowModalHeader}>
-              <Text style={styles.slideshowModalTitle}>Mark Attendance - Slideshow</Text>
+              <View style={{ flex: 1 }}>
+                {/* No title, just close button */}
+              </View>
               <TouchableOpacity onPress={() => setShowSlideshowModal(false)}>
                 <Ionicons name="close" size={24} color="#374151" />
               </TouchableOpacity>
             </View>
-
-            <View style={styles.slideshowModalBody}>
-              {filteredStudents.length > 0 && (
-                <>
-                  <View style={styles.studentPhotoContainer}>
-                    <View style={styles.studentPhotoPlaceholder}>
-                      <Ionicons name="person" size={40} color="#9CA3AF" />
-                    </View>
-                  </View>
-
-                  <View style={styles.studentSlideInfo}>
-                    <Text style={styles.studentSlideName}>
-                      {filteredStudents[currentStudentIndex]?.name}
-                    </Text>
-                    <Text style={styles.studentSlideId}>
-                      {filteredStudents[currentStudentIndex]?.studentId}
-                    </Text>
-                  </View>
-
-                  <View style={styles.slideshowNavigation}>
-                    <TouchableOpacity 
-                      style={[styles.navButton, currentStudentIndex === 0 && styles.navButtonDisabled]}
-                      onPress={handlePreviousStudent}
-                      disabled={currentStudentIndex === 0}
-                    >
-                      <Ionicons name="chevron-back" size={24} color={currentStudentIndex === 0 ? '#9CA3AF' : '#353A40'} />
-                    </TouchableOpacity>
-                    
-                    <Text style={styles.slideCounter}>
-                      {currentStudentIndex + 1} of {filteredStudents.length}
-                    </Text>
-                    
-                    <TouchableOpacity 
-                      style={[styles.navButton, currentStudentIndex === filteredStudents.length - 1 && styles.navButtonDisabled]}
-                      onPress={handleNextStudent}
-                      disabled={currentStudentIndex === filteredStudents.length - 1}
-                    >
-                      <Ionicons name="chevron-forward" size={24} color={currentStudentIndex === filteredStudents.length - 1 ? '#9CA3AF' : '#353A40'} />
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={styles.slideshowStatusButtons}>
-                    <TouchableOpacity 
-                      style={[styles.statusButton, styles.presentButton]}
-                      onPress={() => handleMarkAttendanceInSlideshow('present')}
-                    >
-                      <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                      <Text style={styles.statusButtonText}>Present</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                      style={[styles.statusButton, styles.absentButton]}
-                      onPress={() => handleMarkAttendanceInSlideshow('absent')}
-                    >
-                      <Ionicons name="close-circle" size={20} color="#FFFFFF" />
-                      <Text style={styles.statusButtonText}>Absent</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                      style={[styles.statusButton, styles.lateButton]}
-                      onPress={() => handleMarkAttendanceInSlideshow('late')}
-                    >
-                      <Ionicons name="time" size={20} color="#FFFFFF" />
-                      <Text style={styles.statusButtonText}>Late</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {showRemarks && (
-                    <View style={styles.remarksContainer}>
-                      <Text style={styles.remarksLabel}>Add Remarks (Optional)</Text>
-                      <TextInput
-                        style={styles.remarksInput}
-                        value={remarks}
-                        onChangeText={setRemarks}
-                        placeholder="Enter any remarks about this student's attendance..."
-                        multiline
-                        numberOfLines={3}
+            <FlatList
+              data={filteredStudents}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={item => item.enrollment_id?.toString() || item.id?.toString()}
+              renderItem={({ item }) => (
+                <View style={{
+                  width: CARD_WIDTH,
+                  height: 260,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 16,
+                  borderWidth: 2,
+                  borderColor: '#D1D5DB',
+                  backgroundColor: '#E5E7EB',
+                  marginHorizontal: CARD_MARGIN / 2
+                }}>
+                  <View style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                    {item.student_photo ? (
+                      <Image
+                        source={{ uri: item.student_photo }}
+                        style={{ width: 120, height: 120, borderRadius: 60, marginTop: 24, marginBottom: 12, alignSelf: 'center' }}
+                        resizeMode="cover"
                       />
-                      <View style={styles.remarksButtons}>
-                        <TouchableOpacity 
-                          style={styles.cancelRemarksButton}
-                          onPress={() => setShowRemarks(false)}
-                        >
-                          <Text style={styles.cancelRemarksText}>Skip</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={styles.submitRemarksButton}
-                          onPress={handleSubmitRemarks}
-                        >
-                          <Text style={styles.submitRemarksText}>Submit</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
-                </>
+                    ) : (
+                      <Ionicons name="person" size={120} color="#9CA3AF" style={{ marginTop: 24, marginBottom: 12, alignSelf: 'center' }} />
+                    )}
+                  </View>
+                  <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#374151', textAlign: 'center', marginBottom: 4 }}>{item.name || item.full_name}</Text>
+                  <Text style={{ fontSize: 16, color: '#888', textAlign: 'center' }}>{item.studentId || item.student_number}</Text>
+                  <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginTop: 2 }}>Enrollment ID: {item.enrollment_id}</Text>
+                </View>
               )}
-            </View>
+              snapToInterval={TOTAL_CARD_WIDTH}
+              decelerationRate="fast"
+              snapToAlignment="center"
+              contentContainerStyle={{
+                alignItems: 'center',
+                paddingHorizontal: (screenWidth - CARD_WIDTH) / 2
+              }}
+            />
           </View>
         </View>
       </Modal>
@@ -1110,6 +1151,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#353A40',
   },
+  slideshowModalStudentName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 2,
+  },
   slideshowModalBody: {
     alignItems: 'center',
     marginBottom: 20,
@@ -1141,6 +1188,11 @@ const styles = StyleSheet.create({
   studentSlideId: {
     fontSize: 16,
     color: '#6B7280',
+  },
+  studentSlideStatus: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
   },
   slideshowNavigation: {
     flexDirection: 'row',
@@ -1320,5 +1372,36 @@ const styles = StyleSheet.create({
   },
   typeOptionTextSelected: {
     color: '#DC2626',
+  },
+  studentAttendanceInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  attendanceBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  attendanceText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  remarksText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  slideshowModalStudentId: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 0,
+  },
+  studentPhoto: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 8,
   },
 }); 
