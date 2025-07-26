@@ -238,7 +238,7 @@ export default function MySyllabiScreen() {
             style={styles.actionButton}
             onPress={() => handleViewSyllabus(syllabus)}
           >
-            <Ionicons name="eye-outline" size={16} color="#007AFF" />
+            <Ionicons name="eye-outline" size={16} color="#475569" />
             <Text style={styles.actionButtonText}>View</Text>
           </TouchableOpacity>
 
@@ -247,7 +247,7 @@ export default function MySyllabiScreen() {
               style={styles.actionButton}
               onPress={() => handleEditSyllabus(syllabus)}
             >
-              <Ionicons name="create-outline" size={16} color="#F59E0B" />
+              <Ionicons name="create-outline" size={16} color="#475569" />
               <Text style={styles.actionButtonText}>Edit</Text>
             </TouchableOpacity>
           )}
@@ -257,7 +257,7 @@ export default function MySyllabiScreen() {
               style={styles.actionButton}
               onPress={() => handleDeleteSyllabus(syllabus)}
             >
-              <Ionicons name="trash-outline" size={16} color="#EF4444" />
+              <Ionicons name="trash-outline" size={16} color="#475569" />
               <Text style={styles.actionButtonText}>Delete</Text>
             </TouchableOpacity>
           )}
@@ -406,10 +406,10 @@ export default function MySyllabiScreen() {
         <View style={styles.filterContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {[
-              { key: 'all', label: 'All', count: syllabi.length },
-              { key: 'pending', label: 'Pending', count: syllabi.filter(s => s.status === 'pending').length },
-              { key: 'approved', label: 'Approved', count: syllabi.filter(s => s.status === 'approved').length },
-              { key: 'rejected', label: 'Rejected', count: syllabi.filter(s => s.status === 'rejected').length }
+              { key: 'all', label: 'All' },
+              { key: 'pending', label: 'Pending' },
+              { key: 'approved', label: 'Approved' },
+              { key: 'rejected', label: 'Rejected' }
             ].map((option) => (
               <TouchableOpacity
                 key={option.key}
@@ -425,17 +425,6 @@ export default function MySyllabiScreen() {
                 ]}>
                   {option.label}
                 </Text>
-                <View style={[
-                  styles.filterCount,
-                  selectedFilter === option.key && styles.filterCountActive
-                ]}>
-                  <Text style={[
-                    styles.filterCountText,
-                    selectedFilter === option.key && styles.filterCountTextActive
-                  ]}>
-                    {option.count}
-                  </Text>
-                </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -489,45 +478,26 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   filterTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: '#FFFFFF',
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E8F0',
   },
   filterTabActive: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#DC2626',
+    backgroundColor: '#F8FAFC',
+    borderColor: '#475569',
   },
   filterTabText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#6B7280',
   },
   filterTabTextActive: {
-    color: '#DC2626',
-  },
-  filterCount: {
-    backgroundColor: '#DC2626',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginLeft: 8,
-  },
-  filterCountActive: {
-    backgroundColor: '#DC2626',
-  },
-  filterCountText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    color: '#475569',
     fontWeight: '600',
-  },
-  filterCountTextActive: {
-    color: '#FFFFFF',
   },
   cardsContainer: {
     paddingHorizontal: 16,
@@ -579,7 +549,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E8F0',
+    // Remove all shadow/elevation properties for a flat look
   },
   cardHeader: {
     flexDirection: 'row',
@@ -633,17 +604,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   metaInfo: {
-    flexDirection: 'row',
-    gap: 16,
+    flexDirection: 'column',
     marginBottom: 12,
   },
   metaText: {
     fontSize: 13,
     color: '#6B7280',
+    marginBottom: 4,
   },
   statsContainer: {
     flexDirection: 'row',
-    gap: 16,
+    justifyContent: 'space-around',
     marginBottom: 12,
   },
   statItem: {
@@ -663,20 +634,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginTop: 12,
+    gap: 8,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#FEF2F2',
-    gap: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 6,
+    flex: 1,
+    justifyContent: 'center',
   },
   actionButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#DC2626',
+    color: '#475569',
   },
   modalOverlay: {
     flex: 1,

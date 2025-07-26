@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, LayoutAnimation, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -144,7 +145,7 @@ export default function StudentManagement() {
   // Add validation warning state
   const [showGenderWarning, setShowGenderWarning] = useState(false);
   const { visible: viewModalVisible, selectedItem: selectedStudent, openModal: openViewModal, closeModal: closeViewModal } = useModal();
-
+  const [studentPhoto, setStudentPhoto] = useState(null);
 
 
   useEffect(() => {
@@ -304,17 +305,15 @@ export default function StudentManagement() {
     
     setLoading(true);
     try {
-      // Prepare payload for PostgreSQL
-      const studentToSave = {
-        student_number: student.student_number.trim(),
-        full_name: buildFullName(student),
-        gender: student.gender.toLowerCase(),
-        contact_email: student.contact_email.trim(),
-        student_photo: student.student_photo || null,
-      };
-      
       if (editMode && editingStudentId) {
         // Edit mode: update student (send only updatable fields)
+        const studentToSave = {
+          student_number: student.student_number.trim(),
+          full_name: buildFullName(student),
+          gender: student.gender.toLowerCase(),
+          contact_email: student.contact_email.trim(),
+          student_photo: student.student_photo || null,
+        };
         await apiClient.put(`/collections/${TABLE_NAME}/documents/${editingStudentId}`, studentToSave);
         setModalVisible(false);
         setEditMode(false);
@@ -324,8 +323,35 @@ export default function StudentManagement() {
         Alert.alert('Success', 'Student updated successfully!');
         fetchStudents();
       } else {
-        // Add mode: add new student (do NOT send student_id or created_at)
-        await apiClient.post(`/collections/${TABLE_NAME}/documents`, studentToSave);
+        // Add mode: add new student (with photo upload)
+        const formData = new FormData();
+        formData.append('student_number', student.student_number.trim());
+        formData.append('first_name', student.first_name.trim());
+        formData.append('middle_initial', student.middle_initial || '');
+        formData.append('last_name', student.last_name.trim());
+        formData.append('suffix', student.suffix || '');
+        formData.append('gender', student.gender.toLowerCase());
+        formData.append('contact_email', student.contact_email.trim());
+        if (studentPhoto) {
+          const uriParts = studentPhoto.split('.');
+          const fileType = uriParts[uriParts.length - 1];
+          formData.append('photo', {
+            uri: studentPhoto,
+            name: `photo.${fileType}`,
+            type: `image/${fileType}`,
+          });
+        }
+        const response = await fetch('/api/students', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to add student');
+        }
         setStudent(initialState);
         setShowGenderWarning(false);
         Alert.alert('Success', 'Student added successfully!');
@@ -334,9 +360,7 @@ export default function StudentManagement() {
       }
     } catch (err) {
       console.error('Student operation error:', err);
-      
       let errorMessage = 'An unexpected error occurred.';
-      
       if (err.response?.status === 409) {
         errorMessage = 'A student with this SR-Code already exists.';
       } else if (err.response?.status === 400) {
@@ -346,7 +370,6 @@ export default function StudentManagement() {
       } else if (err.message) {
         errorMessage = err.message;
       }
-      
       Alert.alert(
         editMode ? 'Update Failed' : 'Add Failed',
         errorMessage,
@@ -507,6 +530,18 @@ export default function StudentManagement() {
     );
   };
 
+  const pickStudentPhoto = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaType.IMAGE,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setStudentPhoto(result.assets[0].uri);
+    }
+  };
+
 
 
 
@@ -646,114 +681,113 @@ export default function StudentManagement() {
         <View style={styles.modalOverlay}>
           <View style={styles.addEditModalContent}>
             <View style={styles.modalHeader}>
-              <View style={styles.modalTitleContainer}>
-                <Ionicons 
-                  name={editMode ? "create-outline" : "person-add-outline"} 
-                  size={24} 
-                  color="#DC2626" 
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={styles.modalTitle}>{editMode ? 'Edit Student' : 'Add New Student'}</Text>
-              </View>
+              <Text style={styles.modalTitle}>{editMode ? 'Edit Student' : 'Add New Student'}</Text>
               <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
                 <Ionicons name="close" size={20} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              <TouchableOpacity style={{marginBottom: 16, alignSelf: 'flex-end', backgroundColor: '#F59E42', padding: 8, borderRadius: 8}} onPress={fillRandomStudent}>
-                <Text style={{color: '#fff', fontWeight: 'bold'}}>Fill Random Data</Text>
-              </TouchableOpacity>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>SR-Code</Text>
-                <TextInput
-                  style={styles.input}
-                  value={student.student_number}
-                  onChangeText={value => handleChange('student_number', value)}
-                  placeholder="Enter student number"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>First Name *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={student.first_name}
-                  onChangeText={value => handleChange('first_name', value)}
-                  placeholder="Enter first name"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Middle Initial</Text>
-                <TextInput
-                  style={styles.input}
-                  value={student.middle_initial}
-                  onChangeText={value => handleChange('middle_initial', value)}
-                  placeholder="Enter middle initial"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Last Name *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={student.last_name}
-                  onChangeText={value => handleChange('last_name', value)}
-                  placeholder="Enter last name"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Suffix</Text>
-                <TextInput
-                  style={styles.input}
-                  value={student.suffix}
-                  onChangeText={value => handleChange('suffix', value)}
-                  placeholder="Enter suffix (e.g., Jr., Sr.)"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Gender *</Text>
-                <View style={styles.pickerWrapper}>
-                  <Picker
-                    selectedValue={student.gender || 'select'}
-                    onValueChange={value => handleChange('gender', value === 'select' ? '' : value)}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="Select gender" value="select" />
-                    <Picker.Item label="Male" value="male" />
-                    <Picker.Item label="Female" value="female" />
-                    <Picker.Item label="Other" value="other" />
-                  </Picker>
-                </View>
-                {showGenderWarning && (
-                  <View style={styles.warningContainer}>
-                    <Ionicons name="warning-outline" size={16} color="#F59E0B" style={{ marginRight: 6 }} />
-                    <Text style={styles.warningText}>Please select a gender</Text>
-                  </View>
+            <View style={styles.modalBody}>
+              <View style={styles.photoPickerContainer}>
+                <TouchableOpacity style={styles.photoPickerButton} onPress={pickStudentPhoto}>
+                  <Ionicons name="camera-outline" size={20} color="#DC2626" />
+                  <Text style={styles.photoPickerButtonText}>{studentPhoto ? 'Change Photo' : 'Add Photo (optional)'}</Text>
+                </TouchableOpacity>
+                {studentPhoto && (
+                  <Image source={{ uri: studentPhoto }} style={styles.photoPreview} />
                 )}
               </View>
+              <TouchableOpacity style={styles.fillRandomButton} onPress={fillRandomStudent}>
+                <Ionicons name="shuffle-outline" size={16} color="#FFFFFF" />
+                <Text style={styles.fillRandomButtonText}>Fill Random Data</Text>
+              </TouchableOpacity>
+              <ScrollView style={{flex: 1}} contentContainerStyle={{paddingBottom: 16}} showsVerticalScrollIndicator={false}>
+                <View style={styles.formSection}>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>SR-Code</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={student.student_number}
+                      onChangeText={value => handleChange('student_number', value)}
+                      placeholder="Enter student number"
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Contact Email *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={student.contact_email}
-                  onChangeText={value => handleChange('contact_email', value)}
-                  placeholder="Enter email address"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>First Name *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={student.first_name}
+                      onChangeText={value => handleChange('first_name', value)}
+                      placeholder="Enter first name"
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
 
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Middle Initial</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={student.middle_initial}
+                      onChangeText={value => handleChange('middle_initial', value)}
+                      placeholder="Enter middle initial"
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Last Name *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={student.last_name}
+                      onChangeText={value => handleChange('last_name', value)}
+                      placeholder="Enter last name"
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Suffix</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={student.suffix}
+                      onChangeText={value => handleChange('suffix', value)}
+                      placeholder="Enter suffix (e.g., Jr., Sr.)"
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Gender *</Text>
+                    <View style={styles.pickerWrapper}>
+                      <Picker
+                        selectedValue={student.gender || 'select'}
+                        onValueChange={value => handleChange('gender', value === 'select' ? '' : value)}
+                        style={styles.picker}
+                      >
+                        <Picker.Item label="Select gender" value="select" />
+                        <Picker.Item label="Male" value="male" />
+                        <Picker.Item label="Female" value="female" />
+                        <Picker.Item label="Other" value="other" />
+                      </Picker>
+                    </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Contact Email *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={student.contact_email}
+                      onChangeText={value => handleChange('contact_email', value)}
+                      placeholder="Enter email address"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  </View>
+                </View>
+              </ScrollView>
               <View style={styles.modalButtons}>
                 <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
                   <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -781,28 +815,14 @@ export default function StudentManagement() {
                         color="#FFFFFF" 
                         style={{ marginRight: 8 }}
                       />
-                      <Text style={[
-                        styles.submitButtonText,
-                        !isFormComplete() && styles.submitButtonTextDisabled
-                      ]}>
+                      <Text style={styles.submitButtonText}>
                         {editMode ? 'Save Changes' : 'Add Student'}
                       </Text>
                     </View>
                   )}
                 </TouchableOpacity>
               </View>
-              
-              {/* Show completion status */}
-              {!isFormComplete() && (
-                <View style={styles.completionStatus}>
-                  <Ionicons name="information-circle-outline" size={16} color="#6B7280" style={{ marginRight: 6 }} />
-                  <Text style={styles.completionStatusText}>
-                    Please complete all required fields to continue
-                  </Text>
-                </View>
-              )}
-              <View style={{ height: 24 }} />
-            </ScrollView>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1092,9 +1112,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     width: '90%',
-    maxHeight: '80%',
+    maxHeight: '95%',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    flexDirection: 'column',
+    flex: 1,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1102,63 +1129,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  modalTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderBottomColor: '#E2E8F0',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#353A40',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
   },
   closeButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  closeButtonText: {
-    fontSize: 20,
-    color: '#6B7280',
-    fontWeight: 'bold',
+    borderColor: '#E2E8F0',
   },
   modalBody: {
     padding: 20,
+    flex: 1,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#353A40',
+    color: '#374151',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
-    padding: 16,
+    padding: 12,
     fontSize: 16,
     backgroundColor: '#FFFFFF',
-    color: '#353A40',
+    color: '#1F2937',
   },
   pickerWrapper: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     overflow: 'hidden',
   },
   picker: {
     width: '100%',
-    height: 50,
+    height: 48,
   },
   dateInput: {
     borderWidth: 1,
@@ -1195,30 +1214,33 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginTop: 24,
+    gap: 12,
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginRight: 8,
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelButtonText: {
-    color: '#6B7280',
+    color: '#64748B',
     fontSize: 16,
     fontWeight: '600',
   },
   submitButton: {
     flex: 1,
     backgroundColor: '#DC2626',
-    paddingVertical: 16,
-    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 10,
     alignItems: 'center',
-    marginLeft: 8,
+    justifyContent: 'center',
   },
   submitButtonDisabled: {
     backgroundColor: '#FCA5A5',
@@ -1226,7 +1248,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   submitButtonTextDisabled: {
     color: '#9CA3AF', // Gray out text when disabled
@@ -1234,12 +1256,10 @@ const styles = StyleSheet.create({
   loadingButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
   },
   buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
   },
   actionButton: {
     paddingVertical: 8,
@@ -1429,16 +1449,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#E0F2FE',
-    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#BBDEFB',
+    borderColor: '#DBEAFE',
+    gap: 8,
   },
   completionStatusText: {
     fontSize: 14,
-    color: '#2196F3',
+    color: '#3B82F6',
     fontWeight: '500',
   },
   circleButton: {
@@ -1632,5 +1653,82 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     maxHeight: 600, // Increased height to show more students
+  },
+  formSection: {
+    marginBottom: 24,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#FFFFFF',
+    color: '#1F2937',
+  },
+  pickerWrapper: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  picker: {
+    width: '100%',
+    height: 48,
+  },
+  fillRandomButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#DC2626',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginBottom: 24,
+    gap: 8,
+  },
+  fillRandomButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  photoPickerContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  photoPickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  photoPickerButtonText: {
+    color: '#DC2626',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  photoPreview: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 4,
   },
 }); 

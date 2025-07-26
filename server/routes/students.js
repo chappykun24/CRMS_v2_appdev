@@ -2,6 +2,29 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../database');
 require('dotenv').config();
+const multer = require('multer');
+const path = require('path');
+
+// Multer setup for student photo uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '../uploads/student_photos'));
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    const uniqueName = `student_${Date.now()}${ext}`;
+    cb(null, uniqueName);
+  }
+});
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed!'), false);
+    }
+    cb(null, true);
+  }
+});
 
 // GET /api/students/available-for-section/:section_course_id?search=...
 router.get('/available-for-section/:section_course_id', async (req, res) => {
@@ -28,6 +51,39 @@ router.get('/available-for-section/:section_course_id', async (req, res) => {
     res.json({ students: result.rows });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/students - Create a new student with optional photo
+router.post('/', upload.single('photo'), async (req, res) => {
+  try {
+    const {
+      student_number,
+      first_name,
+      middle_initial,
+      last_name,
+      suffix,
+      gender,
+      contact_email
+    } = req.body;
+    if (!student_number || !first_name || !last_name || !gender || !contact_email) {
+      return res.status(400).json({ error: 'Missing required fields.' });
+    }
+    let student_photo = null;
+    if (req.file) {
+      student_photo = `/uploads/student_photos/${req.file.filename}`;
+    }
+    // Insert student into DB
+    const full_name = [last_name, first_name, middle_initial, suffix].filter(Boolean).join(' ');
+    const result = await pool.query(
+      `INSERT INTO students (student_number, first_name, middle_initial, last_name, suffix, gender, contact_email, student_photo, full_name)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [student_number, first_name, middle_initial, last_name, suffix, gender, contact_email, student_photo, full_name]
+    );
+    res.status(201).json({ message: 'Student created successfully!', student: result.rows[0] });
+  } catch (err) {
+    console.error('Error in POST /api/students:', err.stack || err, '\nRequest body:', req.body);
+    res.status(500).json({ error: 'Server error', details: err.message });
   }
 });
 

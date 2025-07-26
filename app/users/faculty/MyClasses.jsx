@@ -159,7 +159,7 @@ export default function MyClassesScreen() {
             style={styles.actionButton}
             onPress={() => handleAttendancePress(cls)}
           >
-            <Ionicons name="people-outline" size={16} color="#DC2626" />
+            <Ionicons name="people-outline" size={16} color="#475569" />
             <Text style={styles.actionButtonText}>Attendance</Text>
           </TouchableOpacity>
 
@@ -173,7 +173,7 @@ export default function MyClassesScreen() {
               }
             })}
           >
-            <Ionicons name="document-text-outline" size={16} color="#DC2626" />
+            <Ionicons name="document-text-outline" size={16} color="#475569" />
             <Text style={styles.actionButtonText}>Grades</Text>
           </TouchableOpacity>
 
@@ -184,8 +184,8 @@ export default function MyClassesScreen() {
               params: { section_course_id: cls.section_course_id }
             })}
           >
-            <Ionicons name="eye-outline" size={16} color="#DC2626" />
-            <Text style={styles.actionButtonText}>View Students</Text>
+            <Ionicons name="eye-outline" size={16} color="#475569" />
+            <Text style={styles.actionButtonText}>Students</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -269,15 +269,12 @@ const styles = StyleSheet.create({
   },
   classCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E2E8F0',
+    padding: 16,
+    marginBottom: 20,
+    // Remove all shadow/elevation properties for a flat look
   },
   cardHeader: {
     flexDirection: 'row',
@@ -366,9 +363,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 10,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#FEE2E2',
+    borderColor: '#E2E8F0',
     gap: 6,
     flex: 1,
     justifyContent: 'center',
@@ -376,6 +373,6 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#DC2626',
+    color: '#475569',
   },
 }); 
