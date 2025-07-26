@@ -73,12 +73,12 @@ router.post('/', upload.single('photo'), async (req, res) => {
     if (req.file) {
       student_photo = `/uploads/student_photos/${req.file.filename}`;
     }
-    // Insert student into DB
+    // Insert student into DB - using the actual database schema
     const full_name = [last_name, first_name, middle_initial, suffix].filter(Boolean).join(' ');
     const result = await pool.query(
-      `INSERT INTO students (student_number, first_name, middle_initial, last_name, suffix, gender, contact_email, student_photo, full_name)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [student_number, first_name, middle_initial, last_name, suffix, gender, contact_email, student_photo, full_name]
+      `INSERT INTO students (student_number, full_name, gender, contact_email, student_photo)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [student_number, full_name, gender, contact_email, student_photo]
     );
     res.status(201).json({ message: 'Student created successfully!', student: result.rows[0] });
   } catch (err) {

@@ -1,6 +1,7 @@
 console.log('DEBUG: This is the server.js file being executed!');
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { Pool } = require('pg');
 require('dotenv').config();
 const bcrypt = require('bcrypt');
@@ -24,6 +25,9 @@ app.use((req, res, next) => {
 // Allow all origins for development
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Register the syllabus router
 console.log('Before registering /api/syllabus');

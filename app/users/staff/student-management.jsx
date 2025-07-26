@@ -3,10 +3,10 @@ import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, LayoutAnimation, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, LayoutAnimation, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ClickableContainer from '../../../components/ClickableContainer';
 import ModalContainer from '../../../components/ModalContainer';
-import { apiClient } from '../../../utils/api';
+import { apiClient, getAPIBaseURL } from '../../../utils/api';
 import { useModal } from '../../../utils/useModal';
 import StaffStudentManagementHeader from '../../components/StaffStudentManagementHeader';
 
@@ -341,7 +341,7 @@ export default function StudentManagement() {
             type: `image/${fileType}`,
           });
         }
-        const response = await fetch('/api/students', {
+        const response = await fetch(`${getAPIBaseURL()}/students`, {
           method: 'POST',
           body: formData,
           headers: {
@@ -349,8 +349,24 @@ export default function StudentManagement() {
           },
         });
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to add student');
+          let errorMessage = 'Failed to add student';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch (parseError) {
+            console.error('Failed to parse error response:', parseError);
+            errorMessage = `Server error (${response.status})`;
+          }
+          throw new Error(errorMessage);
+        }
+        
+        // Try to parse the success response
+        let responseData;
+        try {
+          responseData = await response.json();
+        } catch (parseError) {
+          console.error('Failed to parse success response:', parseError);
+          throw new Error('Server returned invalid response');
         }
         setStudent(initialState);
         setShowGenderWarning(false);
@@ -531,14 +547,69 @@ export default function StudentManagement() {
   };
 
   const pickStudentPhoto = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.IMAGE,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setStudentPhoto(result.assets[0].uri);
+    try {
+      console.log('Starting image picker...');
+      
+      // Request permission first
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log('Permission status:', status);
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Permission to access media library is required to select a photo.');
+        return;
+      }
+      
+      console.log('Launching image picker...');
+      let result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: false,
+        quality: 1,
+        allowsMultipleSelection: false,
+      });
+      
+      console.log('Image picker result:', result);
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        console.log('Image selected:', result.assets[0].uri);
+        setStudentPhoto(result.assets[0].uri);
+      } else {
+        console.log('No image selected or picker was canceled');
+      }
+    } catch (err) {
+      console.error('Image picker error:', err);
+      Alert.alert('Error', `Could not open image picker: ${err.message}`);
+    }
+  };
+
+  const takePhotoWithCamera = async () => {
+    try {
+      console.log('Starting camera...');
+      
+      // Request camera permission first
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      console.log('Camera permission status:', status);
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Permission to access camera is required to take a photo.');
+        return;
+      }
+      
+      console.log('Launching camera...');
+      let result = await ImagePicker.launchCameraAsync({
+        allowsEditing: false,
+        quality: 1,
+      });
+      
+      console.log('Camera result:', result);
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        console.log('Photo taken:', result.assets[0].uri);
+        setStudentPhoto(result.assets[0].uri);
+      } else {
+        console.log('No photo taken or camera was canceled');
+      }
+    } catch (err) {
+      console.error('Camera error:', err);
+      Alert.alert('Error', `Could not open camera: ${err.message}`);
     }
   };
 
@@ -657,8 +728,18 @@ export default function StudentManagement() {
                 onPress={() => openViewModal(s)}
               >
                 <View style={styles.studentHeaderSimple}>
-                  <View style={styles.studentNumberBadge}>
-                    <Text style={styles.studentNumberBadgeText}>{idx + 1}</Text>
+                  <View style={styles.studentPhotoContainer}>
+                    {s.student_photo ? (
+                      <Image 
+                        source={{ uri: `${getAPIBaseURL().replace('/api', '')}${s.student_photo}` }} 
+                        style={styles.studentPhoto}
+                        onError={(error) => console.log('Image load error:', error)}
+                      />
+                    ) : (
+                      <View style={styles.defaultAvatar}>
+                        <Ionicons name="person" size={24} color="#9CA3AF" />
+                      </View>
+                    )}
                   </View>
                   <View style={styles.studentInfo}>
                     <Text style={styles.studentName}>{s.full_name}</Text>
@@ -689,12 +770,24 @@ export default function StudentManagement() {
 
             <View style={styles.modalBody}>
               <View style={styles.photoPickerContainer}>
-                <TouchableOpacity style={styles.photoPickerButton} onPress={pickStudentPhoto}>
-                  <Ionicons name="camera-outline" size={20} color="#DC2626" />
-                  <Text style={styles.photoPickerButtonText}>{studentPhoto ? 'Change Photo' : 'Add Photo (optional)'}</Text>
-                </TouchableOpacity>
+                <Text style={styles.photoPickerLabel}>Student Photo (optional)</Text>
+                <View style={styles.photoPickerButtons}>
+                  <TouchableOpacity style={styles.photoPickerButton} onPress={pickStudentPhoto}>
+                    <Ionicons name="images-outline" size={16} color="#475569" />
+                    <Text style={styles.photoPickerButtonText}>Choose from Gallery</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.photoPickerButton} onPress={takePhotoWithCamera}>
+                    <Ionicons name="camera-outline" size={16} color="#475569" />
+                    <Text style={styles.photoPickerButtonText}>Take Photo</Text>
+                  </TouchableOpacity>
+                </View>
                 {studentPhoto && (
-                  <Image source={{ uri: studentPhoto }} style={styles.photoPreview} />
+                  <View style={styles.photoPreviewContainer}>
+                    <Image source={{ uri: studentPhoto }} style={styles.photoPreview} />
+                    <TouchableOpacity style={styles.removePhotoButton} onPress={() => setStudentPhoto(null)}>
+                      <Ionicons name="close-circle" size={20} color="#DC2626" />
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
               <TouchableOpacity style={styles.fillRandomButton} onPress={fillRandomStudent}>
@@ -872,13 +965,31 @@ export default function StudentManagement() {
               </View>
             </View>
 
-            {/* Add Image Button */}
+            {/* Photo Section */}
             <View style={styles.modalImageSection}>
-              <TouchableOpacity style={styles.addImageButton} onPress={() => handleAddImage(selectedStudent.student_id)}>
-                <Ionicons name="camera-outline" size={20} color="#DC2626" />
-                <Text style={styles.addImageButtonText}>Add Student Photo</Text>
-              </TouchableOpacity>
-              <Text style={styles.imagePlaceholderText}>Photo placeholder for future database integration</Text>
+              {selectedStudent.student_photo ? (
+                <View style={styles.modalPhotoContainer}>
+                  <Image 
+                    source={{ uri: `${getAPIBaseURL().replace('/api', '')}${selectedStudent.student_photo}` }} 
+                    style={styles.modalLargePhoto}
+                    onError={(error) => console.log('Modal large image load error:', error)}
+                  />
+                  <TouchableOpacity style={styles.changePhotoButton} onPress={() => handleAddImage(selectedStudent.student_id)}>
+                    <Ionicons name="camera-outline" size={16} color="#475569" />
+                    <Text style={styles.changePhotoButtonText}>Change Photo</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.modalNoPhotoContainer}>
+                  <View style={styles.modalNoPhotoPlaceholder}>
+                    <Ionicons name="person" size={48} color="#D1D5DB" />
+                  </View>
+                  <TouchableOpacity style={styles.addImageButton} onPress={() => handleAddImage(selectedStudent.student_id)}>
+                    <Ionicons name="camera-outline" size={20} color="#DC2626" />
+                    <Text style={styles.addImageButtonText}>Add Student Photo</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
             {/* Student Details */}
@@ -1632,19 +1743,27 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     marginBottom: 0,
   },
-  studentNumberBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#DC2626',
+  studentPhotoContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  studentPhoto: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  defaultAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-  },
-  studentNumberBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   tableViewOuterContainer: {
     backgroundColor: '#FFFFFF',
@@ -1706,6 +1825,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+  photoPickerLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  photoPickerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
   photoPickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1715,20 +1845,77 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    marginBottom: 8,
+    gap: 6,
   },
   photoPickerButtonText: {
-    color: '#DC2626',
+    color: '#475569',
     fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 8,
+    fontWeight: '500',
+  },
+  photoPreviewContainer: {
+    position: 'relative',
+    alignItems: 'center',
   },
   photoPreview: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+  },
+  removePhotoButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+  },
+  modalStudentPhoto: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  modalLargePhoto: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+  },
+  modalPhotoContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalNoPhotoContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalNoPhotoPlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 12,
+  },
+  changePhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    marginTop: 4,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginTop: 8,
+    gap: 6,
+  },
+  changePhotoButtonText: {
+    color: '#475569',
+    fontSize: 14,
+    fontWeight: '500',
   },
 }); 
