@@ -69,12 +69,10 @@ export default function MyClassesScreen() {
   const handleAttendancePress = async (cls) => {
     setIsNavigatingAway(true);
     try {
-      const sessions = await apiClient.get(`/section-courses/${cls.section_course_id}/sessions`);
       router.push({
-        pathname: '/users/faculty/SessionList',
+        pathname: '/users/faculty/AttendanceManagement',
         params: {
-          section_course_id: cls.section_course_id,
-          sessions: JSON.stringify(sessions),
+          selectedClassId: cls.section_course_id,
         }
       });
     } catch (error) {
