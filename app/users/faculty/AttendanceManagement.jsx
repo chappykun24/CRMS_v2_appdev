@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Dimensions,
+    Image,
     Modal,
     Platform,
     SafeAreaView,
@@ -16,7 +17,7 @@ import {
     View
 } from 'react-native';
 import { useUser } from '../../../contexts/UserContext';
-import apiClient from '../../../utils/api';
+import apiClient, { getAPIBaseURL } from '../../../utils/api';
 import FacultyAttendanceManagementHeader from '../../components/FacultyAttendanceManagementHeader';
 
 export default function AttendanceManagementScreen() {
@@ -621,10 +622,30 @@ export default function AttendanceManagementScreen() {
         }}
       >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#222' }}>{student.full_name}</Text>
-            <Text style={{ color: '#666', fontSize: 14, marginTop: 2 }}>{student.student_number}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            {/* Student Photo */}
+            <View style={styles.studentPhotoContainer}>
+              {student.student_photo ? (
+                <Image 
+                  source={{ uri: `${getAPIBaseURL().replace('/api', '')}${student.student_photo}` }} 
+                  style={styles.studentPhoto}
+                  onError={(error) => console.log('Student photo load error:', error)}
+                />
+              ) : (
+                <View style={styles.defaultAvatar}>
+                  <Ionicons name="person" size={20} color="#9CA3AF" />
+                </View>
+              )}
+            </View>
+            
+            {/* Student Info */}
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#222' }}>{student.full_name}</Text>
+              <Text style={{ color: '#666', fontSize: 14, marginTop: 2 }}>{student.student_number}</Text>
+            </View>
           </View>
+          
+          {/* Attendance Status */}
           <View style={{
             backgroundColor: statusColor + '20', // 20% opacity background
             paddingHorizontal: 12,
@@ -1542,9 +1563,24 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   studentPhoto: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 8,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  studentPhotoContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  defaultAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
 }); 
