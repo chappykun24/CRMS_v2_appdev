@@ -307,13 +307,13 @@ export default function StudentManagement() {
     try {
       if (editMode && editingStudentId) {
         // Edit mode: update student (send only updatable fields)
-        const studentToSave = {
-          student_number: student.student_number.trim(),
-          full_name: buildFullName(student),
-          gender: student.gender.toLowerCase(),
-          contact_email: student.contact_email.trim(),
-          student_photo: student.student_photo || null,
-        };
+      const studentToSave = {
+        student_number: student.student_number.trim(),
+        full_name: buildFullName(student),
+        gender: student.gender.toLowerCase(),
+        contact_email: student.contact_email.trim(),
+        student_photo: student.student_photo || null,
+      };
         await apiClient.put(`/collections/${TABLE_NAME}/documents/${editingStudentId}`, studentToSave);
         setModalVisible(false);
         setEditMode(false);
@@ -755,7 +755,7 @@ export default function StudentManagement() {
       }
       
       // Show success message with option to refresh manually
-      Alert.alert(
+    Alert.alert(
         'Success', 
         'Student photo updated successfully! The list has been refreshed.',
         [
@@ -770,9 +770,9 @@ export default function StudentManagement() {
               }
             }
           },
-          { text: 'OK', style: 'default' }
-        ]
-      );
+        { text: 'OK', style: 'default' }
+      ]
+    );
         return; // Success, exit the retry loop
         
       } catch (err) {
@@ -1014,7 +1014,7 @@ export default function StudentManagement() {
         <View style={styles.modalOverlay}>
           <View style={styles.addEditModalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editMode ? 'Edit Student' : 'Add New Student'}</Text>
+                <Text style={styles.modalTitle}>{editMode ? 'Edit Student' : 'Add New Student'}</Text>
               <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
                 <Ionicons name="close" size={20} color="#6B7280" />
               </TouchableOpacity>
@@ -1027,7 +1027,7 @@ export default function StudentManagement() {
                   <TouchableOpacity style={styles.photoPickerButton} onPress={pickStudentPhoto}>
                     <Ionicons name="images-outline" size={16} color="#475569" />
                     <Text style={styles.photoPickerButtonText}>Choose from Gallery</Text>
-                  </TouchableOpacity>
+              </TouchableOpacity>
                   <TouchableOpacity style={styles.photoPickerButton} onPress={takePhotoWithCamera}>
                     <Ionicons name="camera-outline" size={16} color="#475569" />
                     <Text style={styles.photoPickerButtonText}>Take Photo</Text>
@@ -1048,89 +1048,89 @@ export default function StudentManagement() {
               </TouchableOpacity>
               <ScrollView style={{flex: 1}} contentContainerStyle={{paddingBottom: 16}} showsVerticalScrollIndicator={false}>
                 <View style={styles.formSection}>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>SR-Code</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={student.student_number}
-                      onChangeText={value => handleChange('student_number', value)}
-                      placeholder="Enter student number"
-                      placeholderTextColor="#9CA3AF"
-                    />
-                  </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>SR-Code</Text>
+                <TextInput
+                  style={styles.input}
+                  value={student.student_number}
+                  onChangeText={value => handleChange('student_number', value)}
+                  placeholder="Enter student number"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
 
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>First Name *</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={student.first_name}
-                      onChangeText={value => handleChange('first_name', value)}
-                      placeholder="Enter first name"
-                      placeholderTextColor="#9CA3AF"
-                    />
-                  </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>First Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={student.first_name}
+                  onChangeText={value => handleChange('first_name', value)}
+                  placeholder="Enter first name"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
 
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Middle Initial</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={student.middle_initial}
-                      onChangeText={value => handleChange('middle_initial', value)}
-                      placeholder="Enter middle initial"
-                      placeholderTextColor="#9CA3AF"
-                    />
-                  </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Middle Initial</Text>
+                <TextInput
+                  style={styles.input}
+                  value={student.middle_initial}
+                  onChangeText={value => handleChange('middle_initial', value)}
+                  placeholder="Enter middle initial"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
 
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Last Name *</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={student.last_name}
-                      onChangeText={value => handleChange('last_name', value)}
-                      placeholder="Enter last name"
-                      placeholderTextColor="#9CA3AF"
-                    />
-                  </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Last Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={student.last_name}
+                  onChangeText={value => handleChange('last_name', value)}
+                  placeholder="Enter last name"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
 
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Suffix</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={student.suffix}
-                      onChangeText={value => handleChange('suffix', value)}
-                      placeholder="Enter suffix (e.g., Jr., Sr.)"
-                      placeholderTextColor="#9CA3AF"
-                    />
-                  </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Suffix</Text>
+                <TextInput
+                  style={styles.input}
+                  value={student.suffix}
+                  onChangeText={value => handleChange('suffix', value)}
+                  placeholder="Enter suffix (e.g., Jr., Sr.)"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
 
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Gender *</Text>
-                    <View style={styles.pickerWrapper}>
-                      <Picker
-                        selectedValue={student.gender || 'select'}
-                        onValueChange={value => handleChange('gender', value === 'select' ? '' : value)}
-                        style={styles.picker}
-                      >
-                        <Picker.Item label="Select gender" value="select" />
-                        <Picker.Item label="Male" value="male" />
-                        <Picker.Item label="Female" value="female" />
-                        <Picker.Item label="Other" value="other" />
-                      </Picker>
-                    </View>
-                  </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Gender *</Text>
+                <View style={styles.pickerWrapper}>
+                  <Picker
+                    selectedValue={student.gender || 'select'}
+                    onValueChange={value => handleChange('gender', value === 'select' ? '' : value)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Select gender" value="select" />
+                    <Picker.Item label="Male" value="male" />
+                    <Picker.Item label="Female" value="female" />
+                    <Picker.Item label="Other" value="other" />
+                  </Picker>
+                </View>
+              </View>
 
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Contact Email *</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={student.contact_email}
-                      onChangeText={value => handleChange('contact_email', value)}
-                      placeholder="Enter email address"
-                      placeholderTextColor="#9CA3AF"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                    />
-                  </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Contact Email *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={student.contact_email}
+                  onChangeText={value => handleChange('contact_email', value)}
+                  placeholder="Enter email address"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
                 </View>
               </ScrollView>
               <View style={styles.modalButtons}>
@@ -1167,7 +1167,7 @@ export default function StudentManagement() {
                   )}
                 </TouchableOpacity>
               </View>
-            </View>
+                </View>
           </View>
         </View>
       </Modal>
@@ -1236,10 +1236,10 @@ export default function StudentManagement() {
                   <View style={styles.modalNoPhotoPlaceholder}>
                     <Ionicons name="person" size={48} color="#D1D5DB" />
                   </View>
-                  <TouchableOpacity style={styles.addImageButton} onPress={() => handleAddImage(selectedStudent.student_id)}>
-                    <Ionicons name="camera-outline" size={20} color="#DC2626" />
-                    <Text style={styles.addImageButtonText}>Add Student Photo</Text>
-                  </TouchableOpacity>
+              <TouchableOpacity style={styles.addImageButton} onPress={() => handleAddImage(selectedStudent.student_id)}>
+                <Ionicons name="camera-outline" size={20} color="#DC2626" />
+                <Text style={styles.addImageButtonText}>Add Student Photo</Text>
+              </TouchableOpacity>
                 </View>
               )}
             </View>
