@@ -13,6 +13,8 @@ export default function AddStudentToClass() {
   const [confirming, setConfirming] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState('');
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Fetch available students
   const fetchAvailableStudents = async (search = '') => {
@@ -31,6 +33,15 @@ export default function AddStudentToClass() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addSearch, section_course_id]);
 
+  // Show success toast
+  const showToast = (message) => {
+    setSuccessMessage(message);
+    setShowSuccessToast(true);
+    setTimeout(() => {
+      setShowSuccessToast(false);
+    }, 3000);
+  };
+
   // Add student to class
   const handleAddStudent = async (student_id) => {
     try {
@@ -40,8 +51,8 @@ export default function AddStudentToClass() {
       });
       setConfirming(false);
       setSelectedStudentId(null);
-      alert('Student enrolled successfully!');
-      router.back();
+      showToast('Student enrolled successfully!');
+      fetchAvailableStudents(addSearch); // Refresh the list
     } catch (err) {
       if (err?.response?.status === 409) {
         setAddError('Student is already enrolled in this class.');
@@ -61,64 +72,97 @@ export default function AddStudentToClass() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add Student to Class</Text>
       </View>
-      <View style={{ padding: 16 }}>
-        <TextInput
-          value={addSearch}
-          onChangeText={setAddSearch}
-          placeholder="Search students by name or SR code..."
-          style={styles.searchInput}
-        />
-        {addError ? (
-          <Text style={{ color: 'red', textAlign: 'center', marginBottom: 8 }}>{addError}</Text>
-        ) : null}
-        {searchLoading ? (
-          <Text style={{ textAlign: 'center', color: '#6B7280' }}>Loading students...</Text>
-        ) : allAvailableStudents.length === 0 ? (
-          <Text style={{ textAlign: 'center', color: '#6B7280' }}>No students found.</Text>
-        ) : (
-          <ScrollView style={{ marginTop: 8 }}>
-            {allAvailableStudents.map(student => (
-              <View
-                key={student.student_id}
-                style={styles.studentRow}
-              >
-                <View>
-                  <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{student.full_name}</Text>
-                  <Text style={{ color: '#6B7280', fontSize: 13 }}>SR Code: {student.student_number}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.addButton}
-                  disabled={addLoading && selectedStudentId === student.student_id}
-                  onPress={() => {
-                    setSelectedStudentId(student.student_id);
-                    setAddError('');
-                    setConfirming(true);
-                  }}
+      
+      <ScrollView style={{ flex: 1, backgroundColor: '#FFFFFF' }} showsVerticalScrollIndicator={false}>
+        <View style={{ padding: 16, backgroundColor: '#FFFFFF' }}>
+          <TextInput
+            value={addSearch}
+            onChangeText={setAddSearch}
+            placeholder="Search students by name or SR code..."
+            style={styles.searchInput}
+          />
+          {addError ? (
+            <Text style={styles.errorText}>{addError}</Text>
+          ) : null}
+          {searchLoading ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="search-outline" size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>Loading students...</Text>
+              <Text style={styles.emptyStateText}>Please wait while we search for available students.</Text>
+            </View>
+          ) : allAvailableStudents.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="people-outline" size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>
+                {addSearch ? 'No students found' : 'No students available'}
+              </Text>
+              <Text style={styles.emptyStateText}>
+                {addSearch 
+                  ? 'Try adjusting your search terms to find what you\'re looking for.'
+                  : 'No students are currently available for enrollment.'
+                }
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.studentsContainer}>
+              {allAvailableStudents.map(student => (
+                <View
+                  key={student.student_id}
+                  style={styles.studentCard}
                 >
-                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>Add</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-        )}
-      </View>
+                  <View style={styles.studentInfo}>
+                    <Text style={styles.studentName}>{student.full_name}</Text>
+                    <Text style={styles.studentCode}>SR Code: {student.student_number}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.addButton}
+                    disabled={addLoading && selectedStudentId === student.student_id}
+                    onPress={() => {
+                      setSelectedStudentId(student.student_id);
+                      setAddError('');
+                      setConfirming(true);
+                    }}
+                  >
+                    <Ionicons name="add-outline" size={16} color="#FFFFFF" />
+                    <Text style={styles.addButtonText}>Add</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Success Toast */}
+      {showSuccessToast && (
+        <View style={styles.toastContainer}>
+          <View style={styles.toastContent}>
+            <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+            <Text style={styles.toastText}>{successMessage}</Text>
+          </View>
+        </View>
+      )}
+
       {/* Confirmation Dialog */}
       {confirming && (
         <View style={styles.confirmOverlay}>
           <View style={styles.confirmBox}>
-            <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 10 }}>Confirm Add Student</Text>
-            <Text style={{ fontSize: 15, marginBottom: 18, textAlign: 'center' }}>
+            <View style={styles.confirmHeader}>
+              <Ionicons name="checkmark-circle-outline" size={32} color="#DC2626" />
+              <Text style={styles.confirmTitle}>Confirm Add Student</Text>
+            </View>
+            <Text style={styles.confirmMessage}>
               Are you sure you want to enroll this student to the class?
             </Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
+            <View style={styles.confirmActions}>
               <TouchableOpacity
-                style={[styles.cancelButton, { marginRight: 10 }]}
+                style={styles.cancelButton}
                 onPress={() => {
                   setConfirming(false);
                   setSelectedStudentId(null);
                 }}
               >
-                <Text style={{ color: '#353A40', fontWeight: 'bold', fontSize: 15 }}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.confirmButton}
@@ -134,7 +178,7 @@ export default function AddStudentToClass() {
                   setAddLoading(false);
                 }}
               >
-                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>Confirm</Text>
+                <Text style={styles.confirmButtonText}>Confirm</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -152,8 +196,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     paddingHorizontal: 16,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     marginRight: 12,
@@ -166,31 +208,80 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    padding: 12,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     marginBottom: 16,
   },
-  studentRow: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
-    padding: 14,
-    marginBottom: 10,
+  errorText: {
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 16,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 32,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#353A40',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  studentsContainer: {
+    gap: 12,
+  },
+  studentCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E8F0',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  studentInfo: {
+    flex: 1,
+  },
+  studentName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  studentCode: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
+  },
   addButton: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#DC2626',
     paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 6,
-    marginLeft: 10,
-    opacity: 1,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  addButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
   },
   confirmOverlay: {
     position: 'absolute',
@@ -203,7 +294,7 @@ const styles = StyleSheet.create({
   confirmBox: {
     backgroundColor: '#fff',
     padding: 24,
-    borderRadius: 12,
+    borderRadius: 16,
     width: 300,
     alignItems: 'center',
     justifyContent: 'center',
@@ -213,17 +304,77 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 8,
   },
+  confirmHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#353A40',
+    marginLeft: 10,
+  },
+  confirmMessage: {
+    fontSize: 15,
+    marginBottom: 18,
+    textAlign: 'center',
+    color: '#6B7280',
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
   confirmButton: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#DC2626',
     paddingVertical: 8,
     paddingHorizontal: 18,
-    borderRadius: 6,
-    marginRight: 10,
+    borderRadius: 8,
   },
   cancelButton: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#F1F5F9',
     paddingVertical: 8,
     paddingHorizontal: 18,
-    borderRadius: 6,
+    borderRadius: 8,
+  },
+  cancelButtonText: {
+    color: '#353A40',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  toastContainer: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  toastContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  toastText: {
+    color: '#10B981',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
   },
 }); 

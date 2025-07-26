@@ -1,25 +1,39 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import apiClient from '../../../utils/api.js';
 import StaffAcademicRecordsHeader from '../../components/StaffAcademicRecordsHeader';
 
-// Removed mockRecords dummy data
-
 export default function AcademicRecords() {
   const [search, setSearch] = useState('');
-  // const [isTableView, setIsTableView] = useState(false); // Remove
   const [showSearch, setShowSearch] = useState(true);
   const [approvedClasses, setApprovedClasses] = useState([]);
   const [loading, setLoading] = useState(true);
-  // Removed: const navigation = useNavigation();
+  const [studentCounts, setStudentCounts] = useState({});
 
   useEffect(() => {
     setLoading(true);
     apiClient.get('/syllabus/approved')
-      .then(data => {
-        setApprovedClasses(Array.isArray(data) ? data : []);
+      .then(async data => {
+        const classes = Array.isArray(data) ? data : [];
+        setApprovedClasses(classes);
+        
+        // Fetch student counts for each class
+        const studentCounts = {};
+        await Promise.all(classes.map(async (cls) => {
+          if (cls.section_course_id) {
+            try {
+              const students = await apiClient.get(`/section-courses/${cls.section_course_id}/students`);
+              studentCounts[cls.section_course_id] = Array.isArray(students) ? students.length : 0;
+            } catch (err) {
+              console.log(`Error fetching students for class ${cls.section_course_id}:`, err);
+              studentCounts[cls.section_course_id] = 0;
+            }
+          }
+        }));
+        
+        setStudentCounts(studentCounts);
         setLoading(false);
       })
       .catch(() => {
@@ -40,54 +54,107 @@ export default function AcademicRecords() {
     );
   });
 
-  console.log('filteredClasses:', filteredClasses);
+  const renderClassCard = (cls) => {
+    const studentCount = studentCounts[cls.section_course_id] ?? 0;
+
+    return (
+      <View key={cls.syllabus_id} style={styles.classCard}>
+        <View style={styles.cardHeader}>
+          <View style={styles.courseInfo}>
+            <Text style={styles.courseCode}>{cls.course_code}</Text>
+            <Text style={styles.courseTitle}>{cls.course_title}</Text>
+            <Text style={styles.sectionCode}>Section: {cls.section_code}</Text>
+          </View>
+          <View style={styles.statusContainer}>
+            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <Text style={styles.statusText}>Approved</Text>
+          </View>
+        </View>
+
+        <View style={styles.cardContent}>
+          <View style={styles.metaInfo}>
+            <Text style={styles.metaText}>Year: {cls.school_year || 'N/A'}</Text>
+            <Text style={styles.metaText}>Term: {cls.semester || 'N/A'}</Text>
+            <Text style={styles.metaText}>Faculty: {cls.faculty_name || 'N/A'}</Text>
+          </View>
+
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{studentCount}</Text>
+              <Text style={styles.statLabel}>Students</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push({ 
+              pathname: '/users/staff/ClassStudents', 
+              params: { 
+                section_course_id: cls.section_course_id, 
+                syllabus_id: cls.syllabus_id 
+              } 
+            })}
+          >
+            <Ionicons name="people-outline" size={16} color="#475569" />
+            <Text style={styles.actionButtonText}>View Students</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push({ 
+              pathname: '/users/staff/AddStudentToClass', 
+              params: { 
+                section_course_id: cls.section_course_id 
+              } 
+            })}
+          >
+            <Ionicons name="add-circle-outline" size={16} color="#475569" />
+            <Text style={styles.actionButtonText}>Add Student</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <View style={styles.container}>
       <StaffAcademicRecordsHeader
         title="Classes"
         search={search}
         setSearch={setSearch}
-        // isTableView={isTableView} // Remove
-        // setIsTableView={setIsTableView} // Remove
         showSearch={showSearch}
         setShowSearch={setShowSearch}
       />
-      <View style={styles.content}>
+      
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {loading ? (
-          <Text style={{ textAlign: 'center', marginTop: 32 }}>Loading approved classes...</Text>
+          <View style={styles.emptyState}>
+            <Ionicons name="school-outline" size={64} color="#9CA3AF" />
+            <Text style={styles.emptyStateTitle}>Loading classes...</Text>
+            <Text style={styles.emptyStateText}>Please wait while we fetch approved classes.</Text>
+          </View>
         ) : filteredClasses.length === 0 ? (
-          <Text style={{ textAlign: 'center', marginTop: 32 }}>No approved classes found.</Text>
+          <View style={styles.emptyState}>
+            <Ionicons name="school-outline" size={64} color="#9CA3AF" />
+            <Text style={styles.emptyStateTitle}>
+              {search ? 'No classes found' : 'No classes available'}
+            </Text>
+            <Text style={styles.emptyStateText}>
+              {search 
+                ? 'Try adjusting your search terms to find what you\'re looking for.'
+                : 'No approved classes found in the system.'
+              }
+            </Text>
+          </View>
         ) : (
-          filteredClasses.map(cls => (
-            <TouchableOpacity
-              key={cls.syllabus_id}
-              style={styles.recordCard}
-              onPress={() => router.push({ pathname: '/users/staff/ClassStudents', params: { section_course_id: cls.section_course_id, syllabus_id: cls.syllabus_id } })}
-            >
-              <View style={styles.recordHeader}>
-                <View>
-                  <Text style={styles.subject}>{cls.course_title} <Text style={styles.code}>({cls.course_code})</Text></Text>
-                  {cls.section_code && (
-                    <Text style={styles.section}>Section: <Text style={styles.sectionValue}>{cls.section_code}</Text></Text>
-                  )}
-                  <Text style={styles.year}>Year: <Text style={styles.yearValue}>{cls.school_year}</Text></Text>
-                  <Text style={styles.year}>Term: <Text style={styles.yearValue}>{cls.semester}</Text></Text>
-                </View>
-              </View>
-              <View style={styles.recordRow}>
-                <Text style={styles.label}>Faculty Assigned:</Text>
-                <Text style={styles.value}>{cls.faculty_name}</Text>
-              </View>
-              <TouchableOpacity style={styles.viewButton} onPress={() => router.push({ pathname: '/users/staff/ClassStudents', params: { section_course_id: cls.section_course_id, syllabus_id: cls.syllabus_id } })}>
-                <Ionicons name="eye-outline" size={18} color="#DC2626" style={{ marginRight: 6 }} />
-                <Text style={styles.viewButtonText}>View</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          ))
+          <View style={styles.classesContainer}>
+            {filteredClasses.map(renderClassCard)}
+          </View>
         )}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -96,151 +163,137 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  contentContainer: {
-    paddingBottom: 100, // Add space at bottom for navigation bar
-  },
   content: {
+    flex: 1,
     paddingHorizontal: 16,
     paddingTop: 16,
+    paddingBottom: 80,
   },
-  // tableViewContainer: { // Remove
-  //   backgroundColor: '#FFFFFF',
-  //   borderRadius: 12,
-  //   padding: 8,
-  //   marginTop: 8,
-  //   marginBottom: 24,
-  //   borderWidth: 1,
-  //   borderColor: '#E5E7EB',
-  // },
-  // tableHeaderRow: { // Remove
-  //   flexDirection: 'row',
-  //   borderBottomWidth: 1,
-  //   borderBottomColor: '#E5E7EB',
-  //   paddingVertical: 8,
-  //   backgroundColor: '#FFFFFF',
-  //   borderTopLeftRadius: 12,
-  //   borderTopRightRadius: 12,
-  // },
-  // tableHeaderCell: { // Remove
-  //   fontWeight: 'bold',
-  //   color: '#353A40',
-  //   fontSize: 15,
-  //   paddingHorizontal: 12,
-  //   textAlign: 'left',
-  // },
-  // tableRow: { // Remove
-  //   flexDirection: 'row',
-  //   paddingVertical: 10,
-  //   paddingHorizontal: 4,
-  //   borderBottomWidth: 1,
-  //   borderBottomColor: '#E5E7EB',
-  //   backgroundColor: '#FFFFFF',
-  // },
-  // tableCell: { // Remove
-  //   fontSize: 15,
-  //   color: '#353A40',
-  //   paddingHorizontal: 12,
-  //   textAlign: 'left',
-  // },
-  // viewButtonSmall: { // Remove
-  //   backgroundColor: '#FEE2E2',
-  //   borderRadius: 8,
-  //   paddingVertical: 8,
-  //   paddingHorizontal: 12,
-  //   alignItems: 'center',
-  //   justifyContent: 'center',
-  //   borderWidth: 1,
-  //   borderColor: '#DC2626',
-  // },
-  recordCard: {
+  classesContainer: {
+    gap: 12,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+    paddingHorizontal: 32,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#353A40',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  classCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 18,
-    marginBottom: 18,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E8F0',
   },
-  recordHeader: {
+  cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
-  subject: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#353A40',
+  courseInfo: {
+    flex: 1,
   },
-  code: {
-    fontSize: 15,
-    color: '#6B7280',
-    fontWeight: '400',
-  },
-  year: {
-    fontSize: 15,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  yearValue: {
-    fontWeight: '600',
+  courseCode: {
+    fontSize: 16,
+    fontWeight: '700',
     color: '#DC2626',
+    marginBottom: 4,
   },
-  recordRow: {
+  courseTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  sectionCode: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+  statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#F0FDF4',
+    gap: 4,
   },
-  label: {
-    fontSize: 15,
-    color: '#6B7280',
-    width: 130,
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  cardContent: {
+    marginBottom: 12,
+  },
+  metaInfo: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+    flexWrap: 'wrap',
+  },
+  metaText: {
+    fontSize: 12,
+    color: '#64748B',
     fontWeight: '500',
   },
-  value: {
-    fontSize: 15,
-    color: '#353A40',
-    fontWeight: '600',
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 20,
+    marginBottom: 12,
   },
-  viewButton: {
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
     paddingVertical: 8,
-    paddingHorizontal: 18,
-    alignSelf: 'flex-end',
-    marginTop: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#DC2626',
+    borderColor: '#E2E8F0',
+    gap: 4,
+    flex: 1,
+    justifyContent: 'center',
   },
-  viewButtonText: {
-    color: '#DC2626',
-    fontSize: 15,
+  actionButtonText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: '#475569',
   },
-  section: {
-    fontSize: 15,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  sectionValue: {
-    fontWeight: '600',
-    color: '#DC2626',
-  },
-  // scrollIndicatorRow: { // Remove
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  //   justifyContent: 'center',
-  //   paddingVertical: 8,
-  //   backgroundColor: '#F9FAFB',
-  //   borderTopLeftRadius: 12,
-  //   borderTopRightRadius: 12,
-  //   borderBottomWidth: 1,
-  //   borderBottomColor: '#E5E7EB',
-  // },
-  // scrollIndicatorText: { // Remove
-  //   fontSize: 12,
-  //   color: '#6B7280',
-  //   marginHorizontal: 8,
-  //   fontStyle: 'italic',
-  // },
 }); 

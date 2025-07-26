@@ -46,7 +46,7 @@ export default function StaffAcademicRecordsHeader({
             <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search by subject, faculty, year..."
+              placeholder="Search by name or SR code..."
               placeholderTextColor="#9CA3AF"
               value={search}
               onChangeText={setSearch}

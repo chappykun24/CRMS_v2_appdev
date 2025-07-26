@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
     SafeAreaView,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -106,6 +107,91 @@ export default function MyClassesScreen() {
     }
   };
 
+  const renderClassCard = (cls) => {
+    const studentCount = studentCounts[cls.section_course_id] ?? 0;
+    const sessionCount = sessionCounts[cls.section_course_id] ?? 0;
+
+    return (
+      <View key={cls.section_course_id} style={styles.classCard}>
+        <View style={styles.cardHeader}>
+          <View style={styles.courseInfo}>
+            <Text style={styles.courseCode}>{cls.course_code}</Text>
+            <Text style={styles.courseTitle}>{cls.course_title}</Text>
+            <Text style={styles.sectionCode}>Section: {cls.section_code}</Text>
+          </View>
+          <View style={styles.statusContainer}>
+            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <Text style={styles.statusText}>Active</Text>
+          </View>
+        </View>
+
+        <View style={styles.cardContent}>
+          {cls.schedule && (
+            <Text style={styles.scheduleText}>{cls.schedule}</Text>
+          )}
+          
+          <View style={styles.metaInfo}>
+            <Text style={styles.metaText}>Year: {cls.school_year || 'N/A'}</Text>
+            <Text style={styles.metaText}>Term: {cls.semester || 'N/A'}</Text>
+            {cls.syllabus_id && (
+              <Text style={styles.metaText}>Syllabus: Approved</Text>
+            )}
+          </View>
+
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{studentCount}</Text>
+              <Text style={styles.statLabel}>Students</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{sessionCount}</Text>
+              <Text style={styles.statLabel}>Sessions</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{cls.syllabus_id ? '1' : '0'}</Text>
+              <Text style={styles.statLabel}>Syllabi</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleAttendancePress(cls)}
+          >
+            <Ionicons name="people-outline" size={16} color="#DC2626" />
+            <Text style={styles.actionButtonText}>Attendance</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push({
+              pathname: '/users/faculty/GradeManagement',
+              params: { 
+                section_course_id: cls.section_course_id,
+                syllabus_id: cls.syllabus_id
+              }
+            })}
+          >
+            <Ionicons name="document-text-outline" size={16} color="#DC2626" />
+            <Text style={styles.actionButtonText}>Grades</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push({
+              pathname: '/users/faculty/ClassStudents',
+              params: { section_course_id: cls.section_course_id }
+            })}
+          >
+            <Ionicons name="eye-outline" size={16} color="#DC2626" />
+            <Text style={styles.actionButtonText}>View Students</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <FacultyMyClassesHeader
@@ -116,78 +202,32 @@ export default function MyClassesScreen() {
         onNavigateAway={() => setIsNavigatingAway(true)}
       />
 
-      <View style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {loading ? (
-          <Text style={styles.emptyStateText}>Loading approved classes...</Text>
+          <View style={styles.emptyState}>
+            <Ionicons name="school-outline" size={64} color="#9CA3AF" />
+            <Text style={styles.emptyStateTitle}>Loading classes...</Text>
+            <Text style={styles.emptyStateText}>Please wait while we fetch your approved classes.</Text>
+          </View>
         ) : filteredClasses.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="school-outline" size={64} color="#9CA3AF" />
             <Text style={styles.emptyStateTitle}>
-              {searchQuery ? 'No classes found' : 'No classes found'}
+              {searchQuery ? 'No classes found' : 'No classes available'}
             </Text>
             <Text style={styles.emptyStateText}>
               {searchQuery 
-                ? 'Try adjusting your search terms.'
-                : 'You are not assigned to any approved classes yet.'
+                ? 'Try adjusting your search terms to find what you\'re looking for.'
+                : 'You are not assigned to any approved classes yet. Check back later or contact your administrator.'
               }
             </Text>
           </View>
         ) : (
           <View style={styles.classesContainer}>
-            {filteredClasses.map((cls) => (
-              <View key={cls.section_course_id} style={styles.classCard}>
-                <View style={styles.classHeader}>
-                  <View style={styles.classInfo}>
-                    <Text style={styles.classTitle}>{cls.course_code} - {cls.course_title}</Text>
-                    <Text style={styles.classSchedule}>{cls.schedule || ''}</Text>
-                  </View>
-                  <View style={styles.studentCountBadge}>
-                    <Ionicons name="people-outline" size={16} color="#DC2626" />
-                    <Text style={styles.studentCountText}>{studentCounts[cls.section_course_id] ?? 0} students</Text>
-                  </View>
-                </View>
-                <View style={styles.classStats}>
-                  <Text style={styles.classStatsText}>
-                    {cls.syllabus_id ? 'Approved Syllabus' : ''} • {sessionCounts[cls.section_course_id] ?? 0} sessions • {studentCounts[cls.section_course_id] ?? 0} students
-                  </Text>
-                </View>
-                <View style={styles.classActions}>
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => handleAttendancePress(cls)}
-                  >
-                    <Ionicons name="people-outline" size={16} color="#6B7280" />
-                    <Text style={styles.actionButtonText}>Attendance</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => router.push({
-                      pathname: '/users/faculty/GradeManagement',
-                      params: { 
-                        section_course_id: cls.section_course_id,
-                        syllabus_id: cls.syllabus_id
-                      }
-                    })}
-                  >
-                    <Ionicons name="document-text-outline" size={16} color="#DC2626" />
-                    <Text style={styles.actionButtonText}>Grades</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => router.push({
-                      pathname: '/users/faculty/ClassStudents',
-                      params: { section_course_id: cls.section_course_id }
-                    })}
-                  >
-                    <Ionicons name="eye-outline" size={16} color="#2563EB" />
-                    <Text style={styles.actionButtonText}>View Students</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
+            {filteredClasses.map(renderClassCard)}
           </View>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -201,98 +241,141 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 16,
+    paddingBottom: 80,
   },
   classesContainer: {
-    gap: 12,
+    gap: 16,
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
+    paddingHorizontal: 32,
   },
   emptyStateTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: '#353A40',
     marginTop: 16,
     marginBottom: 8,
+    textAlign: 'center',
   },
   emptyStateText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',
-    marginBottom: 24,
+    lineHeight: 24,
   },
   classCard: {
     backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#F3F4F6',
   },
-  classHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 16,
   },
-  classInfo: {
+  courseInfo: {
     flex: 1,
   },
-  classTitle: {
-    fontSize: 16,
+  courseCode: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#DC2626',
     marginBottom: 4,
   },
-  classSchedule: {
-    fontSize: 14,
+  courseTitle: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#353A40',
     marginBottom: 4,
+    lineHeight: 22,
   },
-  studentCountBadge: {
+  sectionCode: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: '#F0FDF4',
     gap: 4,
   },
-  studentCountText: {
+  statusText: {
     fontSize: 12,
     fontWeight: '500',
+    color: '#10B981',
+  },
+  cardContent: {
+    marginBottom: 16,
+  },
+  scheduleText: {
+    fontSize: 14,
     color: '#353A40',
+    marginBottom: 12,
+    fontStyle: 'italic',
   },
-  classStats: {
-    marginTop: 8,
+  metaInfo: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
   },
-  classStatsText: {
-    fontSize: 12,
+  metaText: {
+    fontSize: 13,
     color: '#6B7280',
   },
-  classActions: {
+  statsContainer: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
+    gap: 24,
+    marginBottom: 16,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#DC2626',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: 8,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    gap: 4,
+    borderColor: '#FEE2E2',
+    gap: 6,
+    flex: 1,
+    justifyContent: 'center',
   },
   actionButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#DC2626',
   },
 }); 

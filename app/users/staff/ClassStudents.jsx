@@ -42,8 +42,8 @@ export default function ClassStudents() {
 
   // Filter students by search
   const filteredStudents = students.filter(student =>
-    (student.name || '').toLowerCase().includes(search.toLowerCase()) ||
-    (student.enrollment_id || '').toString().includes(search)
+    (student.full_name || student.name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (student.student_number || '').toString().toLowerCase().includes(search.toLowerCase())
   );
 
   // Only keep logic for enrolled students and openAddStudentModal navigation
