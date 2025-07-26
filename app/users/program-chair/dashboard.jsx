@@ -25,7 +25,7 @@ export default function ProgramChairDashboard() {
         <TouchableOpacity style={styles.notificationIcon}>
           <Ionicons name="notifications-outline" size={28} color="#353A40" />
           <View style={styles.notificationBadge}>
-            <Text style={styles.notificationBadgeText}>3</Text>
+            <Text style={styles.notificationBadgeText}></Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -34,17 +34,17 @@ export default function ProgramChairDashboard() {
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <Ionicons name="book-outline" size={28} color="#DC2626" style={styles.statIcon} />
-          <Text style={styles.statNumber}>12</Text>
+          <Text style={styles.statNumber}></Text>
           <Text style={styles.statLabel}>Subjects</Text>
         </View>
         <View style={styles.statCard}>
           <Ionicons name="people-outline" size={28} color="#DC2626" style={styles.statIcon} />
-          <Text style={styles.statNumber}>18</Text>
+          <Text style={styles.statNumber}></Text>
           <Text style={styles.statLabel}>Faculty</Text>
         </View>
         <View style={styles.statCard}>
           <Ionicons name="analytics-outline" size={28} color="#DC2626" style={styles.statIcon} />
-          <Text style={styles.statNumber}>92%</Text>
+          <Text style={styles.statNumber}></Text>
           <Text style={styles.statLabel}>Outcome Rate</Text>
         </View>
       </View>

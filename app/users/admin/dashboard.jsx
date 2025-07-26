@@ -72,7 +72,7 @@ export default function AdminDashboard() {
         <TouchableOpacity style={styles.notificationIcon}>
           <Ionicons name="notifications-outline" size={28} color="#353A40" />
           <View style={styles.notificationBadge}>
-            <Text style={styles.notificationBadgeText}>3</Text>
+            <Text style={styles.notificationBadgeText}></Text>
           </View>
         </TouchableOpacity>
       </View>

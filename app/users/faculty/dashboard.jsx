@@ -25,7 +25,7 @@ export default function FacultyDashboard() {
         <TouchableOpacity style={styles.notificationIcon}>
           <Ionicons name="notifications-outline" size={28} color="#353A40" />
           <View style={styles.notificationBadge}>
-            <Text style={styles.notificationBadgeText}>3</Text>
+            <Text style={styles.notificationBadgeText}></Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -34,17 +34,17 @@ export default function FacultyDashboard() {
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <Ionicons name="book-outline" size={28} color="#DC2626" style={styles.statIcon} />
-          <Text style={styles.statNumber}>5</Text>
+          <Text style={styles.statNumber}></Text>
           <Text style={styles.statLabel}>Active Courses</Text>
         </View>
         <View style={styles.statCard}>
           <Ionicons name="people-outline" size={28} color="#DC2626" style={styles.statIcon} />
-          <Text style={styles.statNumber}>120</Text>
+          <Text style={styles.statNumber}></Text>
           <Text style={styles.statLabel}>Total Students</Text>
         </View>
         <View style={styles.statCard}>
           <Ionicons name="document-text-outline" size={28} color="#DC2626" style={styles.statIcon} />
-          <Text style={styles.statNumber}>3</Text>
+          <Text style={styles.statNumber}></Text>
           <Text style={styles.statLabel}>Pending Syllabi</Text>
         </View>
       </View>
