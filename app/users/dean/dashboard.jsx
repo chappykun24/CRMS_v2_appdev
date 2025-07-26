@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 28,
+    marginBottom: 18,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 32,
+    marginBottom: 24,
   },
   statCard: {
     flex: 1,
