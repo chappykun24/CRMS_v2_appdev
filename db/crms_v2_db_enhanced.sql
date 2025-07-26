@@ -1,6 +1,6 @@
 -- ==========================================
--- CRMS V2 Optimized Database Schema
--- Removed Redundancies & Improved Normalization
+-- CRMS V2 Enhanced Database Schema
+-- Includes Assessment Reference Framework
 -- ==========================================
 
 -- ==========================================
@@ -185,23 +185,25 @@ CREATE TABLE course_enrollment_requests (
 );
 
 -- ==========================================
--- 4. SYLLABI & ILOs (OPTIMIZED)
+-- 4. SYLLABI & ILOs (ENHANCED)
 -- ==========================================
--- 15. syllabi (OPTIMIZED - Removed redundant fields)
+-- 15. syllabi (ENHANCED)
 CREATE TABLE syllabi (
     syllabus_id SERIAL PRIMARY KEY,
-    section_course_id INTEGER,          -- Direct link to section course
+    course_id INTEGER,
+    term_id INTEGER,
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    assessment_framework JSONB,         -- Predefined assessment structure
-    grading_policy JSONB,               -- Grading rules and scales
-    course_outline TEXT,                -- Course content outline
-    learning_resources TEXT[],          -- Array of resource URLs
-    prerequisites TEXT,                 -- Course prerequisites
-    course_objectives TEXT,             -- Overall course objectives
+    assessment_framework JSONB,  -- Predefined assessment structure
+    grading_policy JSONB,        -- Grading rules and scales
+    course_outline TEXT,         -- Course content outline
+    learning_resources TEXT[],   -- Array of resource URLs
+    prerequisites TEXT,          -- Course prerequisites
+    course_objectives TEXT,      -- Overall course objectives
     version VARCHAR(20) DEFAULT '1.0',  -- Syllabus version
     is_template BOOLEAN DEFAULT FALSE,  -- Whether it's a reusable template
     template_name VARCHAR(100),         -- Template name if applicable
+    section_course_id INTEGER,          -- Link to specific section
     created_by INTEGER,
     reviewed_by INTEGER,
     review_status VARCHAR(20) DEFAULT 'pending',
@@ -211,42 +213,53 @@ CREATE TABLE syllabi (
     approved_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (section_course_id) REFERENCES section_courses(section_course_id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(course_id) ON DELETE CASCADE,
+    FOREIGN KEY (term_id) REFERENCES school_terms(term_id) ON DELETE CASCADE,
+    FOREIGN KEY (section_course_id) REFERENCES section_courses(section_course_id) ON DELETE SET NULL,
     FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
     FOREIGN KEY (reviewed_by) REFERENCES users(user_id) ON DELETE SET NULL,
     FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
--- 16. ilos (OPTIMIZED - Removed redundant syllabus_ilos table)
+-- 16. ilos (ENHANCED)
 CREATE TABLE ilos (
     ilo_id SERIAL PRIMARY KEY,
     syllabus_id INTEGER,
     code VARCHAR(50) NOT NULL,
     description TEXT,
-    category VARCHAR(50),               -- Knowledge, Skills, Attitudes
-    level VARCHAR(20),                  -- Basic, Intermediate, Advanced
-    weight_percentage FLOAT,            -- Weight in overall assessment
-    assessment_methods TEXT[],          -- How this ILO will be assessed
-    learning_activities TEXT[],         -- Activities to achieve this ILO
+    category VARCHAR(50),           -- Knowledge, Skills, Attitudes
+    level VARCHAR(20),              -- Basic, Intermediate, Advanced
+    weight_percentage FLOAT,        -- Weight in overall assessment
+    assessment_methods TEXT[],      -- How this ILO will be assessed
+    learning_activities TEXT[],     -- Activities to achieve this ILO
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (syllabus_id) REFERENCES syllabi(syllabus_id) ON DELETE CASCADE
 );
 
+-- 17. syllabus_ilos
+CREATE TABLE syllabus_ilos (
+    syllabus_id INTEGER,
+    ilo_id INTEGER,
+    PRIMARY KEY (syllabus_id, ilo_id),
+    FOREIGN KEY (syllabus_id) REFERENCES syllabi(syllabus_id) ON DELETE CASCADE,
+    FOREIGN KEY (ilo_id) REFERENCES ilos(ilo_id) ON DELETE CASCADE
+);
+
 -- ==========================================
--- 5. ASSESSMENTS & GRADING (OPTIMIZED)
+-- 5. ASSESSMENTS & GRADING (ENHANCED)
 -- ==========================================
--- 17. assessment_templates (KEPT - Essential for reusability)
+-- 18. assessment_templates (NEW)
 CREATE TABLE assessment_templates (
     template_id SERIAL PRIMARY KEY,
     template_name VARCHAR(100) UNIQUE NOT NULL,
     template_type VARCHAR(50),
     description TEXT,
-    assessment_structure JSONB,         -- Template structure
-    rubric_template JSONB,             -- Default rubric structure
-    ilo_coverage TEXT[],               -- ILOs this template covers
-    default_weight FLOAT,              -- Default weight percentage
+    assessment_structure JSONB,          -- Template structure
+    rubric_template JSONB,              -- Default rubric structure
+    ilo_coverage TEXT[],                -- ILOs this template covers
+    default_weight FLOAT,               -- Default weight percentage
     is_active BOOLEAN DEFAULT TRUE,
     created_by INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -254,42 +267,62 @@ CREATE TABLE assessment_templates (
     FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
--- 18. assessments (OPTIMIZED - Removed redundant fields)
+-- 19. syllabus_assessment_plans (NEW)
+CREATE TABLE syllabus_assessment_plans (
+    plan_id SERIAL PRIMARY KEY,
+    syllabus_id INTEGER NOT NULL,
+    assessment_type VARCHAR(50),         -- Quiz, Project, Exam, etc.
+    assessment_count INTEGER,            -- Number of assessments of this type
+    weight_per_assessment FLOAT,         -- Weight per individual assessment
+    total_weight FLOAT,                  -- Total weight for this type
+    ilo_coverage TEXT[],                -- ILOs covered by this assessment type
+    rubric_template JSONB,              -- Default rubric for this type
+    week_distribution INTEGER[],        -- Which weeks these assessments occur
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (syllabus_id) REFERENCES syllabi(syllabus_id) ON DELETE CASCADE
+);
+
+-- 20. assessments (ENHANCED)
 CREATE TABLE assessments (
     assessment_id SERIAL PRIMARY KEY,
-    syllabus_id INTEGER,                -- Link to syllabus for reference
+    syllabus_id INTEGER,                 -- Link to syllabus for reference
+    section_course_id INTEGER,
     title VARCHAR(255) NOT NULL,
-    description TEXT,                   -- Detailed description
-    type VARCHAR(50) NOT NULL,         -- Quiz, Exam, Project, Assignment, Lab, etc.
-    category VARCHAR(50),              -- Formative, Summative, Diagnostic
-    total_points FLOAT NOT NULL,       -- Maximum possible points
-    weight_percentage FLOAT,           -- Weight in final grade (0-100)
-    due_date TIMESTAMP,                -- When assessment is due
-    submission_deadline TIMESTAMP,     -- Last submission time
+    description TEXT,                    -- Detailed description
+    type VARCHAR(50) NOT NULL,          -- Quiz, Exam, Project, Assignment, Lab, etc.
+    category VARCHAR(50),               -- Formative, Summative, Diagnostic
+    total_points FLOAT NOT NULL,        -- Maximum possible points
+    weight_percentage FLOAT,            -- Weight in final grade (0-100)
+    due_date TIMESTAMP,                 -- When assessment is due
+    submission_deadline TIMESTAMP,      -- Last submission time
     is_published BOOLEAN DEFAULT FALSE, -- Whether students can see it
-    grading_method VARCHAR(50),        -- Rubric, Points, Percentage
-    instructions TEXT,                 -- Instructions for students
-    content_data JSONB,                -- Actual assessment content
+    is_graded BOOLEAN DEFAULT FALSE,    -- Whether grading is complete
+    grading_method VARCHAR(50),         -- Rubric, Points, Percentage
+    instructions TEXT,                  -- Instructions for students
+    content_data JSONB,                 -- Actual assessment content
     status VARCHAR(20) DEFAULT 'planned', -- planned, draft, active, submissions_closed, grading, graded, archived
-    created_by INTEGER,                -- Who created the assessment
+    created_by INTEGER,                 -- Who created the assessment
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (syllabus_id) REFERENCES syllabi(syllabus_id) ON DELETE CASCADE,
+    FOREIGN KEY (syllabus_id) REFERENCES syllabi(syllabus_id) ON DELETE SET NULL,
+    FOREIGN KEY (section_course_id) REFERENCES section_courses(section_course_id) ON DELETE CASCADE,
     FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
--- 19. rubrics (OPTIMIZED - Removed redundant fields)
+-- 21. rubrics (ENHANCED)
 CREATE TABLE rubrics (
     rubric_id SERIAL PRIMARY KEY,
-    syllabus_id INTEGER,                -- Link to syllabus for reference
+    syllabus_id INTEGER,                 -- Link to syllabus for reference
     assessment_id INTEGER,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     criterion TEXT NOT NULL,
     max_score FLOAT,
-    rubric_type VARCHAR(50),           -- Template, Custom, Standard
-    performance_levels JSONB,          -- Excellent, Good, Fair, Poor descriptions
-    criteria_order INTEGER,            -- Order of criteria
+    rubric_type VARCHAR(50),            -- Template, Custom, Standard
+    performance_levels JSONB,           -- Excellent, Good, Fair, Poor descriptions
+    is_template BOOLEAN DEFAULT FALSE,  -- Whether it's a reusable template
+    template_name VARCHAR(100),         -- Template name if applicable
+    criteria_order INTEGER,             -- Order of criteria
     ilo_id INTEGER,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -299,20 +332,30 @@ CREATE TABLE rubrics (
     FOREIGN KEY (ilo_id) REFERENCES ilos(ilo_id) ON DELETE SET NULL
 );
 
--- 20. submissions (OPTIMIZED - Removed redundant fields)
+-- 22. assessment_rubrics
+CREATE TABLE assessment_rubrics (
+    assessment_id INTEGER,
+    rubric_id INTEGER,
+    PRIMARY KEY (assessment_id, rubric_id),
+    FOREIGN KEY (assessment_id) REFERENCES assessments(assessment_id) ON DELETE CASCADE,
+    FOREIGN KEY (rubric_id) REFERENCES rubrics(rubric_id) ON DELETE CASCADE
+);
+
+-- 23. submissions (ENHANCED)
 CREATE TABLE submissions (
     submission_id SERIAL PRIMARY KEY,
     enrollment_id INTEGER,
     assessment_id INTEGER,
     submission_type VARCHAR(50) DEFAULT 'file',  -- File, Text, Link, etc.
-    submission_data JSONB,             -- Flexible submission content
-    file_urls TEXT[],                  -- Array of file URLs
-    total_score FLOAT,                 -- Final score after all adjustments
-    raw_score FLOAT,                   -- Score before any adjustments
-    late_penalty FLOAT DEFAULT 0,      -- Penalty for late submission
+    submission_data JSONB,              -- Flexible submission content
+    file_urls TEXT[],                   -- Array of file URLs
+    total_score FLOAT,
+    raw_score FLOAT,                    -- Score before any adjustments
+    adjusted_score FLOAT,               -- Score after adjustments
+    late_penalty FLOAT DEFAULT 0,       -- Penalty for late submission
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    graded_at TIMESTAMP,               -- When it was graded
-    graded_by INTEGER,                 -- Who graded it
+    graded_at TIMESTAMP,                -- When it was graded
+    graded_by INTEGER,                  -- Who graded it
     status VARCHAR(20) DEFAULT 'submitted', -- submitted, graded, late, etc.
     remarks TEXT,
     FOREIGN KEY (enrollment_id) REFERENCES course_enrollments(enrollment_id) ON DELETE CASCADE,
@@ -320,7 +363,7 @@ CREATE TABLE submissions (
     FOREIGN KEY (graded_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
--- 21. rubric_scores (KEPT - Essential for detailed grading)
+-- 24. rubric_scores
 CREATE TABLE rubric_scores (
     rubric_score_id SERIAL PRIMARY KEY,
     submission_id INTEGER,
@@ -332,11 +375,11 @@ CREATE TABLE rubric_scores (
     FOREIGN KEY (rubric_id) REFERENCES rubrics(rubric_id) ON DELETE CASCADE
 );
 
--- 22. grade_adjustments (KEPT - Essential for audit trail)
+-- 25. grade_adjustments (NEW)
 CREATE TABLE grade_adjustments (
     adjustment_id SERIAL PRIMARY KEY,
     submission_id INTEGER,
-    adjustment_type VARCHAR(50),       -- late_penalty, curve, etc.
+    adjustment_type VARCHAR(50),        -- late_penalty, curve, etc.
     adjustment_amount FLOAT,
     reason TEXT,
     applied_by INTEGER,
@@ -345,7 +388,7 @@ CREATE TABLE grade_adjustments (
     FOREIGN KEY (applied_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
--- 23. course_final_grades (KEPT - Essential for final grades)
+-- 26. course_final_grades
 CREATE TABLE course_final_grades (
     final_grade_id SERIAL PRIMARY KEY,
     enrollment_id INTEGER,
@@ -357,7 +400,7 @@ CREATE TABLE course_final_grades (
 -- ==========================================
 -- 6. ATTENDANCE & ANALYTICS
 -- ==========================================
--- 24. sessions
+-- 27. sessions
 CREATE TABLE sessions (
     session_id SERIAL PRIMARY KEY,
     section_course_id INTEGER NOT NULL,
@@ -369,7 +412,7 @@ CREATE TABLE sessions (
     FOREIGN KEY (section_course_id) REFERENCES section_courses(section_course_id) ON DELETE CASCADE
 );
 
--- 25. attendance_logs
+-- 28. attendance_logs
 CREATE TABLE attendance_logs (
     attendance_id SERIAL PRIMARY KEY,
     enrollment_id INTEGER,
@@ -382,7 +425,7 @@ CREATE TABLE attendance_logs (
     FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
 );
 
--- 26. analytics_clusters
+-- 29. analytics_clusters
 CREATE TABLE analytics_clusters (
     cluster_id SERIAL PRIMARY KEY,
     enrollment_id INTEGER,
@@ -394,7 +437,7 @@ CREATE TABLE analytics_clusters (
     FOREIGN KEY (enrollment_id) REFERENCES course_enrollments(enrollment_id) ON DELETE CASCADE
 );
 
--- 27. dashboards_data_cache
+-- 30. dashboards_data_cache
 CREATE TABLE dashboards_data_cache (
     cache_id SERIAL PRIMARY KEY,
     type VARCHAR(50),
@@ -405,9 +448,19 @@ CREATE TABLE dashboards_data_cache (
 );
 
 -- ==========================================
--- 7. ILO TRACKING (OPTIMIZED - Removed redundant tables)
+-- 7. ILO TRACKING
 -- ==========================================
--- 28. student_ilo_scores (KEPT - Essential for ILO tracking)
+-- 31. assessment_ilo_weights
+CREATE TABLE assessment_ilo_weights (
+    assessment_ilo_weight_id SERIAL PRIMARY KEY,
+    assessment_id INTEGER,
+    ilo_id INTEGER,
+    weight_percentage FLOAT CHECK (weight_percentage >= 0 AND weight_percentage <= 100),
+    FOREIGN KEY (assessment_id) REFERENCES assessments(assessment_id) ON DELETE CASCADE,
+    FOREIGN KEY (ilo_id) REFERENCES ilos(ilo_id) ON DELETE CASCADE
+);
+
+-- 32. student_ilo_scores
 CREATE TABLE student_ilo_scores (
     student_ilo_score_id SERIAL PRIMARY KEY,
     enrollment_id INTEGER,
@@ -421,7 +474,7 @@ CREATE TABLE student_ilo_scores (
 -- ==========================================
 -- 8. NOTIFICATION & FILES
 -- ==========================================
--- 29. notifications
+-- 33. notifications
 CREATE TABLE notifications (
     notification_id SERIAL PRIMARY KEY,
     user_id INTEGER,
@@ -431,7 +484,7 @@ CREATE TABLE notifications (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
--- 30. uploads
+-- 34. uploads
 CREATE TABLE uploads (
     upload_id SERIAL PRIMARY KEY,
     user_id INTEGER,
@@ -444,10 +497,11 @@ CREATE TABLE uploads (
 );
 
 -- ==========================================
--- OPTIMIZED INDEXES
+-- COMPREHENSIVE INDEXES FOR POSTGRESQL
 -- ==========================================
 
 -- Syllabi indexes
+CREATE INDEX idx_syllabi_course_id ON syllabi(course_id);
 CREATE INDEX idx_syllabi_section_course_id ON syllabi(section_course_id);
 CREATE INDEX idx_syllabi_approval_status ON syllabi(approval_status);
 CREATE INDEX idx_syllabi_created_by ON syllabi(created_by);
@@ -462,8 +516,13 @@ CREATE INDEX idx_assessment_templates_type ON assessment_templates(template_type
 CREATE INDEX idx_assessment_templates_active ON assessment_templates(is_active);
 CREATE INDEX idx_assessment_templates_created_by ON assessment_templates(created_by);
 
+-- Syllabus assessment plans indexes
+CREATE INDEX idx_syllabus_assessment_plans_syllabus ON syllabus_assessment_plans(syllabus_id);
+CREATE INDEX idx_syllabus_assessment_plans_type ON syllabus_assessment_plans(assessment_type);
+
 -- Assessments indexes
 CREATE INDEX idx_assessments_syllabus_id ON assessments(syllabus_id);
+CREATE INDEX idx_assessments_section_course_id ON assessments(section_course_id);
 CREATE INDEX idx_assessments_type ON assessments(type);
 CREATE INDEX idx_assessments_status ON assessments(status);
 CREATE INDEX idx_assessments_due_date ON assessments(due_date);
@@ -492,6 +551,10 @@ CREATE INDEX idx_grade_adjustments_type ON grade_adjustments(adjustment_type);
 
 -- Course final grades indexes
 CREATE INDEX idx_course_final_grades_enrollment_id ON course_final_grades(enrollment_id);
+
+-- Assessment ILO weights indexes
+CREATE INDEX idx_assessment_ilo_weights_assessment_id ON assessment_ilo_weights(assessment_id);
+CREATE INDEX idx_assessment_ilo_weights_ilo_id ON assessment_ilo_weights(ilo_id);
 
 -- Student ILO scores indexes
 CREATE INDEX idx_student_ilo_scores_enrollment_id ON student_ilo_scores(enrollment_id);
@@ -629,27 +692,5 @@ INSERT INTO assessment_templates (template_name, template_type, description, ass
 ON CONFLICT (template_name) DO NOTHING;
 
 -- ==========================================
--- OPTIMIZATION SUMMARY
--- ==========================================
--- REMOVED TABLES:
--- 1. syllabus_ilos (redundant - ILOs now directly linked to syllabi)
--- 2. syllabus_assessment_plans (redundant - assessment framework in syllabi JSONB)
--- 3. assessment_rubrics (redundant - rubrics directly linked to assessments)
--- 4. assessment_ilo_weights (redundant - weights stored in ILOs and assessment framework)
-
--- REMOVED COLUMNS:
--- 1. syllabi: course_id, term_id (redundant - available via section_course_id)
--- 2. assessments: section_course_id (redundant - available via syllabus_id)
--- 3. rubrics: is_template, template_name (redundant - templates handled separately)
--- 4. submissions: adjusted_score (redundant - calculated from raw_score + adjustments)
--- 5. assessments: is_graded (redundant - status field covers this)
-
--- IMPROVED NORMALIZATION:
--- 1. Direct relationships instead of junction tables where appropriate
--- 2. JSONB fields for complex structured data
--- 3. Simplified foreign key relationships
--- 4. Removed duplicate data storage
-
--- ==========================================
--- OPTIMIZED DATABASE SCHEMA COMPLETED
--- ==========================================
+-- DATABASE SCHEMA COMPLETED
+-- ========================================== 
