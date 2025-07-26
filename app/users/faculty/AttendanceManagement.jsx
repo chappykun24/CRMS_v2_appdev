@@ -338,6 +338,16 @@ export default function AttendanceManagementScreen() {
       if (selectedClass && selectedClass.section_course_id) {
         await fetchSessionStats(selectedClass.section_course_id, sessions);
       }
+      
+      // Refresh the student list to show updated attendance status
+      if (currentView === 'sessionDetails' && selectedClass && selectedSession) {
+        try {
+          const updatedStudents = await apiClient.get(`/section-courses/${selectedClass.section_course_id}/sessions/${selectedSession.session_id}/attendance`);
+          setStudents(Array.isArray(updatedStudents) ? updatedStudents : []);
+        } catch (err) {
+          console.error('Error refreshing student list:', err);
+        }
+      }
     } catch (err) {
       console.error('Attendance update error:', err);
       Alert.alert('Error', 'Failed to update attendance');
@@ -475,6 +485,8 @@ export default function AttendanceManagementScreen() {
       case 'present': return '#10B981';
       case 'absent': return '#EF4444';
       case 'late': return '#F59E0B';
+      case 'excuse': return '#6366F1';
+      case 'not-marked': return '#6B7280';
       default: return '#6B7280';
     }
   };
@@ -484,6 +496,8 @@ export default function AttendanceManagementScreen() {
       case 'present': return 'Present';
       case 'absent': return 'Absent';
       case 'late': return 'Late';
+      case 'excuse': return 'Excuse';
+      case 'not-marked': return 'Not Marked';
       default: return 'Not Marked';
     }
   };
@@ -581,6 +595,8 @@ export default function AttendanceManagementScreen() {
 
   const renderStudentAttendanceRow = (student) => {
     const attendanceStatus = student.attendance_status || 'not-marked';
+    const statusColor = getAttendanceColor(attendanceStatus);
+    
     return (
       <TouchableOpacity
         key={student.student_id}
@@ -604,12 +620,30 @@ export default function AttendanceManagementScreen() {
           setShowAttendanceModal(true);
         }}
       >
-        <View>
-          <Text style={{ fontWeight: 'bold' }}>{student.full_name}</Text>
-          <Text>{student.student_number}</Text>
-          <Text style={{ color: attendanceStatus && attendanceStatus !== 'not-marked' ? '#10B981' : '#DC2626', marginTop: 8 }}>
-            {getAttendanceText(attendanceStatus)}
-          </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#222' }}>{student.full_name}</Text>
+            <Text style={{ color: '#666', fontSize: 14, marginTop: 2 }}>{student.student_number}</Text>
+          </View>
+          <View style={{
+            backgroundColor: statusColor + '20', // 20% opacity background
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: statusColor,
+            minWidth: 80,
+            alignItems: 'center'
+          }}>
+            <Text style={{ 
+              color: statusColor, 
+              fontWeight: '600', 
+              fontSize: 12,
+              textTransform: 'uppercase'
+            }}>
+              {getAttendanceText(attendanceStatus)}
+            </Text>
+          </View>
         </View>
       </TouchableOpacity>
     );
