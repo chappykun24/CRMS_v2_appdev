@@ -8,8 +8,14 @@ const pool = new Pool({
   user: process.env.POSTGRES_USER || 'postgres',
   password: process.env.POSTGRES_PASSWORD || 'care0924',
   max: 20,
+  min: 2,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 5000,
+  acquireTimeoutMillis: 10000,
+  reapIntervalMillis: 1000,
+  createTimeoutMillis: 3000,
+  destroyTimeoutMillis: 5000,
+  createRetryIntervalMillis: 200,
 });
 
 module.exports = pool; 

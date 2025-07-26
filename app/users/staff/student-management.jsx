@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Image, LayoutAnimation, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ClickableContainer from '../../../components/ClickableContainer';
 import ModalContainer from '../../../components/ModalContainer';
-import { apiClient, getAPIBaseURL } from '../../../utils/api';
+import { apiClient, getAPIBaseURL, initializeAPI } from '../../../utils/api';
 import { useModal } from '../../../utils/useModal';
 import StaffStudentManagementHeader from '../../components/StaffStudentManagementHeader';
 
@@ -536,14 +536,266 @@ export default function StudentManagement() {
     setSelectedStudentId(selectedStudentId === studentId ? null : studentId);
   };
 
-  const handleAddImage = (studentId) => {
-    Alert.alert(
-      'Add Student Photo',
-      'This feature will be available when image upload functionality is integrated with the database.',
-      [
-        { text: 'OK', style: 'default' }
-      ]
-    );
+  const handleAddImage = async (studentId) => {
+    try {
+      console.log('Starting image picker for student:', studentId);
+      
+      // Request permission first
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log('Permission status:', status);
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Permission to access media library is required to select a photo.');
+        return;
+      }
+      
+      console.log('Launching image picker...');
+      let result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: false,
+        quality: 1,
+        allowsMultipleSelection: false,
+      });
+      
+      console.log('Image picker result:', result);
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        console.log('Image selected:', result.assets[0].uri);
+        await updateStudentPhoto(studentId, result.assets[0].uri);
+      } else {
+        console.log('No image selected or picker was canceled');
+      }
+    } catch (err) {
+      console.error('Image picker error:', err);
+      Alert.alert('Error', `Could not open image picker: ${err.message}`);
+    }
+  };
+
+  const refreshNetworkConnection = async () => {
+    try {
+      console.log('🔄 Refreshing network connection...');
+      
+      // Re-initialize API configuration
+      await initializeAPI();
+      
+      // Test the connection
+      const testResponse = await fetch(`${getAPIBaseURL()}/health`, {
+        method: 'GET',
+        timeout: 5000,
+      });
+      
+      if (testResponse.ok) {
+        console.log('✅ Network connection refreshed successfully');
+        return true;
+      } else {
+        console.log('⚠️ Network test failed, but continuing...');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Network refresh error:', error);
+      return false;
+    }
+  };
+
+  const updateStudentPhoto = async (studentId, photoUri) => {
+    // Validation 1: Check if photoUri exists
+    if (!photoUri) {
+      Alert.alert('Validation Error', 'No photo selected.');
+      return;
+    }
+    
+    // Validation 2: Check file type
+    const uriParts = photoUri.split('.');
+    const fileType = uriParts[uriParts.length - 1].toLowerCase();
+    const allowedTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    
+    if (!allowedTypes.includes(fileType)) {
+      Alert.alert('Validation Error', 'Invalid file type. Please select a JPG, PNG, GIF, or WebP image.');
+      return;
+    }
+    
+    // Validation 3: Check file size (get file info)
+    try {
+      const fileInfo = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('HEAD', photoUri);
+        xhr.onload = () => {
+          const contentLength = xhr.getResponseHeader('Content-Length');
+          resolve({ size: parseInt(contentLength) || 0 });
+        };
+        xhr.onerror = reject;
+        xhr.send();
+      });
+      
+      const maxSize = 5 * 1024 * 1024; // 5MB limit
+      if (fileInfo.size > maxSize) {
+        Alert.alert('Validation Error', 'File size too large. Please select an image smaller than 5MB.');
+        return;
+      }
+    } catch (sizeError) {
+      console.log('Could not check file size, proceeding with upload:', sizeError);
+    }
+    
+    // Validation 4: Check if image is valid (simplified for React Native)
+    // Note: React Native doesn't support new Image() like web browsers
+    // We'll rely on the file type validation and let the server handle image validation
+    console.log('✅ Image validation passed (file type and size checks completed)');
+    
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    while (retryCount < maxRetries) {
+      try {
+        console.log(`🔄 Attempt ${retryCount + 1} of ${maxRetries} - Updating student photo for ID: ${studentId}`);
+        
+        // Refresh network connection before each attempt
+        if (retryCount > 0) {
+          console.log('🔄 Retrying - Refreshing network connection...');
+          await refreshNetworkConnection();
+          // Wait longer between retries to let server recover
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+        
+        // Add delay between uploads to prevent server overload
+        if (retryCount === 0) {
+          console.log('⏳ Adding delay to prevent server overload...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      
+      // Show loading indicator
+      Alert.alert('Uploading...', 'Please wait while the photo is being uploaded.', [], { cancelable: false });
+      
+      // Create FormData for the photo upload
+      const formData = new FormData();
+      formData.append('photo', {
+        uri: photoUri,
+        name: `photo.${fileType}`,
+        type: `image/${fileType}`,
+      });
+      
+      // Test server connection first
+      console.log('🔍 Testing server connection...');
+      try {
+        const testResponse = await fetch(`${getAPIBaseURL()}/health`, {
+          method: 'GET',
+          timeout: 5000,
+        });
+        if (!testResponse.ok) {
+          throw new Error('Server health check failed');
+        }
+        console.log('✅ Server connection test passed');
+      } catch (testError) {
+        console.error('❌ Server connection test failed:', testError);
+        throw new Error('Cannot connect to server. Please check if the server is running.');
+      }
+      
+      // Send the photo to the server
+      console.log('📤 Sending photo to server...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      const response = await fetch(`${getAPIBaseURL()}/students/${studentId}/photo`, {
+        method: 'PUT',
+        body: formData,
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        let errorMessage = 'Failed to update student photo';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+          errorMessage = `Server error (${response.status})`;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      const responseData = await response.json();
+      console.log('Photo updated successfully:', responseData);
+      
+      // Reset connection and wait after successful upload
+      console.log('🔄 Resetting connection after successful upload...');
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Wait 1.5 seconds
+      
+      const networkRefreshed = await refreshNetworkConnection();
+      
+      if (networkRefreshed) {
+        console.log('✅ Network refreshed, fetching updated student list...');
+      } else {
+        console.log('⚠️ Network refresh failed, but continuing with student list update...');
+      }
+      
+      // Refresh the student list to show the updated photo
+      console.log('🔄 Refreshing student list...');
+      try {
+        await fetchStudents();
+        console.log('✅ Student list refreshed successfully');
+      } catch (refreshError) {
+        console.error('❌ Failed to refresh student list:', refreshError);
+        // Try one more time after a short delay
+        setTimeout(async () => {
+          try {
+            await fetchStudents();
+            console.log('✅ Student list refreshed on second attempt');
+          } catch (secondError) {
+            console.error('❌ Second refresh attempt also failed:', secondError);
+          }
+        }, 1000);
+      }
+      
+      // Close the modal if it's open
+      if (viewModalVisible) {
+        closeViewModal();
+      }
+      
+      // Show success message with option to refresh manually
+      Alert.alert(
+        'Success', 
+        'Student photo updated successfully! The list has been refreshed.',
+        [
+          {
+            text: 'Refresh List',
+            onPress: async () => {
+              try {
+                await fetchStudents();
+                console.log('✅ Manual refresh completed');
+              } catch (error) {
+                console.error('❌ Manual refresh failed:', error);
+              }
+            }
+          },
+          { text: 'OK', style: 'default' }
+        ]
+      );
+        return; // Success, exit the retry loop
+        
+      } catch (err) {
+        retryCount++;
+        console.error(`❌ Attempt ${retryCount} failed:`, err);
+        
+        let errorMessage = err.message;
+        if (err.name === 'AbortError') {
+          errorMessage = 'Request timed out. Please try again.';
+        } else if (err.message.includes('Network request failed')) {
+          errorMessage = 'Network connection failed. Please check your internet connection and try again.';
+        }
+        
+        if (retryCount >= maxRetries) {
+          console.error('❌ All retry attempts failed');
+          Alert.alert('Error', `Failed to update student photo after ${maxRetries} attempts: ${errorMessage}`);
+          return;
+        } else {
+          console.log(`🔄 Retrying... (${retryCount}/${maxRetries})`);
+          continue; // Try again
+        }
+      }
+    }
   };
 
   const pickStudentPhoto = async () => {

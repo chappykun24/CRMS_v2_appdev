@@ -124,4 +124,84 @@ router.post('/enroll', async (req, res) => {
   }
 });
 
+// PUT /api/students/:studentId/photo - Update student photo
+router.put('/:studentId/photo', upload.single('photo'), async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    
+    // Server-side validation 1: Check if file exists
+    if (!req.file) {
+      return res.status(400).json({ error: 'No photo file provided.' });
+    }
+    
+    // Server-side validation 2: Check file type
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedMimeTypes.includes(req.file.mimetype)) {
+      return res.status(400).json({ error: 'Invalid file type. Only JPG, PNG, GIF, and WebP images are allowed.' });
+    }
+    
+    // Server-side validation 3: Check file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (req.file.size > maxSize) {
+      return res.status(400).json({ error: 'File size too large. Maximum size is 5MB.' });
+    }
+    
+    // Server-side validation 4: Check if student exists
+    const studentCheck = await pool.query('SELECT student_id FROM students WHERE student_id = $1', [studentId]);
+    if (studentCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Student not found.' });
+    }
+    
+    // Server-side validation 5: Check if file is actually an image
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+      // Basic check: ensure file has image extension
+      const ext = path.extname(req.file.filename).toLowerCase();
+      const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+      if (!allowedExtensions.includes(ext)) {
+        // Remove the uploaded file
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ error: 'Invalid file extension.' });
+      }
+    } catch (validationError) {
+      console.error('File validation error:', validationError);
+      // Remove the uploaded file if validation fails
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ error: 'File validation failed.' });
+    }
+    
+    // Update the student's photo path
+    const student_photo = `/uploads/student_photos/${req.file.filename}`;
+    const result = await pool.query(
+      'UPDATE students SET student_photo = $1, updated_at = CURRENT_TIMESTAMP WHERE student_id = $2 RETURNING *',
+      [student_photo, studentId]
+    );
+    
+    res.json({ 
+      message: 'Student photo updated successfully!', 
+      student: result.rows[0] 
+    });
+  } catch (err) {
+    console.error('Error in PUT /api/students/:studentId/photo:', err.stack || err);
+    
+    // Clean up uploaded file if there's an error
+    if (req.file && req.file.path) {
+      try {
+        const fs = require('fs');
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+      } catch (cleanupError) {
+        console.error('Error cleaning up file:', cleanupError);
+      }
+    }
+    
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+});
+
 module.exports = router; 
