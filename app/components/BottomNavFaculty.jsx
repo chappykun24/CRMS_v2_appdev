@@ -70,7 +70,7 @@ export default function BottomNavFaculty({ activeRoute, onLogout }) {
         left: 0,
         right: 0,
         bottom: 0,
-        height: 80, // Match staff/dean nav bar height
+        height: 60, // Reduced height to match reduced padding
         backgroundColor: '#FFFFFF',
         zIndex: 9,
       }} />
@@ -119,9 +119,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    paddingVertical: 24, // Match staff/dean
+    paddingVertical: 0, // Reduced padding to be closer to phone navigation bar
     paddingHorizontal: 28, // Match staff/dean
-    marginBottom: 20, // Match staff/dean
+    marginBottom: 0, // Reduced margin to be closer to phone navigation bar
     zIndex: 10,
   },
   bottomNavItem: {

@@ -176,7 +176,7 @@ export default function LandingPage() {
     <SafeAreaView style={styles.container}>
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 80 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 }]}
         showsVerticalScrollIndicator={true}
         bounces={true}
         alwaysBounceVertical={true}
@@ -213,7 +213,7 @@ export default function LandingPage() {
           alignItems: 'center',
           marginTop: 0,
           backgroundColor: '#FFFFFF',
-          paddingVertical: 20,
+          paddingVertical: 10,
           marginBottom: 0,
           paddingHorizontal: 20,
         }}>
@@ -318,8 +318,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
-    paddingTop: 20,
+    paddingBottom: 60,
+    paddingTop: 10,
     alignItems: 'center',
     justifyContent: 'flex-start',
     minHeight: '100%',
@@ -327,8 +327,8 @@ const styles = StyleSheet.create({
   photoContainersSection: {
     width: '100%',
     paddingHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 40,
+    marginTop: 10,
+    marginBottom: 20,
   },
   horizontalContainer: {
     flexDirection: 'row',
@@ -338,14 +338,14 @@ const styles = StyleSheet.create({
   // Modern Header
   headerSection: {
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 5,
   },
   headerLogoLarge: {
     width: 80,
     height: 80,
     borderRadius: 40,
     backgroundColor: '#fff',
-    marginBottom: 10,
+    marginBottom: 5,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -370,25 +370,25 @@ const styles = StyleSheet.create({
   featuresSection: {
     width: '100%',
     paddingHorizontal: 20,
-    marginTop: 30,
-    marginBottom: 30,
+    marginTop: 15,
+    marginBottom: 15,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#222',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   featuresList: {
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
-    padding: 20,
+    padding: 15,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 10,
   },
   featureText: {
     fontSize: 14,
@@ -399,14 +399,14 @@ const styles = StyleSheet.create({
   universitySection: {
     width: '100%',
     paddingHorizontal: 20,
-    marginBottom: 40,
+    marginBottom: 20,
   },
   universityDescription: {
     fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 25,
+    marginBottom: 15,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
   },
   scrollTopButton: {
     position: 'absolute',
-    bottom: 140, // Raised higher above the nav bar
+    bottom: 120, // Reduced to be closer to nav bar
     right: 20,
     width: 40,
     height: 40,
@@ -452,13 +452,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
-    marginHorizontal: 8,
+    padding: 8,
+    marginHorizontal: 6,
     backgroundColor: 'white',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    minHeight: 160,
+    minHeight: 140,
   },
   featureCardTitle: {
     fontSize: 14,

@@ -36,9 +36,9 @@ export default function BottomNavDean({ activeRoute, onLogout }) {
     bottom: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingVertical: 24,
+    paddingVertical: 0,
     paddingHorizontal: 28,
-    marginBottom: 20,
+    marginBottom: 0,
     backgroundColor: '#FFFFFF',
     zIndex: 10,
   };
@@ -60,7 +60,7 @@ export default function BottomNavDean({ activeRoute, onLogout }) {
         left: 0,
         right: 0,
         bottom: 0,
-        height: 80, // Adjust as needed to fully cover nav bar and safe area
+        height: 60, // Reduced height to match reduced padding
         backgroundColor: '#FFFFFF',
         zIndex: 9,
       }} />

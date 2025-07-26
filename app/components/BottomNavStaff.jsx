@@ -36,9 +36,9 @@ export default function BottomNavStaff({ activeRoute, onLogout }) {
     bottom: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingVertical: 24, // Lowered from 36
+    paddingVertical: 0, // Reduced padding to be closer to phone navigation bar
     paddingHorizontal: 28,
-    marginBottom: 20, // Lowered from 40
+    marginBottom: 0, // Reduced margin to be closer to phone navigation bar
     backgroundColor: '#FFFFFF',
     zIndex: 10,
   };
@@ -60,7 +60,7 @@ export default function BottomNavStaff({ activeRoute, onLogout }) {
         left: 0,
         right: 0,
         bottom: 0,
-        height: 80, // Adjust as needed to fully cover nav bar and safe area
+        height: 60, // Reduced height to match reduced padding
         backgroundColor: '#FFFFFF',
         zIndex: 9,
       }} />
