@@ -19,6 +19,7 @@ export default function MyClassesScreen() {
   const [approvedClasses, setApprovedClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [studentCounts, setStudentCounts] = useState({});
+  const [sessionCounts, setSessionCounts] = useState({});
   const [isNavigatingAway, setIsNavigatingAway] = useState(false);
 
   React.useEffect(() => {
@@ -28,22 +29,35 @@ export default function MyClassesScreen() {
       .then(async data => {
         const classes = Array.isArray(data) ? data : [];
         setApprovedClasses(classes);
-        // Fetch student counts for each class
-        const counts = {};
+        
+        // Fetch student counts and session counts for each class
+        const studentCounts = {};
+        const sessionCounts = {};
+        
         await Promise.all(classes.map(async (cls) => {
           if (cls.section_course_id) {
             try {
+              // Fetch students
               const students = await apiClient.get(`/section-courses/${cls.section_course_id}/students`);
-              counts[cls.section_course_id] = Array.isArray(students) ? students.length : 0;
-            } catch {
-              counts[cls.section_course_id] = 0;
+              studentCounts[cls.section_course_id] = Array.isArray(students) ? students.length : 0;
+              
+              // Fetch sessions
+              const sessions = await apiClient.get(`/section-courses/${cls.section_course_id}/sessions`);
+              sessionCounts[cls.section_course_id] = Array.isArray(sessions) ? sessions.length : 0;
+            } catch (err) {
+              console.log(`Error fetching data for class ${cls.section_course_id}:`, err);
+              studentCounts[cls.section_course_id] = 0;
+              sessionCounts[cls.section_course_id] = 0;
             }
           }
         }));
-        setStudentCounts(counts);
+        
+        setStudentCounts(studentCounts);
+        setSessionCounts(sessionCounts);
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.log('Error fetching approved classes:', err);
         setApprovedClasses([]);
         setLoading(false);
       });
@@ -65,6 +79,17 @@ export default function MyClassesScreen() {
       (cls.section_code || '').toLowerCase().includes(q)
     );
   });
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   const handleAttendancePress = async (cls) => {
     setIsNavigatingAway(true);
@@ -122,7 +147,9 @@ export default function MyClassesScreen() {
                   </View>
                 </View>
                 <View style={styles.classStats}>
-                  <Text style={styles.classStatsText}>{cls.syllabus_id ? 'Approved Syllabus' : ''}</Text>
+                  <Text style={styles.classStatsText}>
+                    {cls.syllabus_id ? 'Approved Syllabus' : ''} • {sessionCounts[cls.section_course_id] ?? 0} sessions • {studentCounts[cls.section_course_id] ?? 0} students
+                  </Text>
                 </View>
                 <View style={styles.classActions}>
                   <TouchableOpacity 

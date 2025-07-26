@@ -52,6 +52,8 @@ export default function AttendanceManagementScreen() {
   const [showNewSessionDatePicker, setShowNewSessionDatePicker] = useState(false);
   const [newSessionMeetingType, setNewSessionMeetingType] = useState('');
   const [sessions, setSessions] = useState([]);
+  const [sessionStats, setSessionStats] = useState({});
+  const [classStats, setClassStats] = useState({});
   const router = useRouter();
 
   // Fetch sessions for the selected class
@@ -61,9 +63,71 @@ export default function AttendanceManagementScreen() {
       const res = await apiClient.get(`/section-courses/${section_course_id}/sessions`);
       setSessions(Array.isArray(res) ? res : []);
       console.log('Fetched sessions:', res);
+      
+      // Fetch attendance statistics for each session
+      await fetchSessionStats(section_course_id, res);
     } catch (err) {
       setSessions([]);
       console.log('Error fetching sessions:', err);
+    }
+  };
+
+  // Fetch attendance statistics for all sessions
+  const fetchSessionStats = async (section_course_id, sessionsList) => {
+    if (!sessionsList || sessionsList.length === 0) return;
+    
+    try {
+      const statsPromises = sessionsList.map(async (session) => {
+        try {
+          const attendanceRes = await apiClient.get(`/section-courses/${section_course_id}/sessions/${session.session_id}/attendance`);
+          const attendanceData = Array.isArray(attendanceRes) ? attendanceRes : [];
+          
+          const stats = {
+            present: 0,
+            absent: 0,
+            late: 0,
+            excuse: 0,
+            notMarked: 0,
+            total: attendanceData.length
+          };
+          
+          attendanceData.forEach(student => {
+            const status = student.attendance_status || 'not-marked';
+            switch (status) {
+              case 'present':
+                stats.present++;
+                break;
+              case 'absent':
+                stats.absent++;
+                break;
+              case 'late':
+                stats.late++;
+                break;
+              case 'excuse':
+                stats.excuse++;
+                break;
+              default:
+                stats.notMarked++;
+                break;
+            }
+          });
+          
+          return { sessionId: session.session_id, stats };
+        } catch (err) {
+          console.log(`Error fetching stats for session ${session.session_id}:`, err);
+          return { sessionId: session.session_id, stats: { present: 0, absent: 0, late: 0, excuse: 0, notMarked: 0, total: 0 } };
+        }
+      });
+      
+      const statsResults = await Promise.all(statsPromises);
+      const statsObject = {};
+      statsResults.forEach(({ sessionId, stats }) => {
+        statsObject[sessionId] = stats;
+      });
+      
+      setSessionStats(statsObject);
+    } catch (err) {
+      console.log('Error fetching session stats:', err);
     }
   };
 
@@ -94,11 +158,36 @@ export default function AttendanceManagementScreen() {
     if (!currentUser) return;
     setLoading(true);
     apiClient.get(`/syllabus/approved?facultyId=${currentUser.user_id}`)
-      .then(data => {
-        setApprovedClasses(Array.isArray(data) ? data : []);
+      .then(async data => {
+        const classes = Array.isArray(data) ? data : [];
+        setApprovedClasses(classes);
+        
+        // Fetch student and session counts for all classes
+        const stats = {};
+        await Promise.all(classes.map(async (cls) => {
+          if (cls.section_course_id) {
+            try {
+              const [studentsRes, sessionsRes] = await Promise.all([
+                apiClient.get(`/section-courses/${cls.section_course_id}/students`),
+                apiClient.get(`/section-courses/${cls.section_course_id}/sessions`)
+              ]);
+              
+              stats[cls.section_course_id] = {
+                studentCount: Array.isArray(studentsRes) ? studentsRes.length : 0,
+                sessionCount: Array.isArray(sessionsRes) ? sessionsRes.length : 0
+              };
+            } catch (err) {
+              console.log(`Error fetching stats for class ${cls.section_course_id}:`, err);
+              stats[cls.section_course_id] = { studentCount: 0, sessionCount: 0 };
+            }
+          }
+        }));
+        
+        setClassStats(stats);
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.log('Error fetching approved classes:', err);
         setApprovedClasses([]);
         setLoading(false);
       });
@@ -244,8 +333,11 @@ export default function AttendanceManagementScreen() {
       setShowAttendanceModal(false);
       setAttendanceStatus('present');
       setSelectedStudent(null);
-      // Optionally, refresh students list or session data here
-      // await fetchStudents(selectedSession.session_id);
+      
+      // Refresh session statistics to reflect the updated attendance
+      if (selectedClass && selectedClass.section_course_id) {
+        await fetchSessionStats(selectedClass.section_course_id, sessions);
+      }
     } catch (err) {
       console.error('Attendance update error:', err);
       Alert.alert('Error', 'Failed to update attendance');
@@ -288,6 +380,16 @@ export default function AttendanceManagementScreen() {
       const res = await apiClient.post(`/section-courses/${selectedClass.section_course_id}/sessions`, payload);
       console.log('Session creation response:', res);
       await fetchSessions(selectedClass.section_course_id);
+      
+      // Update classStats to reflect the new session
+      setClassStats(prevStats => ({
+        ...prevStats,
+        [selectedClass.section_course_id]: {
+          ...prevStats[selectedClass.section_course_id],
+          sessionCount: (prevStats[selectedClass.section_course_id]?.sessionCount || 0) + 1
+        }
+      }));
+      
       Alert.alert('Success', `New session "${newSessionTitle}" created for ${newSessionDate}`);
       setShowNewSessionModal(false);
       setNewSessionTitle('');
@@ -386,66 +488,96 @@ export default function AttendanceManagementScreen() {
     }
   };
 
-  const renderClassCard = (cls) => (
-    <TouchableOpacity
-      key={cls.id || cls.section_course_id}
-      style={{
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 16,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowOffset: { width: 0, height: 2 },
-        shadowRadius: 4,
-        elevation: 2,
-        borderWidth: 1,
-        borderColor: '#eee',
-      }}
-      onPress={() => handleClassSelect(cls)}
-    >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#DC2626' }}>
-          {cls.course_code && cls.section_code ? `${cls.course_code} - ${cls.section_code}` : '-'}
-        </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 }}>
-          <Ionicons name="people-outline" size={16} color="#DC2626" />
-          <Text style={{ color: '#222', marginLeft: 4, fontSize: 13 }}>{cls.studentCount || (cls.students ? (cls.students || []).length : 0)} students</Text>
-        </View>
-      </View>
-      <Text style={{ color: '#888', marginTop: 8, fontSize: 13 }}>
-        {selectedClass && selectedClass.section_course_id === cls.section_course_id ? sessions.length : 0} sessions
-      </Text>
-    </TouchableOpacity>
-  );
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
-  const renderSessionCard = (session) => (
-    <TouchableOpacity
-      key={session.session_id}
-      style={{
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 16,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowOffset: { width: 0, height: 2 },
-        shadowRadius: 4,
-        elevation: 2,
-        borderWidth: 1,
-        borderColor: '#eee',
-      }}
-      onPress={() => handleSessionSelect(session)}
-    >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <View>
-          <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#222' }}>{session.title}</Text>
-          <Text style={{ color: '#888', marginTop: 2 }}>{session.session_type} {session.meeting_type ? `| ${session.meeting_type}` : ''}</Text>
+  const renderClassCard = (cls) => {
+    // Get student count and session count for this class from classStats
+    const stats = classStats[cls.section_course_id] || { studentCount: 0, sessionCount: 0 };
+    
+    return (
+      <TouchableOpacity
+        key={cls.id || cls.section_course_id}
+        style={{
+          backgroundColor: '#fff',
+          borderRadius: 10,
+          padding: 16,
+          marginBottom: 16,
+          borderWidth: 1,
+          borderColor: '#eee',
+        }}
+        onPress={() => handleClassSelect(cls)}
+      >
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#DC2626' }}>
+            {cls.course_code && cls.section_code ? `${cls.course_code} - ${cls.section_code}` : '-'}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 }}>
+            <Ionicons name="people-outline" size={16} color="#DC2626" />
+            <Text style={{ color: '#222', marginLeft: 4, fontSize: 13 }}>{stats.studentCount} students</Text>
+          </View>
         </View>
-        <Text style={{ color: '#DC2626', fontWeight: 'bold', fontSize: 15 }}>{session.session_date}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+        <Text style={{ color: '#888', marginTop: 8, fontSize: 13 }}>
+          {stats.sessionCount} sessions
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderSessionCard = (session) => {
+    const stats = sessionStats[session.session_id] || { present: 0, absent: 0, late: 0, excuse: 0, notMarked: 0, total: 0 };
+    
+    return (
+      <TouchableOpacity
+        key={session.session_id}
+        style={{
+          backgroundColor: '#fff',
+          borderRadius: 10,
+          padding: 16,
+          marginBottom: 12,
+          borderWidth: 1,
+          borderColor: '#eee',
+        }}
+        onPress={() => handleSessionSelect(session)}
+      >
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#222' }}>{session.title}</Text>
+            <Text style={{ color: '#888', marginTop: 2 }}>{session.session_type} {session.meeting_type ? `| ${session.meeting_type}` : ''}</Text>
+          </View>
+          <Text style={{ color: '#DC2626', fontWeight: 'bold', fontSize: 15 }}>{formatDate(session.session_date)}</Text>
+        </View>
+        
+        {/* Attendance Statistics */}
+        <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981', marginRight: 4 }} />
+            <Text style={{ fontSize: 12, color: '#666' }}>Present: {stats.present}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', marginRight: 4 }} />
+            <Text style={{ fontSize: 12, color: '#666' }}>Absent: {stats.absent}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#F59E0B', marginRight: 4 }} />
+            <Text style={{ fontSize: 12, color: '#666' }}>Late: {stats.late}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#6366F1', marginRight: 4 }} />
+            <Text style={{ fontSize: 12, color: '#666' }}>Excuse: {stats.excuse}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderStudentAttendanceRow = (student) => {
     const attendanceStatus = student.attendance_status || 'not-marked';
