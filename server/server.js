@@ -9,6 +9,7 @@ const syllabusRoutes = require('./routes/syllabus');
 const sectionCoursesRouter = require('./routes/sectionCourses');
 const usersRouter = require('./routes/users');
 const studentsRouter = require('./routes/students');
+const assessmentsRoutes = require('./routes/assessments');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -43,6 +44,11 @@ console.log('After registering /api/users');
 console.log('Before registering /api/students');
 app.use('/api/students', studentsRouter);
 console.log('After registering /api/students');
+
+// Register the assessments router
+console.log('Before registering /api/assessments');
+app.use('/api/assessments', assessmentsRoutes);
+console.log('After registering /api/assessments');
 
 const ALLOWED_IPS = [
   '::1', // IPv6 localhost

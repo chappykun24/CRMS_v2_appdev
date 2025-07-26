@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, LayoutAnimation, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, UIManager, View } from 'react-native';
+import { Alert, LayoutAnimation, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import ClickableContainer from '../../../components/ClickableContainer';
 import ModalContainer from '../../../components/ModalContainer';
 import { apiClient } from '../../../utils/api';
@@ -139,28 +139,13 @@ export default function StudentManagement() {
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [search, setSearch] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState(null);
-  // Add pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [totalStudents, setTotalStudents] = useState(0);
-  const ITEMS_PER_PAGE = 20; // Limit to 20 students per page
   const [isTableView, setIsTableView] = useState(false);
   const [showSearch, setShowSearch] = useState(true);
   // Add validation warning state
   const [showGenderWarning, setShowGenderWarning] = useState(false);
   const { visible: viewModalVisible, selectedItem: selectedStudent, openModal: openViewModal, closeModal: closeViewModal } = useModal();
 
-  // Enable LayoutAnimation on Android
-  useEffect(() => {
-    // Suppress warning if setLayoutAnimationEnabledExperimental is a no-op in the new architecture
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      try {
-        UIManager.setLayoutAnimationEnabledExperimental(true);
-      } catch (e) {
-        // Ignore: This is a no-op in the new architecture
-      }
-    }
-  }, []);
+
 
   useEffect(() => {
     // Only fetch students on mount, skip connection test
@@ -172,6 +157,13 @@ export default function StudentManagement() {
     }
   }, []);
 
+  // Refetch students when view mode changes
+  useEffect(() => {
+    if (students.length > 0) {
+      fetchStudents();
+    }
+  }, [isTableView]);
+
   const testConnection = async () => {
     try {
       // Test if we can list records (even if empty)
@@ -180,32 +172,30 @@ export default function StudentManagement() {
     }
   };
 
-  const fetchStudents = async (page = 1, append = false) => {
+  const fetchStudents = async () => {
     setLoading(true);
-    
     try {
-      // Use API with pagination
-      const offset = (page - 1) * ITEMS_PER_PAGE;
-      const response = await apiClient.get(`/collections/${TABLE_NAME}?limit=${ITEMS_PER_PAGE}&offset=${offset}`);
+      // Load all students at once without pagination
+      const response = await apiClient.get(`/collections/${TABLE_NAME}`);
       
       if (response.documents) {
-        
-        if (append) {
-          setStudents(prev => [...prev, ...response.documents]);
-        } else {
-          setStudents(response.documents);
-        }
-        
-        setTotalStudents(response.total || 0);
-        setHasMore(response.documents.length === ITEMS_PER_PAGE);
-        setCurrentPage(page);
+        // Sort students by last name (surname)
+        const sortedStudents = response.documents.sort((a, b) => {
+          const getLastName = (fullName) => {
+            if (!fullName) return '';
+            const parts = fullName.split(',');
+            return parts[0] ? parts[0].trim() : fullName.trim();
+          };
+          const lastNameA = getLastName(a.full_name);
+          const lastNameB = getLastName(b.full_name);
+          return lastNameA.localeCompare(lastNameB, 'en', { sensitivity: 'base' });
+        });
+        setStudents(sortedStudents);
       } else {
-        if (!append) {
-          setStudents([]);
-        }
-        setHasMore(false);
+        setStudents([]);
       }
     } catch (err) {
+      console.error('Error fetching students:', err);
       Alert.alert('Error', 'Failed to fetch students from database.');
     } finally {
       setLoading(false);
@@ -457,7 +447,23 @@ export default function StudentManagement() {
         student.student_number?.toLowerCase().includes(searchTerm.toLowerCase())
       );
       
-      setSearchResults(filtered);
+      // Sort filtered results by last name
+      const sortedFiltered = filtered.sort((a, b) => {
+        // Extract last name from full_name
+        const getLastName = (fullName) => {
+          if (!fullName) return '';
+          // Split by comma and take the first part (Last, First format)
+          const parts = fullName.split(',');
+          return parts[0] ? parts[0].trim() : fullName.trim();
+        };
+        
+        const lastNameA = getLastName(a.full_name);
+        const lastNameB = getLastName(b.full_name);
+        
+        return lastNameA.localeCompare(lastNameB, 'en', { sensitivity: 'base' });
+      });
+      
+      setSearchResults(sortedFiltered);
     } catch (err) {
       setSearchResults([]);
     } finally {
@@ -501,103 +507,12 @@ export default function StudentManagement() {
     );
   };
 
-  // Pagination functions
-  const totalPages = Math.ceil(totalStudents / ITEMS_PER_PAGE);
 
-  const handlePageChange = (page) => {
-    fetchStudents(page);
-  };
 
-  const handlePreviousPage = () => {
-    if (currentPage > 1) {
-      fetchStudents(currentPage - 1);
-    }
-  };
 
-  const handleNextPage = () => {
-    if (hasMore) {
-      fetchStudents(currentPage + 1);
-    }
-  };
 
-  const renderPagination = () => {
-    if (totalPages <= 1) return null;
 
-    const getVisiblePages = () => {
-      const delta = 2;
-      const range = [];
-      const rangeWithDots = [];
 
-      for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
-        range.push(i);
-      }
-
-      if (currentPage - delta > 2) {
-        rangeWithDots.push(1, '...');
-      } else {
-        rangeWithDots.push(1);
-      }
-
-      rangeWithDots.push(...range);
-
-      if (currentPage + delta < totalPages - 1) {
-        rangeWithDots.push('...', totalPages);
-      } else {
-        rangeWithDots.push(totalPages);
-      }
-
-      return rangeWithDots;
-    };
-
-    return (
-      <View style={styles.paginationContainer}>
-        <TouchableOpacity
-          style={[styles.paginationButton, currentPage === 1 && styles.paginationButtonDisabled]}
-          onPress={handlePreviousPage}
-          disabled={currentPage === 1}
-        >
-          <Ionicons name="arrow-back" size={20} color={currentPage === 1 ? "#9CA3AF" : "#DC2626"} />
-        </TouchableOpacity>
-
-        <View style={styles.paginationNumbers}>
-          {getVisiblePages().map((page, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.paginationNumber,
-                page === currentPage && styles.paginationNumberActive,
-                page === '...' && styles.paginationDots
-              ]}
-              onPress={() => page !== '...' && handlePageChange(page)}
-              disabled={page === '...'}
-            >
-              <Text style={[
-                styles.paginationNumberText,
-                page === currentPage && styles.paginationNumberTextActive
-              ]}>
-                {page}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <TouchableOpacity
-          style={[styles.paginationButton, currentPage === totalPages && styles.paginationButtonDisabled]}
-          onPress={handleNextPage}
-          disabled={currentPage === totalPages}
-        >
-          <Ionicons name="arrow-forward" size={20} color={currentPage === totalPages ? "#9CA3AF" : "#DC2626"} />
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  // Load more students for pagination
-  const loadMoreStudents = () => {
-    if (hasMore && !loading && !search.trim()) {
-      fetchStudents(currentPage + 1, true);
-    }
-  };
 
   const fillRandomStudent = () => {
     const randomStudent = getRandomStudent();
@@ -657,29 +572,46 @@ export default function StudentManagement() {
             )}
           </View>
         ) : isTableView ? (
-          <ScrollView style={styles.tableViewContainer} showsVerticalScrollIndicator={false}>
-            {/* Table Header */}
-            <ScrollView style={styles.tableView} horizontal={true} showsHorizontalScrollIndicator={false}>
-              <View>
-                <View style={styles.tableHeaderRow}>
-                  <Text style={[styles.tableHeaderCell, {width: 140}]}>SR-Code</Text>
-                  <Text style={[styles.tableHeaderCell, {width: 220}]}>Full Name</Text>
-                  <Text style={[styles.tableHeaderCell, {width: 120}]}>Gender</Text>
-                  <Text style={[styles.tableHeaderCell, {width: 320}]}>Email</Text>
-                </View>
-                {filteredStudents.map((s, idx) => (
-                  <View key={s.student_id || idx} style={styles.tableRow}>
-                    <Text style={[styles.tableCell, {width: 140}]}>{s.student_number}</Text>
-                    <Text style={[styles.tableCell, {width: 220}]}>{s.full_name}</Text>
-                    <Text style={[styles.tableCell, {width: 120}]}>{s.gender}</Text>
-                    <Text style={[styles.tableCell, {width: 320}]} numberOfLines={1}>{s.contact_email}</Text>
-                  </View>
-                ))}
+          <ScrollView 
+            style={styles.tableViewOuterContainer}
+            showsVerticalScrollIndicator={true}
+          >
+            <View style={styles.tableViewContainer}>
+              <View style={styles.scrollIndicator}>
+                <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
+                <Text style={styles.scrollIndicatorText}>Scroll to see more</Text>
+                <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
               </View>
-            </ScrollView>
-
-            {/* Pagination Controls */}
-            {!search.trim() && renderPagination()}
+              <ScrollView 
+                style={styles.tableView} 
+                horizontal={true} 
+                showsHorizontalScrollIndicator={true}
+                contentContainerStyle={styles.tableContentContainer}
+              >
+                <View style={styles.tableWrapper}>
+                  {/* Sticky Header */}
+                  <View style={styles.tableHeaderRow}>
+                    <Text style={[styles.tableHeaderCell, {width: 60}]}>#</Text>
+                    <Text style={[styles.tableHeaderCell, {width: 140}]}>SR-Code</Text>
+                    <Text style={[styles.tableHeaderCell, {width: 220}]}>Full Name</Text>
+                    <Text style={[styles.tableHeaderCell, {width: 120}]}>Gender</Text>
+                    <Text style={[styles.tableHeaderCell, {width: 320}]}>Email</Text>
+                  </View>
+                  {/* Scrollable Rows */}
+                  <ScrollView style={{maxHeight: 500}} showsVerticalScrollIndicator={true}>
+                    {filteredStudents.map((s, idx) => (
+                      <View key={s.student_id || idx} style={styles.tableRow}>
+                        <Text style={[styles.tableCell, {width: 60}]}>{idx + 1}</Text>
+                        <Text style={[styles.tableCell, {width: 140}]}>{s.student_number}</Text>
+                        <Text style={[styles.tableCell, {width: 220}]}>{s.full_name}</Text>
+                        <Text style={[styles.tableCell, {width: 120}]}>{s.gender}</Text>
+                        <Text style={[styles.tableCell, {width: 320}]} numberOfLines={1}>{s.contact_email}</Text>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              </ScrollView>
+            </View>
           </ScrollView>
         ) : (
           <ScrollView style={styles.studentList} showsVerticalScrollIndicator={false} contentContainerStyle={styles.studentListContainer}>
@@ -690,6 +622,9 @@ export default function StudentManagement() {
                 onPress={() => openViewModal(s)}
               >
                 <View style={styles.studentHeaderSimple}>
+                  <View style={styles.studentNumberBadge}>
+                    <Text style={styles.studentNumberBadgeText}>{idx + 1}</Text>
+                  </View>
                   <View style={styles.studentInfo}>
                     <Text style={styles.studentName}>{s.full_name}</Text>
                     <Text style={styles.studentNumber}>{s.student_number}</Text>
@@ -697,18 +632,6 @@ export default function StudentManagement() {
                 </View>
               </ClickableContainer>
             ))}
-            {/* Load More Button */}
-            {hasMore && !search.trim() && (
-              <TouchableOpacity 
-                style={styles.loadMoreButton} 
-                onPress={loadMoreStudents}
-                disabled={loading}
-              >
-                <Text style={styles.loadMoreButtonText}>
-                  {loading ? 'Loading...' : 'Load More Students'}
-                </Text>
-              </TouchableOpacity>
-            )}
           </ScrollView>
         )}
       </View>
@@ -1391,23 +1314,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  loadMoreButton: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 16,
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  loadMoreButtonText: {
-    color: '#353A40',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1471,42 +1378,35 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   tableView: {
-    flex: 1,
-    paddingHorizontal: 0,
-    marginHorizontal: 0,
     backgroundColor: '#FFFFFF',
   },
   tableHeaderRow: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 14, // increased vertical padding
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
   tableHeaderCell: {
-    flex: 1,
     fontWeight: 'bold',
     color: '#353A40',
-    fontSize: 16,
-    paddingHorizontal: 16, // increased horizontal padding
+    fontSize: 14,
+    paddingHorizontal: 12,
     textAlign: 'left',
   },
   tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14, // increased vertical padding
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#F3F4F6',
     backgroundColor: '#FFFFFF',
-    minHeight: 48, // ensure minimum row height
+    minHeight: 48,
   },
   tableCell: {
-    flex: 1,
-    fontSize: 15,
+    fontSize: 13,
     color: '#353A40',
-    paddingHorizontal: 16, // increased horizontal padding
+    paddingHorizontal: 12,
     textAlign: 'left',
   },
   warningContainer: {
@@ -1671,68 +1571,66 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
   },
-  // Pagination Styles (matching admin user management)
+  // Table view styles
   tableViewContainer: {
-    flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  paginationContainer: {
+  scrollIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  paginationButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginHorizontal: 4,
-  },
-  paginationButtonDisabled: {
-    opacity: 0.5,
-  },
-  paginationNumbers: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 8,
-  },
-  paginationNumber: {
-    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
-    marginHorizontal: 2,
     backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
-  paginationNumberActive: {
-    backgroundColor: '#DC2626',
-    borderColor: '#DC2626',
+  scrollIndicatorText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginHorizontal: 8,
+    fontStyle: 'italic',
   },
-  paginationDots: {
-    backgroundColor: 'transparent',
-    borderColor: 'transparent',
+  tableContentContainer: {
+    paddingHorizontal: 16, // Add horizontal padding to the content container
   },
-  paginationNumberText: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
+  tableWrapper: {
+    // This wrapper is needed to contain the horizontally scrollable content
+    // and ensure proper layout of the header and rows.
+    // It's not directly used for styling, but for structure.
   },
-  paginationNumberTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
+  tableBodyScroll: {
+    maxHeight: 400, // Set a maximum height for the table body
+    flex: 1,
   },
   studentHeaderSimple: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     paddingVertical: 0,
     marginBottom: 0,
+  },
+  studentNumberBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#DC2626',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  studentNumberBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  tableViewOuterContainer: {
+    backgroundColor: '#FFFFFF',
+    marginBottom: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    maxHeight: 600, // Increased height to show more students
   },
 }); 

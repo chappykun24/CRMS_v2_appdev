@@ -13,6 +13,7 @@ import {
     View
 } from 'react-native';
 import { useUser } from '../../../contexts/UserContext';
+import apiClient from '../../../utils/api';
 import FacultyGradeManagementHeader from '../../components/FacultyGradeManagementHeader';
 
 export default function GradeManagementScreen() {
@@ -34,6 +35,7 @@ export default function GradeManagementScreen() {
   const [classData, setClassData] = useState(null);
   const [assessments, setAssessments] = useState([]);
   const [students, setStudents] = useState([]);
+  const [studentsWithGrades, setStudentsWithGrades] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,8 +45,8 @@ export default function GradeManagementScreen() {
     setLoading(true);
     // Fetch class info (students)
     Promise.all([
-      require('../../../utils/api').default.get(`/section-courses/${section_course_id}/students`),
-      require('../../../utils/api').default.get(`/syllabus/one/${syllabus_id}`)
+      apiClient.get(`/section-courses/${section_course_id}/students`),
+      apiClient.get(`/syllabus/one/${syllabus_id}`)
     ]).then(([studentsRes, syllabusRes]) => {
       setStudents(Array.isArray(studentsRes) ? studentsRes : []);
       setClassData(syllabusRes);
@@ -59,7 +61,8 @@ export default function GradeManagementScreen() {
       });
       setCurrentView('classDetails');
       setLoading(false);
-    }).catch(() => {
+    }).catch((err) => {
+      console.error('Error fetching class data:', err);
       setStudents([]);
       setClassData(null);
       setAssessments([]);
@@ -72,9 +75,6 @@ export default function GradeManagementScreen() {
     router.replace('/');
     return null;
   }
-
-  // Remove mock data, use real data
-  // ... rest of the file remains unchanged, but use students, assessments, and selectedClass from state ...
 
   const handleClassSelect = (cls) => {
     setSelectedClass(cls);
@@ -124,36 +124,99 @@ export default function GradeManagementScreen() {
     setStudentViewMode('card');
   };
 
-  const handleAssessmentSelect = (assessment) => {
+  const handleAssessmentSelect = async (assessment) => {
     setSelectedAssessment(assessment);
     setShowStudentSearch(false);
     setStudentSearchQuery('');
     setStudentViewMode('card');
     setCurrentView('assessmentDetails');
+    
+    // Fetch students with grades for this assessment
+    try {
+      const studentsWithGradesRes = await apiClient.get(`/assessments/${assessment.assessment_id}/students-with-grades`);
+      setStudentsWithGrades(Array.isArray(studentsWithGradesRes) ? studentsWithGradesRes : []);
+    } catch (err) {
+      console.error('Error fetching students with grades:', err);
+      setStudentsWithGrades([]);
+    }
   };
 
   const handleAddGrade = (student) => {
     setSelectedStudent(student);
-    setGradeValue('');
+    setGradeValue(student.total_score ? student.total_score.toString() : '');
     setShowGradeModal(true);
   };
 
-  const handleSaveGrade = () => {
+  const handleSaveGrade = async () => {
     if (!gradeValue.trim()) {
       Alert.alert('Error', 'Please enter a grade value');
       return;
     }
 
     const grade = parseFloat(gradeValue);
-    if (isNaN(grade) || grade < 0 || grade > selectedAssessment.totalPoints) {
-      Alert.alert('Error', `Grade must be between 0 and ${selectedAssessment.totalPoints}`);
+    if (isNaN(grade) || grade < 0 || grade > selectedAssessment.total_points) {
+      Alert.alert('Error', `Grade must be between 0 and ${selectedAssessment.total_points}`);
       return;
     }
 
-    Alert.alert('Success', `Grade ${grade}/${selectedAssessment.totalPoints} saved for ${selectedStudent.name}`);
-    setShowGradeModal(false);
-    setGradeValue('');
-    setSelectedStudent(null);
+    try {
+      // Check if submission exists, if not create one
+      let submissionExists = selectedStudent.submission_id;
+      
+      if (!submissionExists) {
+        // Create a new submission
+        const newSubmission = await apiClient.post(`/assessments/${selectedAssessment.assessment_id}/submissions`, {
+          enrollment_id: selectedStudent.enrollment_id,
+          submission_type: 'manual',
+          submission_data: { manually_graded: true },
+          file_urls: []
+        });
+        submissionExists = newSubmission.submission_id;
+      }
+
+      // Update the submission with the grade
+      await apiClient.put(`/assessments/${selectedAssessment.assessment_id}/submissions/${selectedStudent.enrollment_id}`, {
+        total_score: grade,
+        raw_score: grade,
+        adjusted_score: grade,
+        status: 'graded',
+        graded_by: currentUser.user_id,
+        remarks: `Graded by ${currentUser.full_name}`
+      });
+
+      Alert.alert('Success', `Grade ${grade}/${selectedAssessment.total_points} saved for ${selectedStudent.full_name}`);
+      setShowGradeModal(false);
+      setGradeValue('');
+      setSelectedStudent(null);
+      
+      // Refresh the students with grades list
+      const updatedStudentsWithGrades = await apiClient.get(`/assessments/${selectedAssessment.assessment_id}/students-with-grades`);
+      setStudentsWithGrades(Array.isArray(updatedStudentsWithGrades) ? updatedStudentsWithGrades : []);
+    } catch (err) {
+      console.error('Error saving grade:', err);
+      Alert.alert('Error', 'Failed to save grade. Please try again.');
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getGradeColor = (score, totalPoints) => {
+    if (!score) return '#6B7280'; // Gray for no grade
+    const percentage = (score / totalPoints) * 100;
+    if (percentage >= 90) return '#10B981'; // Green for A
+    if (percentage >= 80) return '#3B82F6'; // Blue for B
+    if (percentage >= 70) return '#F59E0B'; // Yellow for C
+    if (percentage >= 60) return '#F97316'; // Orange for D
+    return '#EF4444'; // Red for F
   };
 
   const filteredAssessments = assessments.filter(assessment =>
@@ -161,9 +224,9 @@ export default function GradeManagementScreen() {
     assessment.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredStudents = students.filter(student =>
-    (student.name || student.full_name || '').toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
-    (student.studentId || student.student_number || '').toLowerCase().includes(studentSearchQuery.toLowerCase())
+  const filteredStudentsWithGrades = studentsWithGrades.filter(student =>
+    (student.full_name || '').toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
+    (student.student_number || '').toLowerCase().includes(studentSearchQuery.toLowerCase())
   );
 
   const renderClassCard = (cls) => (
@@ -179,7 +242,7 @@ export default function GradeManagementScreen() {
         </View>
         <View style={styles.studentCountBadge}>
           <Ionicons name="people-outline" size={16} color="#DC2626" />
-          <Text style={styles.studentCountText}>{cls.studentCount} students</Text>
+          <Text style={styles.studentCountText}>{cls.students.length} students</Text>
         </View>
       </View>
       <View style={styles.classStats}>
@@ -190,8 +253,8 @@ export default function GradeManagementScreen() {
 
   const renderAssessmentCard = (assessment) => (
     <TouchableOpacity
-      key={assessment.id}
-      style={[styles.assessmentCard, selectedAssessment?.id === assessment.id && styles.selectedAssessmentCard]}
+      key={assessment.assessment_id}
+      style={[styles.assessmentCard, selectedAssessment?.assessment_id === assessment.assessment_id && styles.selectedAssessmentCard]}
       onPress={() => handleAssessmentSelect(assessment)}
     >
       <View style={styles.assessmentHeader}>
@@ -200,34 +263,45 @@ export default function GradeManagementScreen() {
           <Text style={styles.assessmentType}>{assessment.type}</Text>
         </View>
       </View>
-      <Text style={styles.assessmentDate}>{assessment.date}</Text>
+      <Text style={styles.assessmentDate}>{formatDate(assessment.due_date)}</Text>
       <View style={styles.assessmentPoints}>
-        <Text style={styles.pointsText}>{assessment.totalPoints} pts</Text>
+        <Text style={styles.pointsText}>{assessment.total_points} pts</Text>
       </View>
     </TouchableOpacity>
   );
 
-  const renderStudentGradeRow = (student) => (
-    <View key={student.id} style={styles.studentGradeRow}>
-      <View style={styles.studentInfo}>
-        <Text style={styles.studentName}>{student.name}</Text>
-        <Text style={styles.studentId}>{student.studentId}</Text>
+  const renderStudentGradeRow = (student) => {
+    const gradeColor = getGradeColor(student.total_score, student.total_points);
+    
+    return (
+      <View key={student.enrollment_id} style={styles.studentGradeRow}>
+        <View style={styles.studentInfo}>
+          <Text style={styles.studentName}>{student.full_name}</Text>
+          <Text style={styles.studentId}>{student.student_number}</Text>
+        </View>
+        <View style={styles.studentGradeInfo}>
+          {student.total_score !== null ? (
+            <TouchableOpacity 
+              style={[styles.gradeDisplay, { borderColor: gradeColor }]}
+              onPress={() => handleAddGrade(student)}
+            >
+              <Text style={[styles.studentScore, { color: gradeColor }]}>
+                {student.total_score}/{student.total_points}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              style={styles.addGradeButton}
+              onPress={() => handleAddGrade(student)}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#DC2626" />
+              <Text style={styles.addGradeText}>Add Grade</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
-      <View style={styles.studentGradeInfo}>
-        {student.score ? (
-          <Text style={styles.studentScore}>{student.score}/{selectedAssessment?.totalPoints}</Text>
-        ) : (
-          <TouchableOpacity 
-            style={styles.addGradeButton}
-            onPress={() => handleAddGrade(student)}
-          >
-            <Ionicons name="add-circle-outline" size={20} color="#DC2626" />
-            <Text style={styles.addGradeText}>Add Grade</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
+    );
+  };
 
   const renderStudentTableView = () => (
     <View style={styles.studentTableContainer}>
@@ -236,18 +310,23 @@ export default function GradeManagementScreen() {
         <Text style={styles.studentTableHeaderCell}>Student ID</Text>
         <Text style={styles.studentTableHeaderCell}>Score</Text>
       </View>
-      {filteredStudents.map((student) => (
-        <View key={student.id} style={styles.studentTableRow}>
-          <Text style={styles.studentTableCell}>{student.name}</Text>
-          <Text style={styles.studentTableCell}>{student.studentId}</Text>
-          <TouchableOpacity 
-            style={styles.studentTableScoreCell}
-            onPress={() => handleAddGrade(student)}
-          >
-            <Text style={styles.studentTableScoreText}>{student.score || '--'}/{selectedAssessment?.totalPoints}</Text>
-          </TouchableOpacity>
-        </View>
-      ))}
+      {filteredStudentsWithGrades.map((student) => {
+        const gradeColor = getGradeColor(student.total_score, student.total_points);
+        return (
+          <View key={student.enrollment_id} style={styles.studentTableRow}>
+            <Text style={styles.studentTableCell}>{student.full_name}</Text>
+            <Text style={styles.studentTableCell}>{student.student_number}</Text>
+            <TouchableOpacity 
+              style={[styles.studentTableScoreCell, { borderColor: gradeColor }]}
+              onPress={() => handleAddGrade(student)}
+            >
+              <Text style={[styles.studentTableScoreText, { color: gradeColor }]}>
+                {student.total_score !== null ? `${student.total_score}/${student.total_points}` : '--'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        );
+      })}
     </View>
   );
 
@@ -304,7 +383,7 @@ export default function GradeManagementScreen() {
             
             {studentViewMode === 'card' ? (
               <ScrollView style={styles.studentsList} showsVerticalScrollIndicator={false} contentContainerStyle={styles.studentsListContainer}>
-                {filteredStudents.map(renderStudentGradeRow)}
+                {filteredStudentsWithGrades.map(renderStudentGradeRow)}
               </ScrollView>
             ) : (
               renderStudentTableView()
@@ -331,10 +410,10 @@ export default function GradeManagementScreen() {
 
             <View style={styles.modalBody}>
               <Text style={styles.modalSubtitle}>
-                {selectedStudent?.name} - {selectedAssessment?.title}
+                {selectedStudent?.full_name} - {selectedAssessment?.title}
               </Text>
               <Text style={styles.modalInfo}>
-                Total Points: {selectedAssessment?.totalPoints}
+                Total Points: {selectedAssessment?.total_points}
               </Text>
               
               <View style={styles.gradeInputContainer}>
@@ -343,10 +422,10 @@ export default function GradeManagementScreen() {
                   style={styles.gradeInput}
                   value={gradeValue}
                   onChangeText={setGradeValue}
-                  placeholder={`0-${selectedAssessment?.totalPoints}`}
+                  placeholder={`0-${selectedAssessment?.total_points}`}
                   keyboardType="numeric"
                 />
-                <Text style={styles.gradeInputSuffix}>/ {selectedAssessment?.totalPoints}</Text>
+                <Text style={styles.gradeInputSuffix}>/ {selectedAssessment?.total_points}</Text>
               </View>
             </View>
 
@@ -540,6 +619,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#DC2626',
+  },
+  gradeDisplay: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    backgroundColor: '#FFFFFF',
   },
   modalOverlay: {
     flex: 1,
