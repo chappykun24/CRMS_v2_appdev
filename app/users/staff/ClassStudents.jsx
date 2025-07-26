@@ -53,30 +53,43 @@ export default function ClassStudents() {
 
   // Table view toggle (reuse isTableView state)
   const renderTableView = () => (
-    <View style={styles.tableViewContainer}>
-      <View style={styles.scrollIndicator}>
-        <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
-        <Text style={styles.scrollIndicatorText}>Scroll to see more</Text>
-        <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
-      </View>
-      <ScrollView style={styles.tableView} horizontal showsHorizontalScrollIndicator>
-        <View>
-          <View style={styles.tableHeaderRow}>
-            <Text style={[styles.tableHeaderCell, { width: 200 }]}>Name</Text>
-            <Text style={[styles.tableHeaderCell, { width: 120 }]}>SR Code</Text>
-            <Text style={[styles.tableHeaderCell, { width: 180 }]}>Enrollment Date</Text>
-            <Text style={[styles.tableHeaderCell, { width: 100 }]}>Status</Text>
-          </View>
-          {filteredStudents.map(student => (
-            <View key={student.enrollment_id} style={styles.tableRow}>
-              <Text style={[styles.tableCell, { width: 200 }]} numberOfLines={1}>{student.full_name || student.name || 'Unnamed Student'}</Text>
-              <Text style={[styles.tableCell, { width: 120 }]}>{student.student_number || 'N/A'}</Text>
-              <Text style={[styles.tableCell, { width: 180 }]}>{student.enrollment_date ? new Date(student.enrollment_date).toLocaleString() : '—'}</Text>
-              <Text style={[styles.tableCell, { width: 100 }]}>{student.status ? student.status.charAt(0).toUpperCase() + student.status.slice(1) : '—'}</Text>
-            </View>
-          ))}
+    <View style={styles.tableViewOuterContainer}>
+      <View style={styles.tableViewContainer}>
+        <View style={styles.scrollIndicator}>
+          <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
+          <Text style={styles.scrollIndicatorText}>Scroll to see more</Text>
+          <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
         </View>
-      </ScrollView>
+        <ScrollView 
+          style={styles.tableView} 
+          horizontal={true} 
+          showsHorizontalScrollIndicator={true}
+          contentContainerStyle={styles.tableContentContainer}
+        >
+          <View style={styles.tableWrapper}>
+            {/* Sticky Header */}
+            <View style={styles.tableHeaderRow}>
+              <Text style={[styles.tableHeaderCell, {width: 60}]}>#</Text>
+              <Text style={[styles.tableHeaderCell, {width: 140}]}>SR Code</Text>
+              <Text style={[styles.tableHeaderCell, {width: 220}]}>Full Name</Text>
+              <Text style={[styles.tableHeaderCell, {width: 180}]}>Enrollment Date</Text>
+              <Text style={[styles.tableHeaderCell, {width: 100}]}>Status</Text>
+            </View>
+            {/* Scrollable Rows */}
+            <ScrollView style={styles.tableRowsContainer} showsVerticalScrollIndicator={true}>
+              {filteredStudents.map((student, idx) => (
+                <View key={student.enrollment_id || idx} style={styles.tableRow}>
+                  <Text style={[styles.tableCell, {width: 60}]}>{idx + 1}</Text>
+                  <Text style={[styles.tableCell, {width: 140}]}>{student.student_number || 'N/A'}</Text>
+                  <Text style={[styles.tableCell, {width: 220}]}>{student.full_name || student.name || 'Unnamed Student'}</Text>
+                  <Text style={[styles.tableCell, {width: 180}]}>{student.enrollment_date ? new Date(student.enrollment_date).toLocaleDateString() : '—'}</Text>
+                  <Text style={[styles.tableCell, {width: 100}]}>{student.status ? student.status.charAt(0).toUpperCase() + student.status.slice(1) : '—'}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </ScrollView>
+      </View>
     </View>
   );
 
@@ -201,9 +214,13 @@ const styles = StyleSheet.create({
   },
   tableView: {
     flex: 1,
-    paddingHorizontal: 0,
-    marginHorizontal: 0,
     backgroundColor: '#FFFFFF',
+  },
+  tableContentContainer: {
+    flex: 1,
+  },
+  tableWrapper: {
+    flex: 1,
   },
   tableHeaderRow: {
     flexDirection: 'row',
@@ -233,5 +250,12 @@ const styles = StyleSheet.create({
     color: '#353A40',
     paddingHorizontal: 12,
     textAlign: 'left',
+  },
+  tableViewOuterContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  tableRowsContainer: {
+    flex: 1,
   },
 }); 

@@ -30,7 +30,9 @@ export default function StaffAcademicRecordsHeader({
           <TouchableOpacity style={styles.toggleButton} onPress={() => setShowSearch((prev) => !prev)}>
             <Ionicons name={showSearch ? 'close-outline' : 'search-outline'} size={20} color="#dc2626" />
           </TouchableOpacity>
-          {/* Remove table view toggle button */}
+          <TouchableOpacity style={styles.toggleButton} onPress={() => setIsTableView(v => !v)}>
+            <Ionicons name={isTableView ? 'grid-outline' : 'list-outline'} size={20} color="#dc2626" />
+          </TouchableOpacity>
           {/* Always show plus button if onAddAssignment is provided */}
           {onAddAssignment && (
             <TouchableOpacity style={styles.addButton} onPress={onAddAssignment}>
