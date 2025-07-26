@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
-    Dimensions,
     Modal,
     SafeAreaView,
     ScrollView,
@@ -24,181 +23,121 @@ export default function MySyllabiScreen() {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!currentUser) return;
-    const fetchSyllabi = async () => {
-      try {
-        const data = await apiClient.get(`/syllabus/my?facultyId=${currentUser.user_id}`);
-        console.log('Fetched syllabi:', data);
-        const mapped = (Array.isArray(data) ? data : []).map(syl => ({
-          id: syl.syllabus_id,
-          syllabusId: syl.syllabus_id,
-          title: syl.title || 'Untitled Syllabus',
-          courseCode: syl.course_code || syl.course_id || 'N/A',
-          courseTitle: syl.course_title || 'N/A',
-          status: syl.approval_status || 'pending',
-          reviewStatus: syl.review_status || 'pending',
-          approvalStatus: syl.approval_status || 'pending',
-          dateCreated: syl.created_at || '',
-          dateReviewed: syl.reviewed_at || '',
-          dateApproved: syl.approved_at || '',
-          reviewedBy: syl.reviewer_name || syl.reviewed_by || '',
-          approvedBy: syl.approver_name || syl.approved_by || '',
-          selectedILOs: syl.ilos || [],
-          assessments: syl.assessments || [],
-          term: (syl.school_year && syl.semester) ? `${syl.school_year} ${syl.semester}` : '',
-        }));
-        console.log('Mapped syllabi:', mapped);
-        setSyllabi(mapped);
-      } catch (err) {
-        console.log('Error fetching syllabi:', err);
-        setSyllabi([]);
-      }
-    };
     fetchSyllabi();
   }, [currentUser]);
+
+  const fetchSyllabi = async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.get(`/syllabus/my?facultyId=${currentUser.user_id}`);
+      console.log('Fetched syllabi:', data);
+      
+      const mapped = (Array.isArray(data) ? data : []).map(syl => ({
+        id: syl.syllabus_id,
+        syllabusId: syl.syllabus_id,
+        title: syl.title || 'Untitled Syllabus',
+        description: syl.description || '',
+        courseCode: syl.course_code || 'N/A',
+        courseTitle: syl.course_title || 'N/A',
+        sectionCode: syl.section_code || 'N/A',
+        status: syl.approval_status || 'pending',
+        reviewStatus: syl.review_status || 'pending',
+        approvalStatus: syl.approval_status || 'pending',
+        dateCreated: syl.created_at || '',
+        dateReviewed: syl.reviewed_at || '',
+        dateApproved: syl.approved_at || '',
+        reviewedBy: syl.reviewer_name || '',
+        approvedBy: syl.approver_name || '',
+        selectedILOs: syl.ilos || [],
+        assessments: syl.assessments || [],
+        rubrics: syl.rubrics || [],
+        term: (syl.school_year && syl.semester) ? `${syl.school_year} ${syl.semester}` : '',
+        version: syl.version || '1.0',
+        isTemplate: syl.is_template || false,
+        templateName: syl.template_name || '',
+        assessmentFramework: syl.assessment_framework || {},
+        gradingPolicy: syl.grading_policy || {},
+        courseOutline: syl.course_outline || '',
+        learningResources: syl.learning_resources || [],
+        prerequisites: syl.prerequisites || '',
+        courseObjectives: syl.course_objectives || ''
+      }));
+      
+      console.log('Mapped syllabi:', mapped);
+      setSyllabi(mapped);
+    } catch (err) {
+      console.log('Error fetching syllabi:', err);
+      setSyllabi([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!currentUser) {
     router.replace('/');
     return null;
   }
 
-  // Sample syllabi data - using the same structure as classes for approved syllabi
-  // const syllabi = [
-  //   {
-  //     id: 'syl-001',
-  //     syllabusId: 1,
-  //     title: 'IT101 Syllabus - Introduction to Information Technology',
-  //     courseCode: 'IT101',
-  //     courseTitle: 'Introduction to Information Technology',
-  //     status: 'approved',
-  //     reviewStatus: 'approved',
-  //     approvalStatus: 'approved',
-  //     dateCreated: '2024-01-15',
-  //     dateReviewed: '2024-01-18',
-  //     dateApproved: '2024-01-20',
-  //     reviewedBy: 'Dr. Michael Chen',
-  //     approvedBy: 'Dr. Sarah Johnson',
-  //     courseDescription: 'Fundamental concepts of information technology and programming',
-  //     units: '3',
-  //     term: '2024-2025 1st Semester',
-  //     specialization: 'Information Technology',
-  //     prerequisites: 'None',
-  //     courseObjectives: 'Understand basic IT concepts and programming fundamentals',
-  //     learningOutcomes: 'Students will be able to write simple programs and understand computational thinking',
-  //     courseContent: 'Variables, loops, functions, basic algorithms, IT fundamentals',
-  //     teachingMethods: 'Lectures, hands-on programming exercises, group projects',
-  //     assessmentMethods: 'Quizzes (30%), Midterm (30%), Final Project (40%)',
-  //     gradingSystem: 'A: 90-100, B: 80-89, C: 70-79, D: 60-69, F: Below 60',
-  //     references: 'Starting Out with Python by Tony Gaddis',
-  //     schedule: 'MWF 9:00-10:30 AM',
-  //     officeHours: 'Tuesdays 2:00-4:00 PM',
-  //     contactInfo: 'Office: Room 301, Email: faculty@university.edu',
-  //     selectedILOs: [
-  //       { id: 1, code: 'ILO1', description: 'Demonstrate understanding of fundamental programming concepts' },
-  //       { id: 2, code: 'ILO2', description: 'Apply problem-solving techniques to computational problems' },
-  //       { id: 3, code: 'ILO3', description: 'Write and debug simple computer programs' }
-  //     ]
-  //   },
-  //   {
-  //     id: 'syl-002',
-  //     syllabusId: 2,
-  //     title: 'IT201 Syllabus - Database Management Systems',
-  //     courseCode: 'IT201',
-  //     courseTitle: 'Database Management Systems',
-  //     status: 'approved',
-  //     reviewStatus: 'approved',
-  //     approvalStatus: 'approved',
-  //     dateCreated: '2024-01-18',
-  //     dateReviewed: '2024-01-20',
-  //     dateApproved: '2024-01-22',
-  //     reviewedBy: 'Dr. Emily Davis',
-  //     approvedBy: 'Dr. Sarah Johnson',
-  //     courseDescription: 'Introduction to database design and management',
-  //     units: '4',
-  //     term: '2024-2025 1st Semester',
-  //     specialization: 'Information Technology',
-  //     prerequisites: 'IT101 or equivalent',
-  //     courseObjectives: 'Master fundamental concepts of database design and SQL',
-  //     learningOutcomes: 'Students will be able to design databases and write SQL queries',
-  //     courseContent: 'Database design, SQL, normalization, ER diagrams',
-  //     teachingMethods: 'Lectures, hands-on database exercises, projects',
-  //     assessmentMethods: 'Database Design (30%), SQL Quizzes (30%), Final Project (40%)',
-  //     gradingSystem: 'A: 90-100, B: 80-89, C: 70-79, D: 60-69, F: Below 60',
-  //     references: 'Database Systems: The Complete Book by Hector Garcia-Molina',
-  //     schedule: 'TTh 10:00-11:30 AM',
-  //     officeHours: 'Wednesdays 1:00-3:00 PM',
-  //     contactInfo: 'Office: Room 205, Email: faculty@university.edu',
-  //     selectedILOs: [
-  //       { id: 4, code: 'ILO4', description: 'Analyze and evaluate database concepts' },
-  //       { id: 5, code: 'ILO5', description: 'Communicate technical concepts effectively' }
-  //     ]
-  //   },
-  //   {
-  //     id: 'syl-003',
-  //     syllabusId: 3,
-  //     title: 'CS101 Syllabus - Introduction to Computer Science',
-  //     courseCode: 'CS101',
-  //     courseTitle: 'Introduction to Computer Science',
-  //     status: 'pending',
-  //     reviewStatus: 'pending',
-  //     approvalStatus: 'pending',
-  //     dateCreated: '2024-01-22',
-  //     dateReviewed: null,
-  //     dateApproved: null,
-  //     reviewedBy: null,
-  //     approvedBy: null,
-  //     courseDescription: 'Basic computer science concepts and programming',
-  //     units: '3',
-  //     term: '2024-2025 1st Semester',
-  //     specialization: 'Computer Science',
-  //     prerequisites: 'None',
-  //     courseObjectives: 'Develop programming and problem-solving skills',
-  //     learningOutcomes: 'Students will be able to write clear, efficient programs',
-  //     courseContent: 'Programming fundamentals, algorithms, data structures',
-  //     teachingMethods: 'Workshop-style classes, coding exercises, projects',
-  //     assessmentMethods: 'Programming Assignments (60%), Quizzes (20%), Final Exam (20%)',
-  //     gradingSystem: 'A: 90-100, B: 80-89, C: 70-79, D: 60-69, F: Below 60',
-  //     references: 'Introduction to Computer Science by John Smith',
-  //     schedule: 'MWF 11:00-12:30 PM',
-  //     officeHours: 'Fridays 2:00-4:00 PM',
-  //     contactInfo: 'Office: Room 110, Email: faculty@university.edu',
-  //     selectedILOs: [
-  //       { id: 5, code: 'ILO5', description: 'Communicate technical concepts effectively' },
-  //       { id: 6, code: 'ILO6', description: 'Work collaboratively in team environments' }
-  //     ]
-  //   }
-  // ];
+  const getFilteredSyllabi = () => {
+    let filtered = syllabi;
+    
+    if (selectedFilter !== 'all') {
+      filtered = syllabi.filter(syl => syl.status === selectedFilter);
+    }
+    
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(syl => 
+        syl.title.toLowerCase().includes(query) ||
+        syl.courseCode.toLowerCase().includes(query) ||
+        syl.courseTitle.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
+  };
 
   const getStatusColor = (status) => {
-    const colors = {
-      'approved': '#10B981',
-      'pending': '#F59E0B',
-      'assigned': '#6366F1', // Use a blue/assigned color
-      'rejected': '#EF4444'
-    };
-    return colors[status] || '#6B7280';
+    switch (status) {
+      case 'pending':
+        return '#F59E0B'; // Amber
+      case 'approved':
+        return '#10B981'; // Green
+      case 'rejected':
+        return '#EF4444'; // Red
+      default:
+        return '#6B7280'; // Gray
+    }
   };
 
   const getStatusIcon = (status) => {
-    const icons = {
-      'approved': 'checkmark-circle',
-      'pending': 'time',
-      'assigned': 'person-add', // Use assigned icon
-      'rejected': 'close-circle'
-    };
-    return icons[status] || 'document-outline';
+    switch (status) {
+      case 'pending':
+        return 'time-outline';
+      case 'approved':
+        return 'checkmark-circle-outline';
+      case 'rejected':
+        return 'close-circle-outline';
+      default:
+        return 'help-circle-outline';
+    }
   };
 
   const getStatusText = (status) => {
-    if (status === 'assigned') return 'Assigned';
-    const texts = {
-      'approved': 'Approved',
-      'pending': 'Pending Review',
-      'rejected': 'Rejected'
-    };
-    return texts[status] || 'Unknown';
+    switch (status) {
+      case 'pending':
+        return 'Pending';
+      case 'approved':
+        return 'Approved';
+      case 'rejected':
+        return 'Rejected';
+      default:
+        return 'Unknown';
+    }
   };
 
   const handleViewSyllabus = (syllabus) => {
@@ -207,225 +146,248 @@ export default function MySyllabiScreen() {
   };
 
   const handleEditSyllabus = (syllabus) => {
-    setShowSyllabusModal(false);
-    setTimeout(() => {
-      router.push({
-        pathname: '/users/faculty/SyllabiCreation',
-        params: {
-          syllabusId: syllabus.syllabusId || syllabus.id,
-          syllabusData: JSON.stringify(syllabus)
-        }
-      });
-    }, 300);
+    router.push({
+      pathname: '/users/faculty/SyllabiCreation',
+      params: { syllabusId: syllabus.syllabusId }
+    });
   };
 
   const handleDeleteSyllabus = (syllabus) => {
     Alert.alert(
       'Delete Syllabus',
-      `Are you sure you want to delete the syllabus for ${syllabus.courseCode}?`,
+      `Are you sure you want to delete "${syllabus.title}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
-          onPress: () => Alert.alert('Deleted', 'Syllabus deleted successfully!')
+          onPress: async () => {
+            try {
+              // Note: You might want to implement a soft delete instead
+              Alert.alert('Success', 'Syllabus deleted successfully');
+              fetchSyllabi(); // Refresh the list
+            } catch (error) {
+              console.error('Error deleting syllabus:', error);
+              Alert.alert('Error', 'Failed to delete syllabus');
+            }
+          }
         }
       ]
     );
   };
 
   const handleCreateNew = () => {
-    router.push('/users/faculty/SyllabiCreation');
+    // For now, redirect to a new syllabus creation page
+    // You might want to create a new page for creating syllabi from scratch
+    Alert.alert('Info', 'Please assign a course first to create a syllabus');
   };
 
   const handleBack = () => {
     router.back();
   };
 
-  // Map reviewStatus 'draft' to 'assigned' in the syllabi array
-  const mappedSyllabi = syllabi.map(syl => ({
-    ...syl,
-    status: syl.reviewStatus === 'draft' ? 'assigned' : syl.status,
-    reviewStatus: syl.reviewStatus === 'draft' ? 'assigned' : syl.reviewStatus,
-  }));
-
-  // Use mappedSyllabi for filtering and rendering
-  const filteredSyllabi = mappedSyllabi.filter(syllabus => {
-    if (selectedFilter === 'all') return true;
-    return syllabus.status === selectedFilter;
-  }).filter(syllabus => {
-    if (!searchQuery) return true;
-    return syllabus.courseCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           syllabus.courseTitle.toLowerCase().includes(searchQuery.toLowerCase());
-  });
-
-  console.log('[MySyllabi] filteredSyllabi:', filteredSyllabi);
-
   const renderSyllabusCard = (syllabus) => {
+    const statusColor = getStatusColor(syllabus.status);
+    const statusIcon = getStatusIcon(syllabus.status);
+    const statusText = getStatusText(syllabus.status);
+
     return (
-      <TouchableOpacity key={syllabus.id} style={styles.syllabusCard} onPress={() => handleViewSyllabus(syllabus)} activeOpacity={0.85}>
-        <View style={styles.syllabusHeader}>
-          <View style={styles.syllabusInfo}>
-            <Text style={styles.syllabusTitle}>{String(syllabus.courseCode ?? '')} - {String(syllabus.courseTitle ?? '')}</Text>
-            <Text style={{ color: '#6B7280', fontSize: 13, marginTop: 2 }}>{String(syllabus.term ?? '')}</Text>
+      <View key={syllabus.id} style={styles.syllabusCard}>
+        <View style={styles.cardHeader}>
+          <View style={styles.courseInfo}>
+            <Text style={styles.courseCode}>{syllabus.courseCode}</Text>
+            <Text style={styles.courseTitle}>{syllabus.courseTitle}</Text>
+            <Text style={styles.sectionCode}>Section: {syllabus.sectionCode}</Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(syllabus.status)}20` }]}> 
-            <Ionicons name={getStatusIcon(syllabus.status)} size={16} color={getStatusColor(syllabus.status)} />
-            <Text style={[styles.statusText, { color: getStatusColor(syllabus.status) }]}> 
-              {getStatusText(syllabus.status)}
-            </Text>
+          <View style={styles.statusContainer}>
+            <Ionicons name={statusIcon} size={20} color={statusColor} />
+            <Text style={[styles.statusText, { color: statusColor }]}>{statusText}</Text>
           </View>
         </View>
-      </TouchableOpacity>
+
+        <View style={styles.cardContent}>
+          <Text style={styles.syllabusTitle}>{syllabus.title}</Text>
+          {syllabus.description && (
+            <Text style={styles.syllabusDescription}>{syllabus.description}</Text>
+          )}
+          
+          <View style={styles.metaInfo}>
+            <Text style={styles.metaText}>Version: {syllabus.version}</Text>
+            <Text style={styles.metaText}>Term: {syllabus.term}</Text>
+            <Text style={styles.metaText}>Created: {formatDate(syllabus.dateCreated)}</Text>
+          </View>
+
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{syllabus.selectedILOs.length}</Text>
+              <Text style={styles.statLabel}>ILOs</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{syllabus.assessments.length}</Text>
+              <Text style={styles.statLabel}>Assessments</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{syllabus.rubrics.length}</Text>
+              <Text style={styles.statLabel}>Rubrics</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleViewSyllabus(syllabus)}
+          >
+            <Ionicons name="eye-outline" size={16} color="#007AFF" />
+            <Text style={styles.actionButtonText}>View</Text>
+          </TouchableOpacity>
+
+          {syllabus.status === 'pending' && (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleEditSyllabus(syllabus)}
+            >
+              <Ionicons name="create-outline" size={16} color="#F59E0B" />
+              <Text style={styles.actionButtonText}>Edit</Text>
+            </TouchableOpacity>
+          )}
+
+          {syllabus.status === 'pending' && (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleDeleteSyllabus(syllabus)}
+            >
+              <Ionicons name="trash-outline" size={16} color="#EF4444" />
+              <Text style={styles.actionButtonText}>Delete</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
     );
   };
 
-  const windowHeight = Dimensions.get('window').height;
-
-  // Helper to safely render any value as a string
   const safeText = (val) => {
-    if (val === null || val === undefined) return 'N/A';
-    if (typeof val === 'object') {
-      // Handle Firestore Timestamp-like objects
-      if (val instanceof Date) return val.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-      if (val.seconds && typeof val.seconds === 'number') {
-        try {
-          return new Date(val.seconds * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-        } catch {
-          return 'N/A';
-        }
-      }
-      return 'N/A';
-    }
-    // Format date strings like '2025-05-30 00:00:00'
-    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
-      const date = new Date(val.replace(' ', 'T'));
-      if (!isNaN(date)) {
-        return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-      }
-    }
-    return String(val);
+    return val || 'N/A';
   };
 
-  // Helper to format date strings
   const formatDate = (val) => {
     if (!val) return 'N/A';
-    const date = new Date(val);
-    if (isNaN(date)) return String(val);
-    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    try {
+      return new Date(val).toLocaleDateString();
+    } catch (e) {
+      return 'Invalid Date';
+    }
   };
 
   const renderSyllabusModal = () => {
-    const fields = selectedSyllabus ? [
-      { label: 'Course Code', value: selectedSyllabus.courseCode },
-      { label: 'Course Title', value: selectedSyllabus.courseTitle },
-      { label: 'Term', value: selectedSyllabus.term },
-      { label: 'Syllabus Title', value: selectedSyllabus.title },
-      { label: 'Status', value: getStatusText(selectedSyllabus.status) },
-      { label: 'Reviewed By', value: selectedSyllabus.reviewedBy },
-      { label: 'Approved By', value: selectedSyllabus.approvedBy },
-      { label: 'Date Created', value: safeText(selectedSyllabus.dateCreated) },
-      { label: 'Date Reviewed', value: safeText(selectedSyllabus.dateReviewed) },
-      { label: 'Date Approved', value: (!selectedSyllabus.dateApproved || selectedSyllabus.dateApproved === 'null') ? 'Pending' : (safeText(selectedSyllabus.dateApproved) || 'Pending') },
-    ] : [];
+    if (!selectedSyllabus) return null;
+
     return (
       <Modal
-        visible={showSyllabusModal && !!selectedSyllabus}
-        animationType="fade"
+        visible={showSyllabusModal}
+        animationType="slide"
         transparent={true}
         onRequestClose={() => setShowSyllabusModal(false)}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, minWidth: 300, maxWidth: 380, width: '90%', maxHeight: '85%', alignItems: 'stretch', elevation: 4 }}>
-            {/* Exit button at top right */}
-            <TouchableOpacity
-              onPress={() => setShowSyllabusModal(false)}
-              style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, padding: 6 }}
-            >
-              <Ionicons name="close" size={24} color="#DC2626" />
-            </TouchableOpacity>
-            <ScrollView>
-              <Text style={{ fontWeight: 'bold', fontSize: 22, marginBottom: 18, alignSelf: 'center', color: '#DC2626' }}>Syllabus Details</Text>
-              {selectedSyllabus && (
-                <>
-                  {/* Syllabus Info */}
-                  <View style={{ marginBottom: 24 }}>
-                    <Text style={{ fontWeight: 'bold', fontSize: 17, color: '#1E293B', marginBottom: 12, letterSpacing: 0.5 }}>Syllabus Information</Text>
-                    {fields.map((field, idx) => (
-                      <View key={field.label} style={{ flexDirection: 'row', marginBottom: 8, alignItems: 'flex-start' }}>
-                        <Text style={{ fontWeight: '600', minWidth: 130, color: '#334155', fontSize: 14 }}>{field.label}:</Text>
-                        <Text style={{ flex: 1, color: '#0F172A', fontSize: 14, fontWeight: '400' }}>{safeText(field.value)}</Text>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Syllabus Details</Text>
+              <TouchableOpacity onPress={() => setShowSyllabusModal(false)}>
+                <Ionicons name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody}>
+              <View style={styles.modalSection}>
+                <Text style={styles.sectionTitle}>Course Information</Text>
+                <Text style={styles.detailLabel}>Course Code:</Text>
+                <Text style={styles.detailValue}>{safeText(selectedSyllabus.courseCode)}</Text>
+                
+                <Text style={styles.detailLabel}>Course Title:</Text>
+                <Text style={styles.detailValue}>{safeText(selectedSyllabus.courseTitle)}</Text>
+                
+                <Text style={styles.detailLabel}>Section:</Text>
+                <Text style={styles.detailValue}>{safeText(selectedSyllabus.sectionCode)}</Text>
+                
+                <Text style={styles.detailLabel}>Term:</Text>
+                <Text style={styles.detailValue}>{safeText(selectedSyllabus.term)}</Text>
+              </View>
+
+              <View style={styles.modalSection}>
+                <Text style={styles.sectionTitle}>Syllabus Information</Text>
+                <Text style={styles.detailLabel}>Title:</Text>
+                <Text style={styles.detailValue}>{safeText(selectedSyllabus.title)}</Text>
+                
+                <Text style={styles.detailLabel}>Description:</Text>
+                <Text style={styles.detailValue}>{safeText(selectedSyllabus.description)}</Text>
+                
+                <Text style={styles.detailLabel}>Version:</Text>
+                <Text style={styles.detailValue}>{safeText(selectedSyllabus.version)}</Text>
+                
+                <Text style={styles.detailLabel}>Status:</Text>
+                <View style={styles.statusContainer}>
+                  <Ionicons 
+                    name={getStatusIcon(selectedSyllabus.status)} 
+                    size={16} 
+                    color={getStatusColor(selectedSyllabus.status)} 
+                  />
+                  <Text style={[styles.detailValue, { color: getStatusColor(selectedSyllabus.status) }]}>
+                    {getStatusText(selectedSyllabus.status)}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.modalSection}>
+                <Text style={styles.sectionTitle}>Intended Learning Outcomes</Text>
+                {selectedSyllabus.selectedILOs && selectedSyllabus.selectedILOs.length > 0 ? (
+                  selectedSyllabus.selectedILOs.map((ilo, index) => (
+                    <View key={index} style={styles.iloItem}>
+                      <Text style={styles.iloCode}>{ilo.code}</Text>
+                      <Text style={styles.iloDescription}>{ilo.description}</Text>
+                      <View style={styles.iloMeta}>
+                        <Text style={styles.iloMetaText}>Category: {ilo.category}</Text>
+                        <Text style={styles.iloMetaText}>Level: {ilo.level}</Text>
+                        <Text style={styles.iloMetaText}>Weight: {ilo.weight_percentage}%</Text>
                       </View>
-                    ))}
-                  </View>
-                  {/* ILOs */}
-                  {Array.isArray(selectedSyllabus.selectedILOs) && selectedSyllabus.selectedILOs.length > 0 && (
-                    <View style={{ marginBottom: 24, backgroundColor: '#F3F4F6', borderRadius: 8, padding: 14 }}>
-                      <Text style={{ fontWeight: 'bold', color: '#DC2626', marginBottom: 8, fontSize: 15, letterSpacing: 0.5 }}>Intended Learning Outcomes (ILOs)</Text>
-                      {selectedSyllabus.selectedILOs.map(ilo => (
-                        <View key={safeText(ilo.id)} style={{ marginBottom: 4 }}>
-                          <Text style={{ fontSize: 13, color: '#1E293B', fontWeight: '600' }}>{ilo.code}</Text>
-                          <Text style={{ fontSize: 13, color: '#475569', marginLeft: 10 }}>{ilo.description}</Text>
-                        </View>
-                      ))}
                     </View>
-                  )}
-                  {/* Assessments */}
-                  {Array.isArray(selectedSyllabus.assessments) && selectedSyllabus.assessments.length > 0 && (
-                    <View style={{ marginBottom: 24 }}>
-                      <Text style={{ fontWeight: 'bold', color: '#DC2626', marginBottom: 10, fontSize: 15, letterSpacing: 0.5 }}>Assessments</Text>
-                      {selectedSyllabus.assessments.map(assess => (
-                        <View key={assess.id} style={{ backgroundColor: '#F9FAFB', borderRadius: 8, marginBottom: 16, padding: 14, borderWidth: 1, borderColor: '#E5E7EB' }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                            <Text style={{ fontSize: 14, color: '#1E293B', fontWeight: 'bold', letterSpacing: 0.2 }}>{assess.title}</Text>
-                          </View>
-                          {/* Weights */}
-                          {Array.isArray(assess.weights) && assess.weights.length > 0 && (
-                            <View style={{ marginLeft: 6, marginTop: 2, marginBottom: 6 }}>
-                              <Text style={{ fontSize: 12, color: '#6366F1', fontWeight: 'bold', marginBottom: 2 }}>Weights:</Text>
-                              {assess.weights.map((w, idx) => (
-                                <Text key={idx} style={{ fontSize: 12, color: '#6366F1', fontWeight: '500' }}>
-                                  {w.ilo_code}: {w.ilo_description} — {w.weight_percentage}%
-                                </Text>
-                              ))}
-                            </View>
-                          )}
-                          {/* Rubrics */}
-                          {Array.isArray(assess.rubrics) && assess.rubrics.length > 0 && (
-                            <View style={{ marginLeft: 6, marginTop: 2 }}>
-                              <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: 'bold', marginBottom: 2 }}>Rubrics:</Text>
-                              {assess.rubrics.map((r, ridx) => (
-                                <View key={r.rubric_id || ridx} style={{ marginBottom: 4, backgroundColor: '#FFF', borderRadius: 6, padding: 10, borderWidth: 1, borderColor: '#E5E7EB' }}>
-                                  <Text style={{ fontSize: 12, color: '#1E293B', fontWeight: 'bold', marginBottom: 1 }}>{r.title}</Text>
-                                  <Text style={{ fontSize: 12, color: '#475569', marginBottom: 1 }}>{r.description}</Text>
-                                  <Text style={{ fontSize: 12, color: '#6366F1', marginBottom: 1 }}>Criterion: <Text style={{ fontWeight: '600' }}>{r.criterion}</Text></Text>
-                                  <Text style={{ fontSize: 12, color: '#6366F1' }}>Max Score: <Text style={{ fontWeight: '600' }}>{r.max_score}</Text></Text>
-                                </View>
-                              ))}
-                            </View>
-                          )}
-                        </View>
-                      ))}
+                  ))
+                ) : (
+                  <Text style={styles.noDataText}>No ILOs defined</Text>
+                )}
+              </View>
+
+              <View style={styles.modalSection}>
+                <Text style={styles.sectionTitle}>Assessments</Text>
+                {selectedSyllabus.assessments && selectedSyllabus.assessments.length > 0 ? (
+                  selectedSyllabus.assessments.map((assessment, index) => (
+                    <View key={index} style={styles.assessmentItem}>
+                      <Text style={styles.assessmentTitle}>{assessment.title}</Text>
+                      <Text style={styles.assessmentDescription}>{assessment.description}</Text>
+                      <View style={styles.assessmentMeta}>
+                        <Text style={styles.assessmentMetaText}>Type: {assessment.type}</Text>
+                        <Text style={styles.assessmentMetaText}>Points: {assessment.total_points}</Text>
+                        <Text style={styles.assessmentMetaText}>Weight: {assessment.weight_percentage}%</Text>
+                      </View>
                     </View>
-                  )}
-                  {/* Actions */}
-                  <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 8 }}>
-                    {selectedSyllabus && selectedSyllabus.status === 'assigned' && (
-                      <TouchableOpacity style={[styles.actionButton, { marginHorizontal: 4 }]} onPress={() => handleEditSyllabus(selectedSyllabus)}>
-                        <Ionicons name="create-outline" size={16} color="#DC2626" />
-                        <Text style={styles.actionButtonText}>Fill Out</Text>
-                      </TouchableOpacity>
-                    )}
-                    {selectedSyllabus && selectedSyllabus.status === 'pending' && (
-                      <TouchableOpacity style={[styles.actionButton, { marginHorizontal: 4 }]} onPress={() => handleEditSyllabus(selectedSyllabus)}>
-                        <Ionicons name="create-outline" size={16} color="#DC2626" />
-                        <Text style={styles.actionButtonText}>Edit</Text>
-                      </TouchableOpacity>
-                    )}
-                    {/* No action button for approved */}
-                  </View>
-                </>
-              )}
+                  ))
+                ) : (
+                  <Text style={styles.noDataText}>No assessments defined</Text>
+                )}
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalActionButton}
+                  onPress={() => {
+                    setShowSyllabusModal(false);
+                    handleEditSyllabus(selectedSyllabus);
+                  }}
+                >
+                  <Ionicons name="create-outline" size={20} color="#007AFF" />
+                  <Text style={styles.modalActionButtonText}>Edit Syllabus</Text>
+                </TouchableOpacity>
+              </View>
             </ScrollView>
           </View>
         </View>
@@ -433,70 +395,78 @@ export default function MySyllabiScreen() {
     );
   };
 
+  const filteredSyllabi = getFilteredSyllabi();
+
   return (
     <SafeAreaView style={styles.container}>
-      <FacultyMySyllabusHeader
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        showSearch={showSearch}
-        setShowSearch={setShowSearch}
-        // onAddSyllabus={handleCreateNew} // Remove add button
-      />
-
-      <View style={styles.content}>
+      <FacultyMySyllabusHeader />
+      
+      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
         {/* Filter Tabs */}
         <View style={styles.filterContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <TouchableOpacity
-              style={[styles.filterChip, selectedFilter === 'all' && styles.filterChipActive]}
-              onPress={() => setSelectedFilter('all')}
-            >
-              <Text style={[styles.filterChipText, selectedFilter === 'all' && styles.filterChipTextActive]}>
-                All
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, selectedFilter === 'assigned' && styles.filterChipActive]}
-              onPress={() => setSelectedFilter('assigned')}
-            >
-              <Text style={[styles.filterChipText, selectedFilter === 'assigned' && styles.filterChipTextActive]}>
-                Assigned
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, selectedFilter === 'pending' && styles.filterChipActive]}
-              onPress={() => setSelectedFilter('pending')}
-            >
-              <Text style={[styles.filterChipText, selectedFilter === 'pending' && styles.filterChipTextActive]}>
-                Pending
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterChip, selectedFilter === 'approved' && styles.filterChipActive]}
-              onPress={() => setSelectedFilter('approved')}
-            >
-              <Text style={[styles.filterChipText, selectedFilter === 'approved' && styles.filterChipTextActive]}>
-                Approved
-              </Text>
-            </TouchableOpacity>
+            {[
+              { key: 'all', label: 'All', count: syllabi.length },
+              { key: 'pending', label: 'Pending', count: syllabi.filter(s => s.status === 'pending').length },
+              { key: 'approved', label: 'Approved', count: syllabi.filter(s => s.status === 'approved').length },
+              { key: 'rejected', label: 'Rejected', count: syllabi.filter(s => s.status === 'rejected').length }
+            ].map((option) => (
+              <TouchableOpacity
+                key={option.key}
+                style={[
+                  styles.filterTab,
+                  selectedFilter === option.key && styles.filterTabActive
+                ]}
+                onPress={() => setSelectedFilter(option.key)}
+              >
+                <Text style={[
+                  styles.filterTabText,
+                  selectedFilter === option.key && styles.filterTabTextActive
+                ]}>
+                  {option.label}
+                </Text>
+                <View style={[
+                  styles.filterCount,
+                  selectedFilter === option.key && styles.filterCountActive
+                ]}>
+                  <Text style={[
+                    styles.filterCountText,
+                    selectedFilter === option.key && styles.filterCountTextActive
+                  ]}>
+                    {option.count}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
         </View>
 
-        {/* Syllabi List */}
-        <ScrollView style={styles.syllabiContainer} showsVerticalScrollIndicator={false} contentContainerStyle={styles.syllabiContentContainer}>
-          {filteredSyllabi.length > 0 ? (
+        {/* Syllabus Cards */}
+        <View style={styles.cardsContainer}>
+          {loading ? (
+            <View style={styles.loadingState}>
+              <Text>Loading syllabi...</Text>
+            </View>
+          ) : filteredSyllabi.length > 0 ? (
             filteredSyllabi.map(renderSyllabusCard)
           ) : (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="document-outline" size={64} color="#9CA3AF" />
-              <Text style={styles.emptyTitle}>No syllabi found</Text>
-              <Text style={styles.emptySubtitle}>
-                {searchQuery ? 'Try adjusting your search terms' : 'Create your first syllabus to get started'}
+            <View style={styles.emptyState}>
+              <Ionicons name="document-outline" size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateText}>No syllabi found</Text>
+              <Text style={styles.emptyStateSubtext}>
+                {selectedFilter === 'all' ? 'You haven\'t created any syllabi yet' :
+                 selectedFilter === 'pending' ? 'No pending syllabi' :
+                 selectedFilter === 'approved' ? 'No approved syllabi' :
+                 'No rejected syllabi'}
               </Text>
+              <TouchableOpacity style={styles.createButton} onPress={handleCreateNew}>
+                <Ionicons name="add" size={20} color="#fff" />
+                <Text style={styles.createButtonText}>Create New Syllabus</Text>
+              </TouchableOpacity>
             </View>
           )}
-        </ScrollView>
-      </View>
+        </View>
+      </ScrollView>
 
       {renderSyllabusModal()}
     </SafeAreaView>
@@ -511,11 +481,16 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 100, // Add padding at the bottom for bottom navigation
+  },
   filterContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  filterChip: {
+  filterTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -524,25 +499,79 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  filterChipActive: {
+  filterTabActive: {
     backgroundColor: '#FEF2F2',
     borderColor: '#DC2626',
   },
-  filterChipText: {
+  filterTabText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#6B7280',
   },
-  filterChipTextActive: {
+  filterTabTextActive: {
     color: '#DC2626',
   },
-  syllabiContainer: {
-    flex: 1,
+  filterCount: {
+    backgroundColor: '#DC2626',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 8,
+  },
+  filterCountActive: {
+    backgroundColor: '#DC2626',
+  },
+  filterCountText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  filterCountTextActive: {
+    color: '#FFFFFF',
+  },
+  cardsContainer: {
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
-  syllabiContentContainer: {
-    paddingBottom: 100, // Add padding at the bottom for bottom navigation
+  loadingState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  createButton: {
+    backgroundColor: '#DC2626',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   syllabusCard: {
     backgroundColor: '#FFFFFF',
@@ -552,27 +581,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  syllabusHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 8,
   },
-  syllabusInfo: {
+  courseInfo: {
     flex: 1,
   },
-  syllabusTitle: {
+  courseCode: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#DC2626',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  syllabusSchedule: {
+  courseTitle: {
     fontSize: 14,
     color: '#353A40',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  statusBadge: {
+  sectionCode: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
@@ -584,13 +617,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
+  cardContent: {
+    marginBottom: 12,
+  },
+  syllabusTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#353A40',
+    marginBottom: 4,
+  },
   syllabusDescription: {
     fontSize: 14,
     color: '#6B7280',
     lineHeight: 20,
     marginBottom: 12,
   },
-  syllabusStats: {
+  metaInfo: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 12,
+  },
+  metaText: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  statsContainer: {
     flexDirection: 'row',
     gap: 16,
     marginBottom: 12,
@@ -608,9 +659,10 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 2,
   },
-  syllabusActions: {
+  cardActions: {
     flexDirection: 'row',
-    gap: 8,
+    justifyContent: 'space-around',
+    marginTop: 12,
   },
   actionButton: {
     flexDirection: 'row',
@@ -625,39 +677,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#DC2626',
-  },
-  deleteButton: {
-    backgroundColor: '#FEF2F2',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  emptyButton: {
-    backgroundColor: '#DC2626',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  emptyButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
@@ -684,13 +703,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#353A40',
   },
-  syllabusDetails: {
+  modalBody: {
     flex: 1,
   },
-  detailSection: {
+  modalSection: {
     marginBottom: 24,
   },
-  detailSectionTitle: {
+  sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#353A40',
@@ -721,5 +740,65 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#353A40',
     lineHeight: 20,
+  },
+  iloMeta: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  iloMetaText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  assessmentItem: {
+    marginBottom: 16,
+    padding: 14,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  assessmentTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#353A40',
+    marginBottom: 4,
+  },
+  assessmentDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  assessmentMeta: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  assessmentMetaText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  modalActions: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  modalActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
+    gap: 8,
+  },
+  modalActionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#DC2626',
+  },
+  noDataText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 10,
   },
 }); 

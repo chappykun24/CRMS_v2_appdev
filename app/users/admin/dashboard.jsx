@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useUser } from '../../../contexts/UserContext';
 import { UserRole } from '../../../types/userRoles';
 import { apiClient } from '../../../utils/api';
@@ -56,8 +56,8 @@ export default function AdminDashboard() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      {/* Header Section */}
+    <View style={styles.container}>
+      {/* Sticky Header Section */}
       <View style={styles.headerSection}>
         <View style={styles.headerLeft}>
           <Image
@@ -77,85 +77,48 @@ export default function AdminDashboard() {
         </TouchableOpacity>
       </View>
 
-      {/* Stats Section */}
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Ionicons name="people-outline" size={28} color="#DC2626" style={styles.statIcon} />
-          <Text style={styles.statNumber}>{stats.total}</Text>
-          <Text style={styles.statLabel}>Total Applications</Text>
+      {/* Content Section */}
+      <View style={styles.contentSection}>
+        {/* Stats Section */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Ionicons name="people-outline" size={28} color="#DC2626" style={styles.statIcon} />
+            <Text style={styles.statNumber}>{stats.total}</Text>
+            <Text style={styles.statLabel}>Total Applications</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="school-outline" size={28} color="#DC2626" style={styles.statIcon} />
+            <Text style={styles.statNumber}>{departmentCount}</Text>
+            <Text style={styles.statLabel}>Departments</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="document-text-outline" size={28} color="#DC2626" style={styles.statIcon} />
+            <Text style={styles.statNumber}>{stats.pending}</Text>
+            <Text style={styles.statLabel}>Pending Approvals</Text>
+          </View>
         </View>
-        <View style={styles.statCard}>
-          <Ionicons name="school-outline" size={28} color="#DC2626" style={styles.statIcon} />
-          <Text style={styles.statNumber}>{departmentCount}</Text>
-          <Text style={styles.statLabel}>Departments</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Ionicons name="document-text-outline" size={28} color="#DC2626" style={styles.statIcon} />
-          <Text style={styles.statNumber}>{stats.pending}</Text>
-          <Text style={styles.statLabel}>Pending Approvals</Text>
+
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* Quick Actions Section */}
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.quickActionsGrid}>
+          <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push(`${ROUTES.ADMIN.USER_MANAGEMENT}?role=all`)}>
+            <View style={styles.quickActionIconCircle}>
+              <Ionicons name="people-circle-outline" size={26} color="#DC2626" />
+            </View>
+            <Text style={styles.quickActionText}>User Management</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push(ROUTES.ADMIN.FACULTY_APPROVAL)}>
+            <View style={styles.quickActionIconCircle}>
+              <Ionicons name="shield-checkmark-outline" size={26} color="#DC2626" />
+            </View>
+            <Text style={styles.quickActionText}>Faculty Approval</Text>
+          </TouchableOpacity>
         </View>
       </View>
-
-      {/* Divider */}
-      <View style={styles.divider} />
-
-      {/* Quick Actions Section */}
-      <Text style={styles.sectionTitle}>Quick Actions</Text>
-      <View style={styles.quickActionsGrid}>
-        <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push(`${ROUTES.ADMIN.USER_MANAGEMENT}?role=all`)}>
-          <View style={styles.quickActionIconCircle}>
-            <Ionicons name="people-circle-outline" size={26} color="#DC2626" />
-          </View>
-          <Text style={styles.quickActionText}>User Management</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push(ROUTES.ADMIN.FACULTY_APPROVAL)}>
-          <View style={styles.quickActionIconCircle}>
-            <Ionicons name="shield-checkmark-outline" size={26} color="#DC2626" />
-          </View>
-          <Text style={styles.quickActionText}>Faculty Approval</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push(ROUTES.ADMIN.SYLLABUS_APPROVAL)}>
-          <View style={styles.quickActionIconCircle}>
-            <Ionicons name="document-checkmark-outline" size={26} color="#DC2626" />
-          </View>
-          <Text style={styles.quickActionText}>Syllabus Approval</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push(ROUTES.ADMIN.PROFILE)}>
-          <View style={styles.quickActionIconCircle}>
-            <Ionicons name="person-outline" size={26} color="#DC2626" />
-          </View>
-          <Text style={styles.quickActionText}>Profile</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Faculty Application Summary */}
-      <View style={styles.summarySection}>
-        <Text style={styles.sectionTitle}>Faculty Applications Summary</Text>
-        <View style={styles.summaryGrid}>
-          <View style={styles.summaryCard}>
-            <View style={[styles.summaryIcon, { backgroundColor: '#F59E0B' }]}>
-              <Ionicons name="time-outline" size={20} color="white" />
-            </View>
-            <Text style={styles.summaryNumber}>{stats.pending}</Text>
-            <Text style={styles.summaryLabel}>Pending Review</Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <View style={[styles.summaryIcon, { backgroundColor: '#10B981' }]}>
-              <Ionicons name="checkmark-circle-outline" size={20} color="white" />
-            </View>
-            <Text style={styles.summaryNumber}>{stats.approved}</Text>
-            <Text style={styles.summaryLabel}>Approved</Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <View style={[styles.summaryIcon, { backgroundColor: '#EF4444' }]}>
-              <Ionicons name="close-circle-outline" size={20} color="white" />
-            </View>
-            <Text style={styles.summaryNumber}>{stats.rejected}</Text>
-            <Text style={styles.summaryLabel}>Rejected</Text>
-          </View>
-        </View>
-      </View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -164,15 +127,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 80,
-  },
   headerSection: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 18,
+    padding: 24,
+    paddingTop: 20, // Reduced from 60 to 20 to remove extra space
+    backgroundColor: '#FFFFFF',
+    zIndex: 1000,
+  },
+  contentSection: {
+    flex: 1,
+    padding: 24,
+    paddingBottom: 80,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -295,42 +262,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: '#353A40',
-    textAlign: 'center',
-  },
-  summarySection: {
-    marginTop: 8,
-  },
-  summaryGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 6,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  summaryIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  summaryNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#353A40',
-    marginBottom: 4,
-  },
-  summaryLabel: {
-    fontSize: 12,
-    color: '#6B7280',
     textAlign: 'center',
   },
 }); 
