@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Crypto from 'expo-crypto';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
+    Image,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
@@ -15,7 +17,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import apiClient from '../../utils/api';
+import apiClient, { getAPIBaseURL } from '../../utils/api';
 
 export default function FacultySignupScreen() {
   const [formData, setFormData] = useState({
@@ -32,6 +34,7 @@ export default function FacultySignupScreen() {
     profileType: 'faculty', // hidden
     profilePic: null, // placeholder for file upload
   });
+  const [facultyPhoto, setFacultyPhoto] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showTermStartPicker, setShowTermStartPicker] = useState(false);
@@ -39,6 +42,53 @@ export default function FacultySignupScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [showDeptDropdown, setShowDeptDropdown] = useState(false);
+
+  // Photo picker functions
+  const pickFacultyPhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant permission to access your photo library.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        setFacultyPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking photo:', error);
+      Alert.alert('Error', 'Failed to pick photo. Please try again.');
+    }
+  };
+
+  const takePhotoWithCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant permission to access your camera.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        setFacultyPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
 
   useEffect(() => {
     // Fetch departments from backend
@@ -104,6 +154,44 @@ export default function FacultySignupScreen() {
         profile_pic: null,
       };
 
+      // If photo is selected, upload it first
+      let photoPath = null;
+      if (facultyPhoto) {
+        try {
+          const formData = new FormData();
+          const uriParts = facultyPhoto.split('.');
+          const fileType = uriParts[uriParts.length - 1].toLowerCase();
+          
+          formData.append('photo', {
+            uri: facultyPhoto,
+            name: `faculty_photo.${fileType}`,
+            type: `image/${fileType}`,
+          });
+
+          const photoResponse = await fetch(`${getAPIBaseURL()}/users/faculty/photo`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'Accept': 'application/json',
+            },
+          });
+
+          if (photoResponse.ok) {
+            const photoData = await photoResponse.json();
+            photoPath = photoData.photo_path;
+          } else {
+            console.error('Failed to upload photo:', photoResponse.status);
+          }
+        } catch (photoError) {
+          console.error('Error uploading photo:', photoError);
+        }
+      }
+
+      // Update user data with photo path if available
+      if (photoPath) {
+        userData.profile_pic = photoPath;
+      }
+
       // Send to backend
       const response = await apiClient.post('/collections/users/documents', userData);
 
@@ -145,6 +233,7 @@ export default function FacultySignupScreen() {
                   profileType: 'faculty',
                   profilePic: null,
                 });
+                setFacultyPhoto(null);
                 router.back();
               }
             }
@@ -196,21 +285,44 @@ export default function FacultySignupScreen() {
   };
 
   
-  const shadowStyle = {
-    ...(Platform.OS === 'web'
-      ? { boxShadow: '0px 4px 8px rgba(220,38,38,0.2)' }
-      : {
-          shadowColor: '#DC2626',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 8,
-        }),
-  };
-
   const styles = StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: '#FFFFFF',
+    },
+    headerContainer: {
+      backgroundColor: '#FFFFFF',
+      zIndex: 200,
+      paddingTop: 40,
+      paddingBottom: 16,
+    },
+    headerContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      minHeight: 60,
+    },
+    leftSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: '#353A40',
+      flex: 1,
     },
     keyboardView: {
       flex: 1,
@@ -220,7 +332,7 @@ export default function FacultySignupScreen() {
     },
     scrollContent: {
       flexGrow: 1,
-      paddingBottom: 90,
+      paddingBottom: 20,
     },
 
     formContainer: {
@@ -291,14 +403,15 @@ export default function FacultySignupScreen() {
       padding: 12,
     },
     submitButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
       backgroundColor: '#DC2626',
       paddingVertical: 16,
       borderRadius: 8,
-      alignItems: 'center',
-      marginTop: 20,
-      marginBottom: 20,
+      marginLeft: 12,
       opacity: 1,
-      ...shadowStyle,
     },
     submitButtonDisabled: {
       backgroundColor: '#DC2626',
@@ -306,6 +419,27 @@ export default function FacultySignupScreen() {
     },
     submitButtonText: {
       color: 'white',
+      fontSize: 16,
+      fontWeight: '600',
+      marginLeft: 8,
+    },
+    actionButtonsContainer: {
+      flexDirection: 'row',
+      marginTop: 20,
+      marginBottom: 20,
+    },
+    cancelButton: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#FFFFFF',
+      paddingVertical: 16,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: '#E5E7EB',
+    },
+    cancelButtonText: {
+      color: '#475569',
       fontSize: 16,
       fontWeight: '600',
     },
@@ -325,16 +459,109 @@ export default function FacultySignupScreen() {
       flex: 1,
       lineHeight: 20,
     },
+    photoContainer: {
+      width: '100%',
+      height: 150,
+      borderWidth: 1,
+      borderColor: '#E5E7EB',
+      borderRadius: 8,
+      overflow: 'hidden',
+      marginBottom: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#F9FAFB',
+    },
+    photoPreviewContainer: {
+      width: '100%',
+      height: '100%',
+      position: 'relative',
+    },
+    photoPreview: {
+      width: '100%',
+      height: '100%',
+      borderRadius: 8,
+    },
+    removePhotoButton: {
+      position: 'absolute',
+      top: 5,
+      right: 5,
+      backgroundColor: 'white',
+      borderRadius: 12,
+      padding: 5,
+      zIndex: 1,
+    },
+    photoPlaceholder: {
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#F9FAFB',
+    },
+    photoPlaceholderText: {
+      fontSize: 14,
+      color: '#9CA3AF',
+      marginTop: 10,
+    },
+    photoButtonsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginTop: 12,
+    },
+    photoButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+      borderColor: '#E5E7EB',
+    },
+    photoButtonText: {
+      fontSize: 14,
+      color: '#475569',
+      marginLeft: 8,
+      fontWeight: '500',
+    },
+    fillRandomButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#DC2626',
+      paddingVertical: 12,
+      borderRadius: 8,
+      marginTop: 20,
+      marginBottom: 20,
+    },
+    fillRandomButtonText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '600',
+      marginLeft: 8,
+    },
   });
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.headerContainer}>
+        <View style={styles.headerContent}>
+          <View style={styles.leftSection}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#dc2626" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Faculty Registration</Text>
+          </View>
+        </View>
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-
-
         <ScrollView 
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -342,20 +569,30 @@ export default function FacultySignupScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.formContainer}>
-            {/* Title + Fill Button Row */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginBottom: 24 }}>
-              <Text style={{ flex: 1, fontSize: 28, fontWeight: 'bold', color: '#353A40', textAlign: 'left' }}>
-                Faculty Registration
-              </Text>
-              <TouchableOpacity
-                onPress={fillRandomData}
-                style={{ marginLeft: 24, paddingVertical: 4, paddingHorizontal: 16, borderRadius: 6, backgroundColor: '#64748b', justifyContent: 'center', alignItems: 'center' }}
-                accessibilityLabel="Fill random data"
-                activeOpacity={0.8}
-              >
-                <Text style={{ color: 'white', fontSize: 15, fontWeight: '600' }}>Fill</Text>
-              </TouchableOpacity>
+            {/* Faculty Photo Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Faculty Photo (Optional)</Text>
+              <View style={styles.photoButtonsContainer}>
+                <TouchableOpacity style={styles.photoButton} onPress={pickFacultyPhoto}>
+                  <Ionicons name="images-outline" size={20} color="#475569" />
+                  <Text style={styles.photoButtonText}>Choose from Gallery</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.photoButton} onPress={takePhotoWithCamera}>
+                  <Ionicons name="camera-outline" size={20} color="#475569" />
+                  <Text style={styles.photoButtonText}>Take Photo</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+
+            {/* Fill Random Data Button */}
+            <TouchableOpacity
+              style={styles.fillRandomButton}
+              onPress={fillRandomData}
+            >
+              <Ionicons name="shuffle" size={20} color="#FFFFFF" />
+              <Text style={styles.fillRandomButtonText}>Fill Random Data</Text>
+            </TouchableOpacity>
+
             {/* Personal Information */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Personal Information</Text>
@@ -365,7 +602,7 @@ export default function FacultySignupScreen() {
                   style={styles.input}
                   value={formData.lastName}
                   onChangeText={(text) => setFormData({ ...formData, lastName: text })}
-                  placeholder="Enter your last name"
+                  placeholder="Enter last name"
                 />
               </View>
               <View style={styles.inputGroup}>
@@ -374,7 +611,7 @@ export default function FacultySignupScreen() {
                   style={styles.input}
                   value={formData.firstName}
                   onChangeText={(text) => setFormData({ ...formData, firstName: text })}
-                  placeholder="Enter your first name"
+                  placeholder="Enter first name"
                 />
               </View>
               <View style={styles.inputGroup}>
@@ -383,7 +620,7 @@ export default function FacultySignupScreen() {
                   style={styles.input}
                   value={formData.middleInitial}
                   onChangeText={(text) => setFormData({ ...formData, middleInitial: text })}
-                  placeholder="M"
+                  placeholder="Enter middle initial"
                   maxLength={1}
                 />
               </View>
@@ -393,7 +630,7 @@ export default function FacultySignupScreen() {
                   style={styles.input}
                   value={formData.suffix}
                   onChangeText={(text) => setFormData({ ...formData, suffix: text })}
-                  placeholder="Jr., Sr., III, etc. (optional)"
+                  placeholder="Enter suffix (e.g., Jr., Sr.)"
                 />
               </View>
               <View style={styles.inputGroup}>
@@ -402,10 +639,51 @@ export default function FacultySignupScreen() {
                   style={styles.input}
                   value={formData.email}
                   onChangeText={(text) => setFormData({ ...formData, email: text })}
-                  placeholder="Enter your email address"
+                  placeholder="Enter email address"
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
+              </View>
+            </View>
+            {/* Faculty Photo */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Faculty Photo (Optional)</Text>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Profile Picture</Text>
+                <View style={styles.photoContainer}>
+                  {facultyPhoto ? (
+                    <View style={styles.photoPreviewContainer}>
+                      <Image source={{ uri: facultyPhoto }} style={styles.photoPreview} />
+                      <TouchableOpacity
+                        style={styles.removePhotoButton}
+                        onPress={() => setFacultyPhoto(null)}
+                      >
+                        <Ionicons name="close-circle" size={24} color="#DC2626" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={styles.photoPlaceholder}>
+                      <Ionicons name="camera" size={32} color="#9CA3AF" />
+                      <Text style={styles.photoPlaceholderText}>Add a profile photo</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.photoButtonsContainer}>
+                  <TouchableOpacity
+                    style={styles.photoButton}
+                    onPress={pickFacultyPhoto}
+                  >
+                    <Ionicons name="images-outline" size={20} color="#6B7280" />
+                    <Text style={styles.photoButtonText}>Choose from Gallery</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.photoButton}
+                    onPress={takePhotoWithCamera}
+                  >
+                    <Ionicons name="camera-outline" size={20} color="#6B7280" />
+                    <Text style={styles.photoButtonText}>Take Photo</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
             {/* Academic Information */}
@@ -544,14 +822,23 @@ export default function FacultySignupScreen() {
               </View>
             </View>
 
-            {/* Submit Button */}
-            <TouchableOpacity
-              style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-            >
-              <Text style={styles.submitButtonText}>{isSubmitting ? 'Submitting...' : 'Submit Application'}</Text>
-            </TouchableOpacity>
+            {/* Action Buttons */}
+            <View style={styles.actionButtonsContainer}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => router.back()}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+                onPress={handleSubmit}
+                disabled={isSubmitting}
+              >
+                <Ionicons name="add" size={20} color="#FFFFFF" />
+                <Text style={styles.submitButtonText}>{isSubmitting ? 'Submitting...' : 'Submit Application'}</Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Information Note */}
             <View style={styles.infoNote}>

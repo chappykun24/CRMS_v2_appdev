@@ -289,8 +289,8 @@ function AppContent() {
   // For public pages, use regular View with GlobalHeader and make scrollable
   return (
     <View style={{ flex: 1 }}>
-      {/* Show header only on public pages when not logged in */}
-      {!isWelcomePage && !isLoggedIn && (
+      {/* Show header only on public pages when not logged in, but exclude faculty-signup */}
+      {!isWelcomePage && !isLoggedIn && !normalizedPathname.includes('/faculty-signup') && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 99999 }}>
           <GlobalHeader headerTranslateY={undefined} />
         </View>
@@ -313,15 +313,15 @@ function AppContent() {
             },
             headerShown: false,
             contentStyle: {
-              paddingTop: (!isWelcomePage && !isLoggedIn) ? 100 : 0, // Add top padding only when GlobalHeader is shown
+              paddingTop: (!isWelcomePage && !isLoggedIn && !normalizedPathname.includes('/faculty-signup')) ? 100 : 0, // Add top padding only when GlobalHeader is shown
               backgroundColor: 'transparent', // Make sure background is transparent
             },
           }}
         />
       </ScrollView>
       
-      {/* Show bottom navigation */}
-      {renderBottomNav()}
+      {/* Show bottom navigation, but exclude faculty-signup */}
+      {!normalizedPathname.includes('/faculty-signup') && renderBottomNav()}
     </View>
   );
 }

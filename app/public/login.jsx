@@ -109,17 +109,6 @@ export default function LoginScreen() {
     { label: 'Faculty', email: 'dr.smith@university.edu' },
   ];
 
-  const shadowStyle = {
-    ...(Platform.OS === 'web'
-      ? { boxShadow: '0px 4px 8px rgba(220,38,38,0.2)' }
-      : {
-          shadowColor: '#DC2626',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 8,
-        }),
-  };
-
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -146,7 +135,7 @@ export default function LoginScreen() {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: '#F9FAFB',
-      borderRadius: 12,
+      borderRadius: 8,
       marginBottom: 16,
       paddingHorizontal: 16,
       paddingVertical: 0,
@@ -179,12 +168,11 @@ export default function LoginScreen() {
     loginButton: {
       backgroundColor: '#DC2626',
       paddingVertical: 0,
-      borderRadius: 12,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: 16,
       height: 56,
-      ...shadowStyle,
     },
     loginButtonText: {
       color: 'white',
@@ -193,26 +181,26 @@ export default function LoginScreen() {
     },
     signupButton: {
       paddingVertical: 0,
-      borderRadius: 12,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 2,
-      borderColor: '#353A40',
-      backgroundColor: '#F9FAFB',
+      borderWidth: 1,
+      borderColor: '#E2E8F0',
+      backgroundColor: '#F8FAFC',
       marginBottom: 32,
       height: 56,
     },
     signupButtonText: {
-      color: '#353A40',
+      color: '#475569',
       fontSize: 16,
       fontWeight: '600',
     },
     demoSection: {
       padding: 20,
       backgroundColor: '#F9FAFB',
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
-      borderColor: '#F3F4F6',
+      borderColor: '#E5E7EB',
     },
     demoTitle: {
       fontSize: 16,
@@ -233,16 +221,16 @@ export default function LoginScreen() {
       paddingVertical: 0,
       paddingHorizontal: 12,
       borderWidth: 1,
-      borderColor: '#DC2626',
-      borderRadius: 12,
-      backgroundColor: '#FEF2F2',
+      borderColor: '#E2E8F0',
+      borderRadius: 8,
+      backgroundColor: '#F8FAFC',
       height: 40,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: 8,
     },
     demoButtonText: {
-      color: '#DC2626',
+      color: '#475569',
       fontSize: 13,
       fontWeight: '500',
       textAlign: 'center',

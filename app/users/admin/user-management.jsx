@@ -17,6 +17,7 @@ import ClickableContainer from '../../../components/ClickableContainer';
 import ModalContainer from '../../../components/ModalContainer';
 import { useScrollContext } from '../../../contexts/ScrollContext';
 import { useUser } from '../../../contexts/UserContext';
+import { getAPIBaseURL } from '../../../utils/api';
 import { useModal } from '../../../utils/useModal';
 import { userService } from '../../../utils/userService';
 import UserManagementHeader from '../../components/UserManagementHeader';
@@ -90,6 +91,8 @@ const UserManagement = () => {
       // Always maintain the current approval filter
       if (filterApproval !== '') options.is_approved = filterApproval === 'true';
       const response = await userService.getUsers(options);
+      console.log('Users API response:', response);
+      console.log('Users with profile_pic:', response.users?.filter(u => u.profile_pic));
       setUsers(response.users || []);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -253,7 +256,21 @@ const UserManagement = () => {
           { backgroundColor: getStatusBadgeColor(user.role_name, user.is_approved) }
         ]} />
         <View style={styles.userHeader}>
-          {/* No avatar */}
+          {/* User Photo */}
+          <View style={styles.userPhotoContainer}>
+            {user.profile_pic ? (
+              <Image 
+                source={{ uri: `${getAPIBaseURL().replace('/api', '')}${user.profile_pic}` }} 
+                style={styles.userPhoto}
+                onError={(error) => console.log('User photo load error:', error)}
+                onLoad={() => console.log('User photo loaded successfully:', user.profile_pic)}
+              />
+            ) : (
+              <View style={styles.defaultUserAvatar}>
+                <Ionicons name="person" size={20} color="#9CA3AF" />
+              </View>
+            )}
+          </View>
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{user.name}</Text>
             <Text style={styles.userEmail}>{user.email}</Text>
@@ -300,7 +317,7 @@ const UserManagement = () => {
         <View style={styles.modalUserHeader}>
           <View style={styles.modalAvatar}>
             {selectedUser.profile_pic ? (
-              <Image source={{ uri: selectedUser.profile_pic }} style={styles.modalAvatarImage} />
+              <Image source={{ uri: `${getAPIBaseURL().replace('/api', '')}${selectedUser.profile_pic}` }} style={styles.modalAvatarImage} />
             ) : (
               <Text style={styles.modalAvatarText}>
                 {selectedUser.name.charAt(0).toUpperCase()}
@@ -512,6 +529,7 @@ const UserManagement = () => {
       <ScrollView style={styles.tableView} horizontal showsHorizontalScrollIndicator>
         <View>
           <View style={styles.tableHeaderRow}>
+            <Text style={[styles.tableHeaderCell, { width: 60 }]}>Photo</Text>
             <Text style={[styles.tableHeaderCell, { width: 200 }]}>Name</Text>
             <Text style={[styles.tableHeaderCell, { width: 220 }]}>Email</Text>
             <Text style={[styles.tableHeaderCell, { width: 120 }]}>Role</Text>
@@ -519,6 +537,19 @@ const UserManagement = () => {
           </View>
           {filteredUsers.map(user => (
             <View key={user.user_id} style={styles.tableRow}>
+              <View style={[styles.tableCell, { width: 60, alignItems: 'center', justifyContent: 'center' }]}>
+                {user.profile_pic ? (
+                  <Image 
+                    source={{ uri: `${getAPIBaseURL().replace('/api', '')}${user.profile_pic}` }} 
+                    style={styles.tableUserPhoto}
+                    onError={(error) => console.log('Table user photo load error:', error)}
+                  />
+                ) : (
+                  <View style={styles.tableDefaultAvatar}>
+                    <Ionicons name="person" size={16} color="#9CA3AF" />
+                  </View>
+                )}
+              </View>
               <Text style={[styles.tableCell, { width: 200 }]} numberOfLines={1}>{user.name}</Text>
               <Text style={[styles.tableCell, { width: 220 }]} numberOfLines={1}>{user.email}</Text>
               <Text style={[styles.tableCell, { width: 120 }]}>{user.role_name ? user.role_name.toUpperCase() : 'UNKNOWN'}</Text>
@@ -711,6 +742,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  userPhotoContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#E0E0E0', // Light grey background for the container
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    overflow: 'hidden', // Ensure image doesn't overflow
+  },
+  userPhoto: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 25,
+  },
+  defaultUserAvatar: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E0E0E0',
   },
   avatar: {
     width: 50,
@@ -1148,6 +1201,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 1,
     textTransform: 'uppercase',
+  },
+  tableUserPhoto: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  tableDefaultAvatar: {
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E0E0E0',
   },
 
 

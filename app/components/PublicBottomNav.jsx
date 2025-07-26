@@ -2,25 +2,30 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
-  Alert,
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  PanResponder,
-  Platform,
-  SafeAreaView // Added SafeAreaView
-  ,
+    Alert,
+    Animated,
+    Dimensions,
+    KeyboardAvoidingView,
+    PanResponder,
+    Platform,
+    SafeAreaView // Added SafeAreaView
+    ,
 
 
 
 
 
 
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+
+
+
+
+
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useUser } from '../../contexts/UserContext';
 import { sampleUsers } from '../../types/sampleData';
@@ -486,11 +491,6 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 40,
     zIndex: 1001,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
   },
   slidingFormHeader: {
     flexDirection: 'row',
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 0,
     borderWidth: 1,
@@ -545,15 +545,10 @@ const styles = StyleSheet.create({
   loginButton: {
     backgroundColor: '#DC2626',
     paddingVertical: 0,
-    borderRadius: 12,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     height: 56,
-    shadowColor: '#DC2626',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
   },
   loginButtonText: {
     color: 'white',
@@ -561,22 +556,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   createFacultyButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAFC',
     paddingVertical: 0,
-    borderRadius: 12,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     height: 56,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: '#E2E8F0',
   },
   createFacultyButtonText: {
-    color: '#374151',
+    color: '#475569',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -584,9 +574,9 @@ const styles = StyleSheet.create({
     marginTop: 16,
     padding: 16,
     backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
   },
   demoTitle: {
     fontSize: 14,
@@ -607,16 +597,16 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#DC2626',
+    borderColor: '#E2E8F0',
     borderRadius: 8,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#F8FAFC',
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
   demoButtonText: {
-    color: '#DC2626',
+    color: '#475569',
     fontSize: 12,
     fontWeight: '500',
     textAlign: 'center',
