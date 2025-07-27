@@ -35,7 +35,7 @@ router.get('/available-for-section/:section_course_id', async (req, res) => {
   }
   try {
     let query = `
-      SELECT s.student_id, s.full_name, s.student_number
+      SELECT s.student_id, s.full_name, s.student_number, s.student_photo
       FROM students s
       WHERE s.student_id NOT IN (
         SELECT ce.student_id FROM course_enrollments ce WHERE ce.section_course_id = $1

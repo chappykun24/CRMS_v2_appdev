@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { getAPIBaseURL } from '../../../utils/api';
 
 export default function AddStudentToClass() {
   const { section_course_id } = useLocalSearchParams();
@@ -110,9 +111,24 @@ export default function AddStudentToClass() {
                   key={student.student_id}
                   style={styles.studentCard}
                 >
-                  <View style={styles.studentInfo}>
-                    <Text style={styles.studentName}>{student.full_name}</Text>
-                    <Text style={styles.studentCode}>SR Code: {student.student_number}</Text>
+                  <View style={styles.studentHeader}>
+                    <View style={styles.studentPhotoContainer}>
+                      {student.student_photo ? (
+                        <Image 
+                          source={{ uri: `${getAPIBaseURL().replace('/api', '')}${student.student_photo}` }} 
+                          style={styles.studentPhoto}
+                          onError={(error) => console.log('Image load error:', error)}
+                        />
+                      ) : (
+                        <View style={styles.defaultAvatar}>
+                          <Ionicons name="person" size={24} color="#9CA3AF" />
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.studentInfo}>
+                      <Text style={styles.studentName}>{student.full_name}</Text>
+                      <Text style={styles.studentCode}>SR Code: {student.student_number}</Text>
+                    </View>
                   </View>
                   <TouchableOpacity
                     style={styles.addButton}
@@ -254,6 +270,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  studentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  studentPhotoContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  studentPhoto: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  defaultAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   studentInfo: {
     flex: 1,
