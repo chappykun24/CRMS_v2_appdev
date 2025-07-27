@@ -135,10 +135,8 @@ export default function DeanSyllabusApproval() {
   };
 
   const handleViewSyllabus = (syllabusId) => {
-    router.push({
-      pathname: '/users/faculty/SyllabiCreation',
-      params: { syllabusId: syllabusId }
-    });
+    // For now, show an alert since syllabus viewing is not available
+    Alert.alert('View Syllabus', 'Syllabus viewing feature is coming soon!');
   };
 
   const handleSearch = () => {

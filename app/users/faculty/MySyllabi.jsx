@@ -146,10 +146,8 @@ export default function MySyllabiScreen() {
   };
 
   const handleEditSyllabus = (syllabus) => {
-    router.push({
-      pathname: '/users/faculty/SyllabiCreation',
-      params: { syllabusId: syllabus.syllabusId }
-    });
+    // For now, show an alert since syllabus editing is not available
+    Alert.alert('Edit Syllabus', 'Syllabus editing feature is coming soon!');
   };
 
   const handleDeleteSyllabus = (syllabus) => {
@@ -176,11 +174,7 @@ export default function MySyllabiScreen() {
     );
   };
 
-  const handleCreateNew = () => {
-    // For now, redirect to a new syllabus creation page
-    // You might want to create a new page for creating syllabi from scratch
-    Alert.alert('Info', 'Please assign a course first to create a syllabus');
-  };
+
 
   const handleBack = () => {
     router.back();
@@ -448,10 +442,7 @@ export default function MySyllabiScreen() {
                  selectedFilter === 'approved' ? 'No approved syllabi' :
                  'No rejected syllabi'}
               </Text>
-              <TouchableOpacity style={styles.createButton} onPress={handleCreateNew}>
-                <Ionicons name="add" size={20} color="#fff" />
-                <Text style={styles.createButtonText}>Create New Syllabus</Text>
-              </TouchableOpacity>
+
             </View>
           )}
         </View>
@@ -528,21 +519,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
-  createButton: {
-    backgroundColor: '#DC2626',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  createButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
+
   syllabusCard: {
     backgroundColor: '#FFFFFF',
     padding: 16,

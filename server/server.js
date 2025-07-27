@@ -11,6 +11,11 @@ const sectionCoursesRouter = require('./routes/sectionCourses');
 const usersRouter = require('./routes/users');
 const studentsRouter = require('./routes/students');
 const assessmentsRoutes = require('./routes/assessments');
+const assessmentTemplatesRoutes = require('./routes/assessment-templates');
+const subAssessmentsRoutes = require('./routes/sub-assessments');
+const ilosRoutes = require('./routes/ilos');
+const rubricsRoutes = require('./routes/rubrics');
+const analyticsRoutes = require('./routes/analytics');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -53,6 +58,23 @@ console.log('After registering /api/students');
 console.log('Before registering /api/assessments');
 app.use('/api/assessments', assessmentsRoutes);
 console.log('After registering /api/assessments');
+
+// Register the assessment templates router
+console.log('Before registering /api/assessment-templates');
+app.use('/api/assessment-templates', assessmentTemplatesRoutes);
+console.log('After registering /api/assessment-templates');
+
+// Register the sub-assessments router
+app.use('/api/sub-assessments', subAssessmentsRoutes);
+
+// Register the ILOs router
+app.use('/api/ilos', ilosRoutes);
+
+// Register the rubrics router
+app.use('/api/rubrics', rubricsRoutes);
+
+// Register the analytics router
+app.use('/api/analytics', analyticsRoutes);
 
 const ALLOWED_IPS = [
   '::1', // IPv6 localhost

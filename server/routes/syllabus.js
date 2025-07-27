@@ -327,6 +327,36 @@ router.get('/ilos', async (req, res) => {
   }
 });
 
+// GET /api/syllabus/:syllabusId/ilos - Get ILOs for a specific syllabus
+router.get('/:syllabusId/ilos', async (req, res) => {
+  const { syllabusId } = req.params;
+  
+  try {
+    const result = await pool.query(`
+      SELECT 
+        ilo_id,
+        syllabus_id,
+        code,
+        description,
+        category,
+        level,
+        weight_percentage,
+        assessment_methods,
+        learning_activities,
+        is_active,
+        created_at,
+        updated_at
+      FROM ilos 
+      WHERE syllabus_id = $1
+      ORDER BY code
+    `, [syllabusId]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching ILOs for syllabus:', err);
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+});
+
 // POST /api/syllabus/ilos - Create new ILO
 router.post('/ilos', async (req, res) => {
   const { syllabus_id, code, description, category, level, weight_percentage, assessment_methods, learning_activities } = req.body;

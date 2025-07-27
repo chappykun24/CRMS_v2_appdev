@@ -166,6 +166,20 @@ export default function MyClassesScreen() {
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => router.push({
+              pathname: '/users/faculty/AssessmentManagement',
+              params: { 
+                section_course_id: cls.section_course_id,
+                syllabus_id: cls.syllabus_id
+              }
+            })}
+          >
+            <Ionicons name="clipboard-outline" size={16} color="#475569" />
+            <Text style={styles.actionButtonText}>Assessments</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push({
               pathname: '/users/faculty/GradeManagement',
               params: { 
                 section_course_id: cls.section_course_id,
@@ -187,6 +201,8 @@ export default function MyClassesScreen() {
             <Ionicons name="eye-outline" size={16} color="#475569" />
             <Text style={styles.actionButtonText}>Students</Text>
           </TouchableOpacity>
+
+
         </View>
       </View>
     );
