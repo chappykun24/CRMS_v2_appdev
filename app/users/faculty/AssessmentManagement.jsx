@@ -180,10 +180,46 @@ export default function AssessmentManagementScreen() {
     }
   };
 
+  // Enhanced date validation with minimum date check
   const validateDate = (dateString) => {
     if (!dateString) return true; // Optional field
     const date = new Date(dateString);
-    return !isNaN(date.getTime()) && dateString.match(/^\d{4}-\d{2}-\d{2}$/);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day
+    
+    return !isNaN(date.getTime()) && 
+           dateString.match(/^\d{4}-\d{2}-\d{2}$/) && 
+           date >= today;
+  };
+
+  // Enhanced date formatting with better user experience
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Check if date is today or tomorrow for better UX
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      return 'Tomorrow';
+    }
+    
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Get minimum date for date picker (today)
+  const getMinimumDate = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
   };
 
   const calculateSubAssessmentTotals = () => {
@@ -234,6 +270,12 @@ export default function AssessmentManagementScreen() {
 
     if (!subAssessmentData.dueDate) {
       Alert.alert('Error', 'Please select a due date');
+      return;
+    }
+
+    // Enhanced date validation
+    if (!validateDate(subAssessmentData.dueDate)) {
+      Alert.alert('Error', 'Please select a valid due date (must be today or later)');
       return;
     }
 
@@ -414,16 +456,7 @@ export default function AssessmentManagementScreen() {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
+
 
   // New API functions for enhanced functionality
   const fetchSubAssessments = async (assessmentId) => {
@@ -992,13 +1025,17 @@ export default function AssessmentManagementScreen() {
 
               <Text style={styles.inputLabel}>Due Date</Text>
               <TouchableOpacity 
-                style={styles.pickerContainer}
+                style={[styles.pickerContainer, subAssessmentData.dueDate && styles.pickerContainerSelected]}
                 onPress={() => setShowDatePicker(true)}
               >
-                <Text style={styles.pickerText}>
+                <Text style={[styles.pickerText, subAssessmentData.dueDate && styles.pickerTextSelected]}>
                   {subAssessmentData.dueDate ? formatDate(subAssessmentData.dueDate) : 'Select due date'}
                 </Text>
-                <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+                <Ionicons 
+                  name="calendar-outline" 
+                  size={20} 
+                  color={subAssessmentData.dueDate ? "#DC2626" : "#6B7280"} 
+                />
               </TouchableOpacity>
 
                   <Text style={styles.inputLabel}>Instructions</Text>
@@ -1078,6 +1115,8 @@ export default function AssessmentManagementScreen() {
           mode="date"
           display="default"
           onChange={onDateChange}
+          minimumDate={getMinimumDate()}
+          maximumDate={new Date(new Date().getFullYear() + 2, 11, 31)} // Allow dates up to 2 years from now
         />
       )}
 

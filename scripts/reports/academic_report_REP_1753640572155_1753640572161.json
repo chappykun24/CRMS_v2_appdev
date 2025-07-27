@@ -1,0 +1,1348 @@
+{
+  "reportId": "REP_1753640572155",
+  "reportType": "comprehensive",
+  "generatedAt": "2025-07-27T18:22:52.155Z",
+  "courseInfo": {
+    "section_course_id": 1,
+    "course_title": "Application Development and Emerging Technologies",
+    "course_code": "IT 331",
+    "section_code": "BA 3302",
+    "year_level": 3,
+    "school_year": "2024-2025",
+    "semester": "Summer",
+    "instructor_name": "Robert  O Smith",
+    "total_students": "40",
+    "enrolled_students": "40"
+  },
+  "studentPerformance": [
+    {
+      "student_id": 55,
+      "full_name": "Torres, Nathan J",
+      "student_number": "22-467724",
+      "enrollment_id": 38,
+      "total_submissions": "16",
+      "graded_submissions": "13",
+      "average_grade": 88.98153846153848,
+      "lowest_grade": 76,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 69,
+      "full_name": "Reyes, Oscar B",
+      "student_number": "22-181270",
+      "enrollment_id": 31,
+      "total_submissions": "16",
+      "graded_submissions": "14",
+      "average_grade": 87.03999999999999,
+      "lowest_grade": 76,
+      "highest_grade": 99.28,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 57,
+      "full_name": "Dela Cruz, Vincent O Sr.",
+      "student_number": "22-963275",
+      "enrollment_id": 17,
+      "total_submissions": "17",
+      "graded_submissions": "17",
+      "average_grade": 86.6470588235294,
+      "lowest_grade": 68,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 56,
+      "full_name": "Flores, Hannah E Jr.",
+      "student_number": "22-459506",
+      "enrollment_id": 19,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 86.63733333333334,
+      "lowest_grade": 60,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 16,
+      "full_name": "Reyes, Ione E III",
+      "student_number": "22-482617",
+      "enrollment_id": 10,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 86.32,
+      "lowest_grade": 71.48,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 29,
+      "full_name": "Ibanez, Soleil T Jr.",
+      "student_number": "22-906000",
+      "enrollment_id": 7,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 86.224,
+      "lowest_grade": 60,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 66,
+      "full_name": "Mendoza, Kevin G Sr.",
+      "student_number": "22-775418",
+      "enrollment_id": 23,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 86.06666666666666,
+      "lowest_grade": 68.52,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 62,
+      "full_name": "Santos, Angela B Sr.",
+      "student_number": "22-823461",
+      "enrollment_id": 34,
+      "total_submissions": "16",
+      "graded_submissions": "16",
+      "average_grade": 85.7425,
+      "lowest_grade": 72,
+      "highest_grade": 99.92,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 46,
+      "full_name": "Zamora, Thea R III",
+      "student_number": "22-72810",
+      "enrollment_id": 40,
+      "total_submissions": "16",
+      "graded_submissions": "16",
+      "average_grade": 85.72999999999999,
+      "lowest_grade": 67.04,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 68,
+      "full_name": "Santos, Carlos H III",
+      "student_number": "22-201848",
+      "enrollment_id": 35,
+      "total_submissions": "16",
+      "graded_submissions": "16",
+      "average_grade": 85.47000000000001,
+      "lowest_grade": 52,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 49,
+      "full_name": "Villanueva, Naya E Sr.",
+      "student_number": "22-294510",
+      "enrollment_id": 39,
+      "total_submissions": "16",
+      "graded_submissions": "14",
+      "average_grade": 85.27142857142859,
+      "lowest_grade": 48,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 47,
+      "full_name": "Yambao, Elioh J Sr.",
+      "student_number": "22-645776",
+      "enrollment_id": 14,
+      "total_submissions": "16",
+      "graded_submissions": "16",
+      "average_grade": 85.2075,
+      "lowest_grade": 56.00000000000001,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 54,
+      "full_name": "Mendoza, Elijah D Sr.",
+      "student_number": "22-438757",
+      "enrollment_id": 22,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 84.72800000000001,
+      "lowest_grade": 48,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 60,
+      "full_name": "Reyes, Tristan D Jr.",
+      "student_number": "22-437911",
+      "enrollment_id": 32,
+      "total_submissions": "16",
+      "graded_submissions": "14",
+      "average_grade": 84.65142857142857,
+      "lowest_grade": 48,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 45,
+      "full_name": "Dizon, Mael F Jr.",
+      "student_number": "22-464433",
+      "enrollment_id": 11,
+      "total_submissions": "17",
+      "graded_submissions": "16",
+      "average_grade": 84.51249999999999,
+      "lowest_grade": 64,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 50,
+      "full_name": "Urbano, Kairo Z III",
+      "student_number": "22-679989",
+      "enrollment_id": 9,
+      "total_submissions": "16",
+      "graded_submissions": "14",
+      "average_grade": 84.49142857142859,
+      "lowest_grade": 57.96,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 70,
+      "full_name": "Alcantara, Jaxon V Jr.",
+      "student_number": "22-776632",
+      "enrollment_id": 15,
+      "total_submissions": "17",
+      "graded_submissions": "17",
+      "average_grade": 84.36000000000001,
+      "lowest_grade": 51.84000000000001,
+      "highest_grade": 99.72,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 59,
+      "full_name": "Santos, Mark A",
+      "student_number": "22-277270",
+      "enrollment_id": 36,
+      "total_submissions": "16",
+      "graded_submissions": "16",
+      "average_grade": 84.3375,
+      "lowest_grade": 64,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 64,
+      "full_name": "Dela Cruz, Liza F Jr.",
+      "student_number": "22-657088",
+      "enrollment_id": 16,
+      "total_submissions": "17",
+      "graded_submissions": "14",
+      "average_grade": 84.21571428571428,
+      "lowest_grade": 72,
+      "highest_grade": 96,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 61,
+      "full_name": "Morales, Bianca T",
+      "student_number": "22-826817",
+      "enrollment_id": 24,
+      "total_submissions": "16",
+      "graded_submissions": "16",
+      "average_grade": 84.1875,
+      "lowest_grade": 48,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 48,
+      "full_name": "Wenceslao, Briar L Jr.",
+      "student_number": "22-964737",
+      "enrollment_id": 8,
+      "total_submissions": "16",
+      "graded_submissions": "12",
+      "average_grade": 84.08,
+      "lowest_grade": 64,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 43,
+      "full_name": "Fernandez, Laura M III",
+      "student_number": "22-549099",
+      "enrollment_id": 2,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 83.42399999999999,
+      "lowest_grade": 52,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 21,
+      "full_name": "Ocampo, Rumi H Sr.",
+      "student_number": "22-391400",
+      "enrollment_id": 26,
+      "total_submissions": "16",
+      "graded_submissions": "16",
+      "average_grade": 83.41250000000001,
+      "lowest_grade": 63.56,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 27,
+      "full_name": "Jimenez, Ezra N Sr.",
+      "student_number": "22-807850",
+      "enrollment_id": 20,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 83.03466666666667,
+      "lowest_grade": 64,
+      "highest_grade": 96.08,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 52,
+      "full_name": "Santos, Adrian L Jr.",
+      "student_number": "22-450336",
+      "enrollment_id": 33,
+      "total_submissions": "16",
+      "graded_submissions": "16",
+      "average_grade": 82.9725,
+      "lowest_grade": 48,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 22,
+      "full_name": "Natividad, Calix G III",
+      "student_number": "22-169940",
+      "enrollment_id": 5,
+      "total_submissions": "16",
+      "graded_submissions": "16",
+      "average_grade": 82.8075,
+      "lowest_grade": 48,
+      "highest_grade": 96,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 26,
+      "full_name": "Kintanar, Freya Y III",
+      "student_number": "22-962440",
+      "enrollment_id": 4,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 82.71466666666667,
+      "lowest_grade": 60,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 34,
+      "full_name": "Hilario, Cyrus W Sr.",
+      "student_number": "22-461865",
+      "enrollment_id": 6,
+      "total_submissions": "16",
+      "graded_submissions": "14",
+      "average_grade": 82.7057142857143,
+      "lowest_grade": 50.88,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 25,
+      "full_name": "Lim, Jace Q Jr.",
+      "student_number": "22-861318",
+      "enrollment_id": 21,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 82.568,
+      "lowest_grade": 62.24000000000001,
+      "highest_grade": 96.08,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 65,
+      "full_name": "Reyes, Juan D",
+      "student_number": "22-104890",
+      "enrollment_id": 30,
+      "total_submissions": "16",
+      "graded_submissions": "16",
+      "average_grade": 82.32249999999999,
+      "lowest_grade": 48,
+      "highest_grade": 96,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 67,
+      "full_name": "Navarro, Katrina C",
+      "student_number": "22-196022",
+      "enrollment_id": 25,
+      "total_submissions": "16",
+      "graded_submissions": "14",
+      "average_grade": 82.30857142857144,
+      "lowest_grade": 48,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 63,
+      "full_name": "Torres, Francis C III",
+      "student_number": "22-934095",
+      "enrollment_id": 37,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 82.10933333333332,
+      "lowest_grade": 60,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 20,
+      "full_name": "Panganiban, Zane I Jr.",
+      "student_number": "22-883423",
+      "enrollment_id": 27,
+      "total_submissions": "16",
+      "graded_submissions": "14",
+      "average_grade": 81.93714285714285,
+      "lowest_grade": 60,
+      "highest_grade": 92,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 58,
+      "full_name": "Ramos, Gabriel P III",
+      "student_number": "22-303875",
+      "enrollment_id": 28,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 81.896,
+      "lowest_grade": 48,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 53,
+      "full_name": "Reyes, Jacob M III",
+      "student_number": "22-822337",
+      "enrollment_id": 29,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 81.48266666666667,
+      "lowest_grade": 66.16,
+      "highest_grade": 100,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 44,
+      "full_name": "Escueta, Selene K Sr.",
+      "student_number": "22-357272",
+      "enrollment_id": 18,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 80.896,
+      "lowest_grade": 56.00000000000001,
+      "highest_grade": 98.68,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 42,
+      "full_name": "Gutierrez, Nyla D Jr.",
+      "student_number": "22-322133",
+      "enrollment_id": 3,
+      "total_submissions": "16",
+      "graded_submissions": "14",
+      "average_grade": 80.32285714285715,
+      "lowest_grade": 56.00000000000001,
+      "highest_grade": 96.52,
+      "performance_level": "Good",
+      "risk_level": "Low Risk"
+    },
+    {
+      "student_id": 23,
+      "full_name": "Montero, Ayla C Sr.",
+      "student_number": "22-154502",
+      "enrollment_id": 13,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 79.02133333333333,
+      "lowest_grade": 52,
+      "highest_grade": 100,
+      "performance_level": "Satisfactory",
+      "risk_level": "Medium Risk"
+    },
+    {
+      "student_id": 51,
+      "full_name": "Torres, Mireya A Sr.",
+      "student_number": "22-752372",
+      "enrollment_id": 12,
+      "total_submissions": "16",
+      "graded_submissions": "15",
+      "average_grade": 77.60533333333335,
+      "lowest_grade": 48,
+      "highest_grade": 96,
+      "performance_level": "Satisfactory",
+      "risk_level": "Medium Risk"
+    },
+    {
+      "student_id": 17,
+      "full_name": "Quiambao, Aris J Sr.",
+      "student_number": "22-129131",
+      "enrollment_id": 1,
+      "total_submissions": "16",
+      "graded_submissions": "14",
+      "average_grade": 77.51714285714286,
+      "lowest_grade": 51.35999999999999,
+      "highest_grade": 98.6,
+      "performance_level": "Satisfactory",
+      "risk_level": "Medium Risk"
+    }
+  ],
+  "assessmentAnalytics": [
+    {
+      "assessment_id": 1001,
+      "assessment_title": "Sprint 1: React Native Fundamentals",
+      "assessment_type": "Project",
+      "total_points": 100,
+      "weight_percentage": 25,
+      "total_sub_assessments": "160",
+      "published_sub_assessments": "160",
+      "total_submissions": "160",
+      "graded_submissions": "145",
+      "pending_submissions": "15",
+      "average_score": 83.13406896551729,
+      "lowest_score": 48,
+      "highest_score": 100,
+      "score_standard_deviation": 11.52654282855636
+    },
+    {
+      "assessment_id": 1002,
+      "assessment_title": "Sprint 2: Navigation and State Management",
+      "assessment_type": "Project",
+      "total_points": 100,
+      "weight_percentage": 25,
+      "total_sub_assessments": "160",
+      "published_sub_assessments": "160",
+      "total_submissions": "160",
+      "graded_submissions": "153",
+      "pending_submissions": "7",
+      "average_score": 86.07790849673202,
+      "lowest_score": 48,
+      "highest_score": 100,
+      "score_standard_deviation": 11.248977301678465
+    },
+    {
+      "assessment_id": 1003,
+      "assessment_title": "Sprint 3: API Integration and Data Handling",
+      "assessment_type": "Project",
+      "total_points": 100,
+      "weight_percentage": 25,
+      "total_sub_assessments": "160",
+      "published_sub_assessments": "160",
+      "total_submissions": "160",
+      "graded_submissions": "148",
+      "pending_submissions": "12",
+      "average_score": 83.2345945945946,
+      "lowest_score": 48,
+      "highest_score": 100,
+      "score_standard_deviation": 11.515153599477621
+    },
+    {
+      "assessment_id": 1004,
+      "assessment_title": "Sprint 4: Final Project and Deployment",
+      "assessment_type": "Project",
+      "total_points": 100,
+      "weight_percentage": 25,
+      "total_sub_assessments": "160",
+      "published_sub_assessments": "160",
+      "total_submissions": "160",
+      "graded_submissions": "150",
+      "pending_submissions": "10",
+      "average_score": 82.15253333333335,
+      "lowest_score": 48,
+      "highest_score": 100,
+      "score_standard_deviation": 13.831229239080022
+    }
+  ],
+  "clusteringData": [
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 1,
+      "based_on": {
+        "grade_average": 86.43749999999999,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8916701053557826,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 2,
+      "based_on": {
+        "grade_average": 85.48,
+        "attendance_rate": 1,
+        "submission_rate": 1,
+        "consistency_score": 0.8599312910875351,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 3,
+      "based_on": {
+        "grade_average": 86.63733333333334,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8631951068782988,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 4,
+      "based_on": {
+        "grade_average": 86.224,
+        "attendance_rate": 1,
+        "submission_rate": 1,
+        "consistency_score": 0.8655412020908924,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 5,
+      "based_on": {
+        "grade_average": 84.72800000000001,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.7791636932006718,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 6,
+      "based_on": {
+        "grade_average": 86.06666666666666,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8669946515379645,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 7,
+      "based_on": {
+        "grade_average": 86.32,
+        "attendance_rate": 1,
+        "submission_rate": 1,
+        "consistency_score": 0.8924741789837104,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 8,
+      "based_on": {
+        "grade_average": 87.04,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.9108530595680833,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 9,
+      "based_on": {
+        "grade_average": 84.65142857142857,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8348644598070083,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 10,
+      "based_on": {
+        "grade_average": 85.74249999999999,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8859863896348319,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 11,
+      "based_on": {
+        "grade_average": 85.47,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8622028272158581,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 12,
+      "based_on": {
+        "grade_average": 88.98153846153846,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.9125374178895386,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 13,
+      "based_on": {
+        "grade_average": 85.27142857142857,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.818006339481383,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 14,
+      "based_on": {
+        "grade_average": 85.2075,
+        "attendance_rate": 1,
+        "submission_rate": 1,
+        "consistency_score": 0.8727532746554781,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 15,
+      "based_on": {
+        "grade_average": 85.73,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8850160692243487,
+        "cluster_characteristics": {
+          "averageGrade": 86,
+          "studentCount": 15,
+          "averageAttendance": 0.27,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 16,
+      "based_on": {
+        "grade_average": 84.0075,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.869582013244103,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 17,
+      "based_on": {
+        "grade_average": 84.42461538461538,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8999276867088264,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 18,
+      "based_on": {
+        "grade_average": 83.42399999999999,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8458294635143914,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 19,
+      "based_on": {
+        "grade_average": 82.7057142857143,
+        "attendance_rate": 1,
+        "submission_rate": 1,
+        "consistency_score": 0.8327636135054765,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 20,
+      "based_on": {
+        "grade_average": 83.03466666666667,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8614653215876784,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 21,
+      "based_on": {
+        "grade_average": 82.71466666666667,
+        "attendance_rate": 0.5,
+        "submission_rate": 1,
+        "consistency_score": 0.8754951469387394,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 22,
+      "based_on": {
+        "grade_average": 82.568,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8798945333637573,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 23,
+      "based_on": {
+        "grade_average": 84.1875,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8347495030454889,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 24,
+      "based_on": {
+        "grade_average": 82.8075,
+        "attendance_rate": 1,
+        "submission_rate": 1,
+        "consistency_score": 0.8468353911915945,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 25,
+      "based_on": {
+        "grade_average": 82.30857142857143,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8408548296312337,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 26,
+      "based_on": {
+        "grade_average": 83.4125,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8687653878652034,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 27,
+      "based_on": {
+        "grade_average": 81.93714285714285,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.889081784196708,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 28,
+      "based_on": {
+        "grade_average": 81.896,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8109771829744494,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 29,
+      "based_on": {
+        "grade_average": 81.48266666666667,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8797548628484244,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 30,
+      "based_on": {
+        "grade_average": 82.3225,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8476916298729786,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 31,
+      "based_on": {
+        "grade_average": 82.9725,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.7911312405561574,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 32,
+      "based_on": {
+        "grade_average": 84.3375,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8937044520430333,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 33,
+      "based_on": {
+        "grade_average": 82.10933333333334,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8722474894759346,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 34,
+      "based_on": {
+        "grade_average": 84.49142857142859,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8677382774458908,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 35,
+      "based_on": {
+        "grade_average": 84.08,
+        "attendance_rate": 1,
+        "submission_rate": 1,
+        "consistency_score": 0.8616373128545891,
+        "cluster_characteristics": {
+          "averageGrade": 83.06,
+          "studentCount": 20,
+          "averageAttendance": 0.18,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 36,
+      "based_on": {
+        "grade_average": 80.896,
+        "attendance_rate": 0,
+        "submission_rate": 1,
+        "consistency_score": 0.8554873868689914,
+        "cluster_characteristics": {
+          "averageGrade": 79.07,
+          "studentCount": 5,
+          "averageAttendance": 0.6,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 37,
+      "based_on": {
+        "grade_average": 80.32285714285715,
+        "attendance_rate": 0.5,
+        "submission_rate": 1,
+        "consistency_score": 0.8586932450000392,
+        "cluster_characteristics": {
+          "averageGrade": 79.07,
+          "studentCount": 5,
+          "averageAttendance": 0.6,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 38,
+      "based_on": {
+        "grade_average": 79.02133333333333,
+        "attendance_rate": 0.5,
+        "submission_rate": 1,
+        "consistency_score": 0.7767630775715574,
+        "cluster_characteristics": {
+          "averageGrade": 79.07,
+          "studentCount": 5,
+          "averageAttendance": 0.6,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 39,
+      "based_on": {
+        "grade_average": 77.51714285714286,
+        "attendance_rate": 1,
+        "submission_rate": 1,
+        "consistency_score": 0.8113271013745578,
+        "cluster_characteristics": {
+          "averageGrade": 79.07,
+          "studentCount": 5,
+          "averageAttendance": 0.6,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    },
+    {
+      "cluster_label": "At-Risk",
+      "cluster_id": 40,
+      "based_on": {
+        "grade_average": 77.60533333333333,
+        "attendance_rate": 1,
+        "submission_rate": 1,
+        "consistency_score": 0.8014752330934788,
+        "cluster_characteristics": {
+          "averageGrade": 79.07,
+          "studentCount": 5,
+          "averageAttendance": 0.6,
+          "averageSubmission": 1
+        }
+      },
+      "student_count": "1"
+    }
+  ],
+  "attendanceData": {
+    "total_sessions": "2",
+    "total_attendance_records": "28",
+    "present_count": "21",
+    "absent_count": "3",
+    "late_count": "2",
+    "excuse_count": "2",
+    "attendance_rate": "75.00"
+  },
+  "insights": [
+    {
+      "type": "performance",
+      "title": "Overall Performance",
+      "description": "Class average grade: 83.65%",
+      "details": {
+        "excellentStudents": "0 (0.0%)",
+        "atRiskStudents": "0 (0.0%)",
+        "averageGrade": "83.65%"
+      }
+    },
+    {
+      "type": "assessment",
+      "title": "Assessment Performance",
+      "description": "Average assessment score: 83.65%",
+      "details": {
+        "totalAssessments": 4,
+        "publishedAssessments": "0160160160160",
+        "averageAssessmentScore": "83.65%"
+      }
+    },
+    {
+      "type": "clustering",
+      "title": "Learning Behavior Patterns",
+      "description": "Student clustering analysis reveals distinct learning patterns",
+      "details": {
+        "consistentStudents": "0 students",
+        "improvingStudents": "0 students",
+        "atRiskClusterStudents": "1 students",
+        "totalClusters": 40
+      }
+    },
+    {
+      "type": "attendance",
+      "title": "Attendance Overview",
+      "description": "Overall attendance rate: 75.00%",
+      "details": {
+        "totalSessions": "2",
+        "attendanceRate": "75.00%",
+        "presentCount": "21",
+        "absentCount": "3"
+      }
+    }
+  ],
+  "recommendations": [],
+  "summary": {
+    "totalStudents": 40,
+    "averageGrade": "83.65",
+    "atRiskStudents": 0,
+    "riskPercentage": "0.0",
+    "overallStatus": "Good Standing"
+  }
+}
