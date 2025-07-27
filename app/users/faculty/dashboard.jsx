@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import React from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useUser } from '../../../contexts/UserContext';
-import QuickNavigation from '../../components/QuickNavigation';
 
 export default function FacultyDashboard() {
   const { currentUser } = useUser();
@@ -82,8 +81,6 @@ export default function FacultyDashboard() {
         </TouchableOpacity>
       </View>
 
-      {/* Quick Navigation Section for Testing */}
-      <QuickNavigation />
     </ScrollView>
   );
 }
