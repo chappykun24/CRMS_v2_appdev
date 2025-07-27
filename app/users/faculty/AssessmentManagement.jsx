@@ -45,6 +45,17 @@ export default function AssessmentManagementScreen() {
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [editingSubAssessment, setEditingSubAssessment] = useState(null);
+  const [showAssessmentModal, setShowAssessmentModal] = useState(false);
+  const [editingAssessment, setEditingAssessment] = useState(null);
+  const [assessmentData, setAssessmentData] = useState({
+    title: '',
+    description: '',
+    type: 'Project',
+    totalPoints: 100,
+    weightPercentage: 25,
+    dueDate: '',
+    instructions: ''
+  });
 
 
   useEffect(() => {
@@ -317,6 +328,90 @@ export default function AssessmentManagementScreen() {
       instructions: subAssessment.instructions || ''
     });
     setShowSubAssessmentModal(true);
+  };
+
+  const handleEditAssessment = (assessment) => {
+    setEditingAssessment(assessment);
+    setAssessmentData({
+      title: assessment.title,
+      description: assessment.description || '',
+      type: assessment.type,
+      totalPoints: assessment.total_points,
+      weightPercentage: assessment.weight_percentage,
+      dueDate: assessment.due_date ? new Date(assessment.due_date).toISOString().slice(0, 10) : '',
+      instructions: assessment.instructions || ''
+    });
+    setShowAssessmentModal(true);
+  };
+
+  const resetAssessmentModal = () => {
+    setAssessmentData({
+      title: '',
+      description: '',
+      type: 'Project',
+      totalPoints: 100,
+      weightPercentage: 25,
+      dueDate: '',
+      instructions: ''
+    });
+    setShowAssessmentModal(false);
+    setEditingAssessment(null);
+  };
+
+  const handleCreateAssessment = async () => {
+    // Validation
+    if (!assessmentData.title.trim()) {
+      Alert.alert('Error', 'Please enter a title');
+      return;
+    }
+
+    if (!assessmentData.description.trim()) {
+      Alert.alert('Error', 'Please enter a description');
+      return;
+    }
+
+    if (!assessmentData.dueDate) {
+      Alert.alert('Error', 'Please select a due date');
+      return;
+    }
+
+    try {
+      if (editingAssessment) {
+        // Update existing assessment
+        await apiClient.put(`/assessments/${editingAssessment.assessment_id}`, {
+          title: assessmentData.title,
+          description: assessmentData.description,
+          type: assessmentData.type,
+          total_points: assessmentData.totalPoints,
+          weight_percentage: assessmentData.weightPercentage,
+          due_date: assessmentData.dueDate,
+          instructions: assessmentData.instructions
+        });
+        Alert.alert('Success', 'Assessment updated successfully');
+      } else {
+        // Create new assessment
+        await apiClient.post('/assessments', {
+          syllabus_id: selectedClass.syllabusId,
+          section_course_id: selectedClass.id,
+          title: assessmentData.title,
+          description: assessmentData.description,
+          type: assessmentData.type,
+          total_points: assessmentData.totalPoints,
+          weight_percentage: assessmentData.weightPercentage,
+          due_date: assessmentData.dueDate,
+          instructions: assessmentData.instructions
+        });
+        Alert.alert('Success', 'Assessment created successfully');
+      }
+
+      resetAssessmentModal();
+      // Refresh assessments list
+      const assessmentsRes = await apiClient.get(`/assessments/section-course/${selectedClass.id}`);
+      setAssessments(Array.isArray(assessmentsRes) ? assessmentsRes : []);
+    } catch (error) {
+      console.error('Error saving assessment:', error);
+      Alert.alert('Error', 'Failed to save assessment');
+    }
   };
 
   const formatDate = (dateString) => {
@@ -635,9 +730,7 @@ export default function AssessmentManagementScreen() {
         
         <TouchableOpacity
           style={styles.editButton}
-          onPress={() => {
-            Alert.alert('Edit Assessment', 'Assessment editing feature is coming soon!');
-          }}
+          onPress={() => handleEditAssessment(assessment)}
         >
           <Ionicons name="create-outline" size={16} color="#3B82F6" />
           <Text style={styles.editButtonText}>Edit</Text>
@@ -825,7 +918,16 @@ export default function AssessmentManagementScreen() {
 
           {currentView === 'classDetails' && (
             <View style={styles.section}>
+              <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Assessments</Text>
+                <TouchableOpacity
+                  style={styles.addAssessmentButton}
+                  onPress={() => setShowAssessmentModal(true)}
+                >
+                  <Ionicons name="add" size={16} color="#FFFFFF" />
+                  <Text style={styles.addAssessmentButtonText}>Create Assessment</Text>
+                </TouchableOpacity>
+              </View>
               <View style={styles.assessmentsContainer}>
                 {filteredAssessments.map(renderAssessmentCard)}
               </View>
@@ -936,7 +1038,7 @@ export default function AssessmentManagementScreen() {
         onRequestClose={() => setShowTypePicker(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxHeight: 400 }]}>
+          <View style={[styles.modalContent, { maxHeight: '60%' }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Type</Text>
               <TouchableOpacity onPress={() => setShowTypePicker(false)}>
@@ -945,29 +1047,25 @@ export default function AssessmentManagementScreen() {
             </View>
 
             <ScrollView style={styles.modalBody}>
-              {['Task', 'Quiz', 'Assignment', 'Project', 'Presentation', 'Lab', 'Exam', 'Other'].map((type) => (
+              {['Project', 'Quiz', 'Assignment', 'Exam', 'Lab', 'Presentation'].map((type) => (
                 <TouchableOpacity
                   key={type}
-                      style={[
-                    styles.typeOption,
-                    subAssessmentData.type === type && styles.selectedTypeOption
-                      ]}
-                      onPress={() => {
-                    setSubAssessmentData(prev => ({ ...prev, type }));
+                  style={styles.typeOption}
+                  onPress={() => {
+                    if (showAssessmentModal) {
+                      setAssessmentData(prev => ({ ...prev, type }));
+                    } else {
+                      setSubAssessmentData(prev => ({ ...prev, type }));
+                    }
                     setShowTypePicker(false);
                   }}
                 >
-                  <Text style={[
-                    styles.typeOptionText,
-                    subAssessmentData.type === type && styles.selectedTypeOptionText
-                  ]}>
-                    {type}
-                  </Text>
-                  {subAssessmentData.type === type && (
+                  <Text style={styles.typeOptionText}>{type}</Text>
+                  {(showAssessmentModal ? assessmentData.type : subAssessmentData.type) === type && (
                     <Ionicons name="checkmark" size={20} color="#DC2626" />
-                      )}
-                    </TouchableOpacity>
-                  ))}
+                  )}
+                </TouchableOpacity>
+              ))}
             </ScrollView>
           </View>
         </View>
@@ -982,6 +1080,110 @@ export default function AssessmentManagementScreen() {
           onChange={onDateChange}
         />
       )}
+
+      {/* Assessment Modal */}
+      <Modal
+        visible={showAssessmentModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={resetAssessmentModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{editingAssessment ? 'Edit Assessment' : 'Create Assessment'}</Text>
+              <TouchableOpacity onPress={resetAssessmentModal}>
+                <Ionicons name="close" size={24} color="#374151" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody}>
+              <Text style={styles.modalSubtitle}>Assessment Details</Text>
+                  
+              <Text style={styles.inputLabel}>Title *</Text>
+              <TextInput
+                style={styles.textInput}
+                value={assessmentData.title}
+                onChangeText={(text) => setAssessmentData(prev => ({ ...prev, title: text }))}
+                placeholder="Enter assessment title"
+              />
+
+              <Text style={styles.inputLabel}>Description *</Text>
+              <TextInput
+                style={[styles.textInput, styles.textArea]}
+                value={assessmentData.description}
+                onChangeText={(text) => setAssessmentData(prev => ({ ...prev, description: text }))}
+                placeholder="Enter assessment description"
+                multiline
+                numberOfLines={3}
+              />
+
+              <Text style={styles.inputLabel}>Type *</Text>
+              <TouchableOpacity 
+                style={styles.pickerContainer}
+                onPress={() => setShowTypePicker(true)}
+              >
+                <Text style={styles.pickerText}>{assessmentData.type}</Text>
+                <Ionicons name="chevron-down" size={20} color="#6B7280" />
+              </TouchableOpacity>
+
+              <Text style={styles.inputLabel}>Total Points</Text>
+              <TextInput
+                style={styles.textInput}
+                value={assessmentData.totalPoints.toString()}
+                onChangeText={(text) => setAssessmentData(prev => ({ ...prev, totalPoints: parseInt(text) || 0 }))}
+                placeholder="Enter total points"
+                keyboardType="numeric"
+              />
+
+              <Text style={styles.inputLabel}>Weight Percentage</Text>
+              <TextInput
+                style={styles.textInput}
+                value={assessmentData.weightPercentage.toString()}
+                onChangeText={(text) => setAssessmentData(prev => ({ ...prev, weightPercentage: parseInt(text) || 0 }))}
+                placeholder="Enter weight percentage"
+                keyboardType="numeric"
+              />
+
+              <Text style={styles.inputLabel}>Due Date</Text>
+              <TouchableOpacity 
+                style={styles.pickerContainer}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={styles.pickerText}>
+                  {assessmentData.dueDate ? formatDate(assessmentData.dueDate) : 'Select due date'}
+                </Text>
+                <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+              </TouchableOpacity>
+
+              <Text style={styles.inputLabel}>Instructions</Text>
+              <TextInput
+                style={[styles.textInput, styles.textArea]}
+                value={assessmentData.instructions}
+                onChangeText={(text) => setAssessmentData(prev => ({ ...prev, instructions: text }))}
+                placeholder="Enter instructions for students"
+                multiline
+                numberOfLines={3}
+              />
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={resetAssessmentModal}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.createAssessmentButton}
+                onPress={handleCreateAssessment}
+              >
+                <Text style={styles.createAssessmentButtonText}>{editingAssessment ? 'Update Assessment' : 'Create Assessment'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1104,17 +1306,16 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   assessmentsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    gap: 12,
   },
   assessmentCard: {
     backgroundColor: '#FFFFFF',
-    padding: 12,
+    padding: 16,
     borderRadius: 10,
-    width: '48%',
+    width: '100%',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    marginBottom: 8,
   },
   selectedAssessmentCard: {
     borderColor: '#DC2626',
@@ -1558,21 +1759,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginBottom: 8,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  typeOptionText: {
+    fontSize: 16,
+    color: '#1F2937',
   },
   selectedTypeOption: {
     borderColor: '#DC2626',
     backgroundColor: '#FEF2F2',
-  },
-  typeOptionText: {
-    fontSize: 16,
-    color: '#353A40',
-    fontWeight: '500',
   },
   selectedTypeOptionText: {
     color: '#DC2626',
@@ -1845,5 +2043,19 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '500',
     color: '#475569',
+  },
+  addAssessmentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#DC2626',
+    gap: 4,
+  },
+  addAssessmentButtonText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#FFFFFF',
   },
 }); 
