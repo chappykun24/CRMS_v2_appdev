@@ -5,6 +5,11 @@ const router = express.Router();
 const pool = require('../database');
 require('dotenv').config();
 
+// Test endpoint
+router.get('/test', (req, res) => {
+  res.json({ message: 'Assessments router is working!' });
+});
+
 // GET /api/assessments/faculty/:facultyId - Get all assessments for a faculty member
 router.get('/faculty/:facultyId', async (req, res) => {
   const { facultyId } = req.params;
@@ -40,12 +45,10 @@ router.get('/faculty/:facultyId', async (req, res) => {
         s.title as syllabus_title,
         c.title as course_title,
         c.course_code,
-        sc.room_assignment,
-        sc.schedule,
         u.name as instructor_name
       FROM assessments a
       LEFT JOIN syllabi s ON a.syllabus_id = s.syllabus_id
-      LEFT JOIN section_courses sc ON a.section_course_id = sc.section_course_id
+      LEFT JOIN section_courses sc ON COALESCE(a.section_course_id, s.section_course_id) = sc.section_course_id
       LEFT JOIN courses c ON sc.course_id = c.course_id
       LEFT JOIN users u ON sc.instructor_id = u.user_id
       WHERE a.created_by = $1
@@ -56,7 +59,8 @@ router.get('/faculty/:facultyId', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching assessments:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   } finally {
     client.release();
   }
@@ -99,7 +103,7 @@ router.get('/syllabus/:syllabusId', async (req, res) => {
         c.course_code
       FROM assessments a
       LEFT JOIN syllabi s ON a.syllabus_id = s.syllabus_id
-      LEFT JOIN section_courses sc ON a.section_course_id = sc.section_course_id
+      LEFT JOIN section_courses sc ON COALESCE(a.section_course_id, s.section_course_id) = sc.section_course_id
       LEFT JOIN courses c ON sc.course_id = c.course_id
       WHERE a.syllabus_id = $1
       ORDER BY a.created_at DESC
@@ -133,7 +137,7 @@ router.get('/:id', async (req, res) => {
         (SELECT COUNT(*) FROM sub_assessments sa WHERE sa.assessment_id = a.assessment_id AND sa.is_graded = true) as graded_sub_assessments
       FROM assessments a
       LEFT JOIN syllabi s ON a.syllabus_id = s.syllabus_id
-      LEFT JOIN section_courses sc ON a.section_course_id = sc.section_course_id
+      LEFT JOIN section_courses sc ON COALESCE(a.section_course_id, s.section_course_id) = sc.section_course_id
       LEFT JOIN courses c ON sc.course_id = c.course_id
       LEFT JOIN users u ON sc.instructor_id = u.user_id
       WHERE a.assessment_id = $1
@@ -333,11 +337,7 @@ router.get('/:id/students-with-grades', async (req, res) => {
         sub.submission_type,
         sub.submitted_at,
         sub.total_score,
-        sub.raw_score,
-        sub.adjusted_score,
-        sub.late_penalty,
         sub.status,
-        sub.feedback,
         sub.remarks,
         u.name as graded_by_name,
         sub.graded_at
@@ -345,8 +345,11 @@ router.get('/:id/students-with-grades', async (req, res) => {
       JOIN students s ON ce.student_id = s.student_id
       LEFT JOIN submissions sub ON ce.enrollment_id = sub.enrollment_id AND sub.assessment_id = $1
       LEFT JOIN users u ON sub.graded_by = u.user_id
-      WHERE ce.section_course_id = (
-        SELECT section_course_id FROM assessments WHERE assessment_id = $1
+      WHERE ce.section_course_id IN (
+        SELECT COALESCE(a.section_course_id, s.section_course_id)
+        FROM assessments a
+        LEFT JOIN syllabi s ON a.syllabus_id = s.syllabus_id
+        WHERE a.assessment_id = $1
       )
       ORDER BY s.full_name
     `;
@@ -401,11 +404,7 @@ router.put('/:id/submissions/:enrollment_id', async (req, res) => {
   const { id, enrollment_id } = req.params;
   const {
     total_score,
-    raw_score,
-    adjusted_score,
-    late_penalty,
     status,
-    feedback,
     remarks,
     graded_by
   } = req.body;
@@ -415,16 +414,14 @@ router.put('/:id/submissions/:enrollment_id', async (req, res) => {
   try {
     const query = `
       UPDATE submissions SET
-        total_score = $1, raw_score = $2, adjusted_score = $3,
-        late_penalty = $4, status = $5, feedback = $6, remarks = $7,
-        graded_by = $8, graded_at = CURRENT_TIMESTAMP
-      WHERE assessment_id = $9 AND enrollment_id = $10
+        total_score = $1, status = $2, remarks = $3,
+        graded_by = $4, graded_at = CURRENT_TIMESTAMP
+      WHERE assessment_id = $5 AND enrollment_id = $6
       RETURNING submission_id
     `;
     
     const values = [
-      total_score, raw_score, adjusted_score, late_penalty,
-      status, feedback, remarks, graded_by, id, enrollment_id
+      total_score, status, remarks, graded_by, id, enrollment_id
     ];
     
     const result = await client.query(query, values);
@@ -487,7 +484,7 @@ router.get('/:id/rubrics', async (req, res) => {
         r.description,
         r.rubric_type,
         r.performance_levels,
-        r.criteria,
+        r.criterion,
         r.total_points,
         r.ilo_id,
         i.code as ilo_code,

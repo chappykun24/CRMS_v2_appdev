@@ -14,12 +14,11 @@ router.get('/syllabus/:syllabusId', async (req, res) => {
         r.rubric_id,
         r.syllabus_id,
         r.assessment_id,
-        r.sub_assessment_id,
         r.title,
         r.description,
         r.rubric_type,
         r.performance_levels,
-        r.criteria,
+        r.criterion,
         r.total_points,
         r.is_template,
         r.template_name,
@@ -29,12 +28,10 @@ router.get('/syllabus/:syllabusId', async (req, res) => {
         r.updated_at,
         i.code as ilo_code,
         i.description as ilo_description,
-        a.title as assessment_title,
-        sa.title as sub_assessment_title
+        a.title as assessment_title
       FROM rubrics r
       LEFT JOIN ilos i ON r.ilo_id = i.ilo_id
       LEFT JOIN assessments a ON r.assessment_id = a.assessment_id
-      LEFT JOIN sub_assessments sa ON r.sub_assessment_id = sa.sub_assessment_id
       WHERE r.syllabus_id = $1
       ORDER BY r.created_at DESC
     `;
@@ -65,7 +62,7 @@ router.get('/assessment/:assessmentId', async (req, res) => {
         r.description,
         r.rubric_type,
         r.performance_levels,
-        r.criteria,
+        r.criterion,
         r.total_points,
         r.is_template,
         r.template_name,
@@ -145,7 +142,7 @@ router.post('/', async (req, res) => {
     description,
     rubric_type,
     performance_levels,
-    criteria,
+    criterion,
     total_points,
     is_template,
     template_name,
@@ -153,7 +150,7 @@ router.post('/', async (req, res) => {
     created_by
   } = req.body;
   
-  if (!syllabus_id || !title || !criteria) {
+  if (!syllabus_id || !title || !criterion) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
   
@@ -163,7 +160,7 @@ router.post('/', async (req, res) => {
     const query = `
       INSERT INTO rubrics (
         syllabus_id, assessment_id, sub_assessment_id, title, description,
-        rubric_type, performance_levels, criteria, total_points,
+        rubric_type, performance_levels, criterion, total_points,
         is_template, template_name, ilo_id, created_by
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING rubric_id
@@ -171,7 +168,7 @@ router.post('/', async (req, res) => {
     
     const values = [
       syllabus_id, assessment_id, sub_assessment_id, title, description,
-      rubric_type, performance_levels, criteria, total_points,
+      rubric_type, performance_levels, criterion, total_points,
       is_template, template_name, ilo_id, created_by
     ];
     
@@ -196,7 +193,7 @@ router.put('/:id', async (req, res) => {
     description,
     rubric_type,
     performance_levels,
-    criteria,
+    criterion,
     total_points,
     is_template,
     template_name,
@@ -210,14 +207,14 @@ router.put('/:id', async (req, res) => {
     const query = `
       UPDATE rubrics SET
         title = $1, description = $2, rubric_type = $3, performance_levels = $4,
-        criteria = $5, total_points = $6, is_template = $7, template_name = $8,
+        criterion = $5, total_points = $6, is_template = $7, template_name = $8,
         ilo_id = $9, is_active = $10, updated_at = CURRENT_TIMESTAMP
       WHERE rubric_id = $11
       RETURNING rubric_id
     `;
     
     const values = [
-      title, description, rubric_type, performance_levels, criteria,
+      title, description, rubric_type, performance_levels, criterion,
       total_points, is_template, template_name, ilo_id, is_active, id
     ];
     
@@ -270,7 +267,7 @@ router.get('/templates/all', async (req, res) => {
         r.description,
         r.rubric_type,
         r.performance_levels,
-        r.criteria,
+        r.criterion,
         r.total_points,
         r.template_name,
         r.ilo_id,
@@ -318,7 +315,7 @@ router.post('/:id/duplicate', async (req, res) => {
     const duplicateQuery = `
       INSERT INTO rubrics (
         syllabus_id, assessment_id, sub_assessment_id, title, description,
-        rubric_type, performance_levels, criteria, total_points,
+        rubric_type, performance_levels, criterion, total_points,
         is_template, template_name, ilo_id, created_by
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING rubric_id
@@ -332,7 +329,7 @@ router.post('/:id/duplicate', async (req, res) => {
       original.description,
       original.rubric_type,
       original.performance_levels,
-      original.criteria,
+      original.criterion,
       original.total_points,
       false, // Not a template
       null, // No template name

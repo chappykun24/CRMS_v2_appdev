@@ -297,11 +297,7 @@ router.get('/:id/students-with-grades', async (req, res) => {
         sas.submission_type,
         sas.submitted_at,
         sas.total_score,
-        sas.raw_score,
-        sas.adjusted_score,
-        sas.late_penalty,
         sas.status,
-        sas.feedback,
         sas.remarks,
         u.name as graded_by_name,
         sas.graded_at
@@ -368,11 +364,7 @@ router.put('/:id/submissions/:enrollment_id', async (req, res) => {
   const { id, enrollment_id } = req.params;
   const {
     total_score,
-    raw_score,
-    adjusted_score,
-    late_penalty,
     status,
-    feedback,
     remarks,
     graded_by
   } = req.body;
@@ -382,16 +374,14 @@ router.put('/:id/submissions/:enrollment_id', async (req, res) => {
   try {
     const query = `
       UPDATE sub_assessment_submissions SET
-        total_score = $1, raw_score = $2, adjusted_score = $3,
-        late_penalty = $4, status = $5, feedback = $6, remarks = $7,
-        graded_by = $8, graded_at = CURRENT_TIMESTAMP
-      WHERE sub_assessment_id = $9 AND enrollment_id = $10
+        total_score = $1, status = $2, remarks = $3,
+        graded_by = $4, graded_at = CURRENT_TIMESTAMP
+      WHERE sub_assessment_id = $5 AND enrollment_id = $6
       RETURNING submission_id
     `;
     
     const values = [
-      total_score, raw_score, adjusted_score, late_penalty,
-      status, feedback, remarks, graded_by, id, enrollment_id
+      total_score, status, remarks, graded_by, id, enrollment_id
     ];
     
     const result = await client.query(query, values);
