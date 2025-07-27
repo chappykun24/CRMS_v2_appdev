@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ModalContainer from '../../../components/ModalContainer';
-import apiClient from '../../../utils/api.js';
+import apiClient, { getAPIBaseURL } from '../../../utils/api.js';
 import FacultyMyClassesHeader from '../../components/FacultyMyClassesHeader';
 
 export default function FacultyClassStudents() {
@@ -55,6 +55,7 @@ export default function FacultyClassStudents() {
       <ScrollView style={styles.tableView} horizontal showsHorizontalScrollIndicator>
         <View>
           <View style={styles.tableHeaderRow}>
+            <Text style={[styles.tableHeaderCell, { width: 60 }]}>Photo</Text>
             <Text style={[styles.tableHeaderCell, { width: 200 }]}>Name</Text>
             <Text style={[styles.tableHeaderCell, { width: 120 }]}>SR Code</Text>
             <Text style={[styles.tableHeaderCell, { width: 180 }]}>Enrollment Date</Text>
@@ -62,6 +63,19 @@ export default function FacultyClassStudents() {
           </View>
           {filteredStudents.map(student => (
             <View key={student.enrollment_id} style={styles.tableRow}>
+              <View style={[styles.tableCell, { width: 60, alignItems: 'center' }]}>
+                {student.student_photo ? (
+                  <Image 
+                    source={{ uri: `${getAPIBaseURL().replace('/api', '')}${student.student_photo}` }} 
+                    style={styles.tableStudentPhoto}
+                    onError={(error) => console.log('Image load error:', error)}
+                  />
+                ) : (
+                  <View style={styles.tableDefaultAvatar}>
+                    <Ionicons name="person" size={16} color="#9CA3AF" />
+                  </View>
+                )}
+              </View>
               <Text style={[styles.tableCell, { width: 200 }]} numberOfLines={1}>{student.full_name || student.name || 'Unnamed Student'}</Text>
               <Text style={[styles.tableCell, { width: 120 }]}>{student.student_number || 'N/A'}</Text>
               <Text style={[styles.tableCell, { width: 180 }]}>{student.enrollment_date ? new Date(student.enrollment_date).toLocaleString() : '—'}</Text>
@@ -95,8 +109,25 @@ export default function FacultyClassStudents() {
           ) : (
             filteredStudents.map(student => (
               <TouchableOpacity key={student.enrollment_id} style={styles.studentCard} onPress={() => handleStudentPress(student)}>
-                <Text style={styles.studentName}>{student.full_name || student.name || 'Unnamed Student'}</Text>
-                <Text style={styles.studentId}>SR Code: {student.student_number || 'N/A'}</Text>
+                <View style={styles.studentHeader}>
+                  <View style={styles.studentPhotoContainer}>
+                    {student.student_photo ? (
+                      <Image 
+                        source={{ uri: `${getAPIBaseURL().replace('/api', '')}${student.student_photo}` }} 
+                        style={styles.studentPhoto}
+                        onError={(error) => console.log('Image load error:', error)}
+                      />
+                    ) : (
+                      <View style={styles.defaultAvatar}>
+                        <Ionicons name="person" size={24} color="#9CA3AF" />
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.studentInfo}>
+                    <Text style={styles.studentName}>{student.full_name || student.name || 'Unnamed Student'}</Text>
+                    <Text style={styles.studentId}>SR Code: {student.student_number || 'N/A'}</Text>
+                  </View>
+                </View>
               </TouchableOpacity>
             ))
           )}
@@ -109,10 +140,27 @@ export default function FacultyClassStudents() {
       >
         {selectedStudent && (
           <View>
-            <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 8 }}>{selectedStudent.full_name || selectedStudent.name || 'Unnamed Student'}</Text>
-            <Text style={{ fontSize: 15, marginBottom: 4 }}>SR Code: {selectedStudent.student_number || 'N/A'}</Text>
-            {selectedStudent.email && <Text style={{ fontSize: 15, marginBottom: 4 }}>Email: {selectedStudent.email}</Text>}
-            {selectedStudent.status && <Text style={{ fontSize: 15, marginBottom: 4 }}>Status: {selectedStudent.status}</Text>}
+            <View style={styles.modalStudentHeader}>
+              <View style={styles.modalStudentPhotoContainer}>
+                {selectedStudent.student_photo ? (
+                  <Image 
+                    source={{ uri: `${getAPIBaseURL().replace('/api', '')}${selectedStudent.student_photo}` }} 
+                    style={styles.modalStudentPhoto}
+                    onError={(error) => console.log('Image load error:', error)}
+                  />
+                ) : (
+                  <View style={styles.modalDefaultAvatar}>
+                    <Ionicons name="person" size={32} color="#9CA3AF" />
+                  </View>
+                )}
+              </View>
+              <View style={styles.modalStudentInfo}>
+                <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 8 }}>{selectedStudent.full_name || selectedStudent.name || 'Unnamed Student'}</Text>
+                <Text style={{ fontSize: 15, marginBottom: 4 }}>SR Code: {selectedStudent.student_number || 'N/A'}</Text>
+                {selectedStudent.email && <Text style={{ fontSize: 15, marginBottom: 4 }}>Email: {selectedStudent.email}</Text>}
+                {selectedStudent.status && <Text style={{ fontSize: 15, marginBottom: 4 }}>Status: {selectedStudent.status}</Text>}
+              </View>
+            </View>
           </View>
         )}
       </ModalContainer>
@@ -141,6 +189,36 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+  studentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  studentPhotoContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  studentPhoto: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  defaultAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  studentInfo: {
+    flex: 1,
   },
   studentName: {
     fontSize: 16,
@@ -212,5 +290,50 @@ const styles = StyleSheet.create({
     color: '#353A40',
     paddingHorizontal: 12,
     textAlign: 'left',
+  },
+  tableStudentPhoto: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  tableDefaultAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalStudentHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  modalStudentPhotoContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginRight: 16,
+    overflow: 'hidden',
+  },
+  modalStudentPhoto: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+  },
+  modalDefaultAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalStudentInfo: {
+    flex: 1,
   },
 }); 

@@ -126,8 +126,25 @@ export default function ClassStudents() {
           ) : (
             filteredStudents.map(student => (
               <TouchableOpacity key={student.enrollment_id} style={styles.studentCard} onPress={() => handleStudentPress(student)}>
-                <Text style={styles.studentName}>{student.full_name || student.name || 'Unnamed Student'}</Text>
-                <Text style={styles.studentId}>SR Code: {student.student_number || 'N/A'}</Text>
+                <View style={styles.studentHeader}>
+                  <View style={styles.studentPhotoContainer}>
+                    {student.student_photo ? (
+                      <Image 
+                        source={{ uri: `${getAPIBaseURL().replace('/api', '')}${student.student_photo}` }} 
+                        style={styles.studentPhoto}
+                        onError={(error) => console.log('Image load error:', error)}
+                      />
+                    ) : (
+                      <View style={styles.defaultAvatar}>
+                        <Ionicons name="person" size={24} color="#9CA3AF" />
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.studentInfo}>
+                    <Text style={styles.studentName}>{student.full_name || student.name || 'Unnamed Student'}</Text>
+                    <Text style={styles.studentId}>SR Code: {student.student_number || 'N/A'}</Text>
+                  </View>
+                </View>
               </TouchableOpacity>
             ))
           )}

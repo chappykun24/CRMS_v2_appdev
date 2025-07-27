@@ -269,13 +269,13 @@ function AppContent() {
           <Stack
             screenOptions={{
               headerStyle: {
-                backgroundColor: '#DC2626',
+                backgroundColor: '#FFFFFF',
               },
-              headerTintColor: '#fff',
+              headerTintColor: '#353A40',
               headerTitleStyle: {
                 fontWeight: 'bold',
               },
-              headerShown: false,
+              headerShown: false, // Hide default Stack headers for logged-in users
             }}
           />
         </ScrollView>
@@ -291,7 +291,19 @@ function AppContent() {
     <View style={{ flex: 1 }}>
       {/* Show header only on public pages when not logged in, but exclude faculty-signup */}
       {!isWelcomePage && !isLoggedIn && !normalizedPathname.includes('/faculty-signup') && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 99999 }}>
+        <View style={{ 
+          position: 'absolute', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          zIndex: 99999,
+          backgroundColor: '#FFFFFF',
+          elevation: 0,
+          shadowColor: 'transparent',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0,
+          shadowRadius: 0,
+        }}>
           <GlobalHeader headerTranslateY={undefined} />
         </View>
       )}
@@ -305,13 +317,13 @@ function AppContent() {
         <Stack
           screenOptions={{
             headerStyle: {
-              backgroundColor: '#DC2626',
+              backgroundColor: '#FFFFFF',
             },
-            headerTintColor: '#fff',
+            headerTintColor: '#353A40',
             headerTitleStyle: {
               fontWeight: 'bold',
             },
-            headerShown: false,
+            headerShown: false, // Hide default Stack headers for public pages
             contentStyle: {
               paddingTop: (!isWelcomePage && !isLoggedIn && !normalizedPathname.includes('/faculty-signup')) ? 100 : 0, // Add top padding only when GlobalHeader is shown
               backgroundColor: 'transparent', // Make sure background is transparent

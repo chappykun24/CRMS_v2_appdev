@@ -60,15 +60,15 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingHorizontal: 20,
     marginTop: 0, // Remove top margin to position at top
-    zIndex: 0, // Reset to default
-    elevation: 0, // Reset to default
-    shadowColor: '#000', // For iOS shadow
+    zIndex: 9999, // High z-index to ensure visibility
+    elevation: 0, // Remove elevation for Android
+    shadowColor: 'transparent', // Remove shadow for iOS
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 0,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowOpacity: 0,
+    shadowRadius: 0,
   },
   headerContent: {
     flexDirection: 'row',

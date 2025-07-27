@@ -486,7 +486,7 @@ router.get('/:section_course_id/students', async (req, res) => {
   }
   try {
     const result = await pool.query(`
-      SELECT ce.enrollment_id, s.student_id, s.full_name, s.student_number, ce.enrollment_date, ce.status
+      SELECT ce.enrollment_id, s.student_id, s.full_name, s.student_number, ce.enrollment_date, ce.status, s.student_photo
       FROM course_enrollments ce
       JOIN students s ON ce.student_id = s.student_id
       WHERE ce.section_course_id = $1
