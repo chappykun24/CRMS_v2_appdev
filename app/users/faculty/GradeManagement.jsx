@@ -43,21 +43,23 @@ export default function GradeManagementScreen() {
     const syllabus_id = params.syllabus_id;
     if (!section_course_id || !syllabus_id) return;
     setLoading(true);
-    // Fetch class info (students)
+    
+    // Fetch class info, students, and assessments using working endpoints
     Promise.all([
-      apiClient.get(`/section-courses/${section_course_id}/students`),
-      apiClient.get(`/syllabus/one/${syllabus_id}`)
-    ]).then(([studentsRes, syllabusRes]) => {
+      apiClient.get(`/students/section/${section_course_id}`),
+      apiClient.get(`/syllabus/one/${syllabus_id}`),
+      apiClient.get(`/assessments/syllabus/${syllabus_id}`)
+    ]).then(([studentsRes, syllabusRes, assessmentsRes]) => {
       setStudents(Array.isArray(studentsRes) ? studentsRes : []);
       setClassData(syllabusRes);
-      setAssessments(Array.isArray(syllabusRes.assessments) ? syllabusRes.assessments : []);
+      setAssessments(Array.isArray(assessmentsRes) ? assessmentsRes : []);
       setSelectedClass({
         id: section_course_id,
-        courseCode: syllabusRes.course_code,
-        courseTitle: syllabusRes.course_title,
+        courseCode: syllabusRes.course_code || syllabusRes.course_title,
+        courseTitle: syllabusRes.course_title || syllabusRes.title,
         schedule: syllabusRes.schedule || '',
         students: Array.isArray(studentsRes) ? studentsRes : [],
-        assessments: Array.isArray(syllabusRes.assessments) ? syllabusRes.assessments : []
+        assessments: Array.isArray(assessmentsRes) ? assessmentsRes : []
       });
       setCurrentView('classDetails');
       setLoading(false);
@@ -260,12 +262,33 @@ export default function GradeManagementScreen() {
       <View style={styles.assessmentHeader}>
         <View style={styles.assessmentInfo}>
           <Text style={styles.assessmentTitle}>{assessment.title}</Text>
-          <Text style={styles.assessmentType}>{assessment.type}</Text>
+          <View style={styles.assessmentTypeContainer}>
+            <Ionicons 
+              name={assessment.type === 'Quiz' ? 'help-circle-outline' : 
+                    assessment.type === 'Assignment' ? 'document-text-outline' : 
+                    assessment.type === 'Project' ? 'folder-outline' : 'school-outline'} 
+              size={16} 
+              color="#6B7280" 
+            />
+            <Text style={styles.assessmentType}>{assessment.type}</Text>
+          </View>
         </View>
       </View>
-      <Text style={styles.assessmentDate}>{formatDate(assessment.due_date)}</Text>
-      <View style={styles.assessmentPoints}>
-        <Text style={styles.pointsText}>{assessment.total_points} pts</Text>
+      
+      <View style={styles.assessmentMeta}>
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <Ionicons name="calendar-outline" size={14} color="#6B7280" />
+            <Text style={styles.metaText}>{formatDate(assessment.due_date)}</Text>
+          </View>
+          <View style={styles.metaItem}>
+            <Ionicons name="star-outline" size={14} color="#6B7280" />
+            <Text style={styles.metaText}>{assessment.total_points} pts</Text>
+          </View>
+        </View>
+        <View style={styles.weightContainer}>
+          <Text style={styles.weightText}>{assessment.weight_percentage}% of total grade</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -450,7 +473,7 @@ export default function GradeManagementScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F9FAFB',
   },
   content: {
     flex: 1,
@@ -460,9 +483,9 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#353A40',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1F2937',
     marginBottom: 16,
   },
   classesContainer: {
@@ -474,6 +497,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   selectedClassCard: {
     borderColor: '#DC2626',
@@ -534,46 +562,71 @@ const styles = StyleSheet.create({
     width: '48%',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   selectedAssessmentCard: {
     borderColor: '#DC2626',
     backgroundColor: '#FEF2F2',
+    shadowOpacity: 0.1,
   },
   assessmentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   assessmentInfo: {
     flex: 1,
   },
   assessmentTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#353A40',
-    marginBottom: 4,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 6,
+  },
+  assessmentTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   assessmentType: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
+    fontWeight: '500',
   },
-  assessmentPoints: {
-    paddingHorizontal: 8,
+  assessmentMeta: {
+    marginBottom: 8,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  weightContainer: {
+    alignItems: 'center',
     paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: '#FEF2F2',
-    marginTop: 8,
-    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 6,
   },
-  pointsText: {
-    fontSize: 12,
+  weightText: {
+    fontSize: 11,
+    color: '#374151',
     fontWeight: '600',
-    color: '#DC2626',
-  },
-  assessmentDate: {
-    fontSize: 12,
-    color: '#6B7280',
   },
   studentsList: {
     maxHeight: 300,

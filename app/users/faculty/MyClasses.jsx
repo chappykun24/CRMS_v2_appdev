@@ -12,6 +12,7 @@ import {
 import { useUser } from '../../../contexts/UserContext';
 import apiClient from '../../../utils/api';
 import FacultyMyClassesHeader from '../../components/FacultyMyClassesHeader';
+import QuickNavigation from '../../components/QuickNavigation';
 
 export default function MyClassesScreen() {
   const { currentUser } = useUser();
@@ -243,6 +244,9 @@ export default function MyClassesScreen() {
             {filteredClasses.map(renderClassCard)}
           </View>
         )}
+        
+        {/* Quick Navigation for Testing */}
+        <QuickNavigation />
       </ScrollView>
     </SafeAreaView>
   );

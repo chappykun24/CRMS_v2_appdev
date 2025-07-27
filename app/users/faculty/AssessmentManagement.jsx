@@ -51,19 +51,19 @@ export default function AssessmentManagementScreen() {
     if (!section_course_id || !syllabus_id) return;
     setLoading(true);
     
-    // Fetch class info, assessments, and ILOs
+    // Fetch class info, assessments, and ILOs using working endpoints
     Promise.all([
       apiClient.get(`/syllabus/one/${syllabus_id}`),
       apiClient.get(`/assessments/syllabus/${syllabus_id}`),
-      apiClient.get(`/syllabus/${syllabus_id}/ilos`)
+      apiClient.get(`/ilos/syllabus/${syllabus_id}`)
     ]).then(([syllabusRes, assessmentsRes, ilosRes]) => {
       setClassData(syllabusRes);
       setAssessments(Array.isArray(assessmentsRes) ? assessmentsRes : []);
       setIlos(Array.isArray(ilosRes) ? ilosRes : []);
       setSelectedClass({
         id: section_course_id,
-        courseCode: syllabusRes.course_code,
-        courseTitle: syllabusRes.course_title,
+        courseCode: syllabusRes.course_code || syllabusRes.course_title,
+        courseTitle: syllabusRes.course_title || syllabusRes.title,
         schedule: syllabusRes.schedule || '',
         syllabusId: syllabus_id
       });
@@ -193,7 +193,7 @@ export default function AssessmentManagementScreen() {
       Alert.alert('Error', 'Please enter a valid date in YYYY-MM-DD format');
       return;
     }
-    
+
     try {
       const response = await apiClient.post('/sub-assessments', {
         assessment_id: selectedAssessment.assessment_id,
@@ -413,20 +413,44 @@ export default function AssessmentManagementScreen() {
       <View style={styles.assessmentHeader}>
         <View style={styles.assessmentInfo}>
           <Text style={styles.assessmentTitle}>{assessment.title}</Text>
+          <View style={styles.assessmentTypeContainer}>
+            <Ionicons 
+              name={assessment.type === 'Quiz' ? 'help-circle-outline' : 
+                    assessment.type === 'Assignment' ? 'document-text-outline' : 
+                    assessment.type === 'Project' ? 'folder-outline' : 'school-outline'} 
+              size={16} 
+              color="#6B7280" 
+            />
           <Text style={styles.assessmentType}>{assessment.type}</Text>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(assessment.status) + '20' }]}>
+        </View>
+        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(assessment.status) + '15' }]}>
           <Text style={[styles.statusText, { color: getStatusColor(assessment.status) }]}>
             {assessment.status}
           </Text>
         </View>
       </View>
       
-      <Text style={styles.assessmentDescription}>{assessment.description}</Text>
+      {assessment.description && (
+        <Text style={styles.assessmentDescription} numberOfLines={2}>
+          {assessment.description}
+        </Text>
+      )}
       
       <View style={styles.assessmentMeta}>
-        <Text style={styles.assessmentDate}>Due: {formatDate(assessment.due_date)}</Text>
-        <Text style={styles.assessmentPoints}>{assessment.total_points} pts ({assessment.weight_percentage}%)</Text>
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <Ionicons name="calendar-outline" size={14} color="#6B7280" />
+            <Text style={styles.metaText}>{formatDate(assessment.due_date)}</Text>
+          </View>
+          <View style={styles.metaItem}>
+            <Ionicons name="star-outline" size={14} color="#6B7280" />
+            <Text style={styles.metaText}>{assessment.total_points} pts</Text>
+          </View>
+        </View>
+        <View style={styles.weightContainer}>
+          <Text style={styles.weightText}>{assessment.weight_percentage}% of total grade</Text>
+        </View>
       </View>
 
       <View style={styles.assessmentActions}>
@@ -435,7 +459,7 @@ export default function AssessmentManagementScreen() {
             style={styles.publishButton}
             onPress={() => handlePublishAssessment(assessment.assessment_id)}
           >
-            <Ionicons name="eye-outline" size={14} color="#10B981" />
+            <Ionicons name="eye-outline" size={16} color="#10B981" />
             <Text style={styles.publishButtonText}>Publish</Text>
           </TouchableOpacity>
         )}
@@ -443,11 +467,10 @@ export default function AssessmentManagementScreen() {
         <TouchableOpacity
           style={styles.editButton}
           onPress={() => {
-            // For now, show an alert since AssessmentEdit page doesn't exist
             Alert.alert('Edit Assessment', 'Assessment editing feature is coming soon!');
           }}
         >
-          <Ionicons name="create-outline" size={14} color="#3B82F6" />
+          <Ionicons name="create-outline" size={16} color="#3B82F6" />
           <Text style={styles.editButtonText}>Edit</Text>
         </TouchableOpacity>
       </View>
@@ -712,7 +735,7 @@ export default function AssessmentManagementScreen() {
 
         {currentView === 'classDetails' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Assessments</Text>
+              <Text style={styles.sectionTitle}>Assessments</Text>
             <View style={styles.assessmentsContainer}>
               {filteredAssessments.map(renderAssessmentCard)}
             </View>
@@ -746,51 +769,51 @@ export default function AssessmentManagementScreen() {
 
             <ScrollView style={styles.modalBody}>
               <Text style={styles.modalSubtitle}>Task Details</Text>
-              
-              <Text style={styles.inputLabel}>Title *</Text>
-              <TextInput
-                style={styles.textInput}
+                  
+                  <Text style={styles.inputLabel}>Title *</Text>
+                  <TextInput
+                    style={styles.textInput}
                 value={subAssessmentData.title}
                 onChangeText={(text) => setSubAssessmentData(prev => ({ ...prev, title: text }))}
                 placeholder="Enter task title"
-              />
+                  />
 
-              <Text style={styles.inputLabel}>Description</Text>
-              <TextInput
-                style={[styles.textInput, styles.textArea]}
+                  <Text style={styles.inputLabel}>Description</Text>
+                  <TextInput
+                    style={[styles.textInput, styles.textArea]}
                 value={subAssessmentData.description}
                 onChangeText={(text) => setSubAssessmentData(prev => ({ ...prev, description: text }))}
                 placeholder="Enter task description"
-                multiline
-                numberOfLines={3}
-              />
+                    multiline
+                    numberOfLines={3}
+                  />
 
-              <Text style={styles.inputLabel}>Type *</Text>
+                  <Text style={styles.inputLabel}>Type *</Text>
               <TouchableOpacity 
                 style={styles.pickerContainer}
                 onPress={() => setShowTypePicker(true)}
               >
                 <Text style={styles.pickerText}>{subAssessmentData.type}</Text>
-                <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                    <Ionicons name="chevron-down" size={20} color="#6B7280" />
               </TouchableOpacity>
 
-              <Text style={styles.inputLabel}>Total Points *</Text>
-              <TextInput
-                style={styles.textInput}
+                  <Text style={styles.inputLabel}>Total Points *</Text>
+                  <TextInput
+                    style={styles.textInput}
                 value={subAssessmentData.totalPoints.toString()}
                 onChangeText={(text) => setSubAssessmentData(prev => ({ ...prev, totalPoints: parseInt(text) || 0 }))}
                 placeholder="10"
-                keyboardType="numeric"
-              />
+                    keyboardType="numeric"
+                  />
 
-              <Text style={styles.inputLabel}>Weight Percentage *</Text>
-              <TextInput
-                style={styles.textInput}
+                  <Text style={styles.inputLabel}>Weight Percentage *</Text>
+                  <TextInput
+                    style={styles.textInput}
                 value={subAssessmentData.weightPercentage.toString()}
                 onChangeText={(text) => setSubAssessmentData(prev => ({ ...prev, weightPercentage: parseInt(text) || 0 }))}
                 placeholder="10"
-                keyboardType="numeric"
-              />
+                    keyboardType="numeric"
+                  />
               <Text style={styles.helpText}>
                 Current total weight: {subAssessments.reduce((sum, sa) => sum + (sa.weight_percentage || 0), 0)}%
               </Text>
@@ -806,19 +829,19 @@ export default function AssessmentManagementScreen() {
                 <Ionicons name="calendar-outline" size={20} color="#6B7280" />
               </TouchableOpacity>
 
-              <Text style={styles.inputLabel}>Instructions</Text>
-              <TextInput
-                style={[styles.textInput, styles.textArea]}
+                  <Text style={styles.inputLabel}>Instructions</Text>
+                  <TextInput
+                    style={[styles.textInput, styles.textArea]}
                 value={subAssessmentData.instructions}
                 onChangeText={(text) => setSubAssessmentData(prev => ({ ...prev, instructions: text }))}
                 placeholder="Enter task instructions"
-                multiline
-                numberOfLines={3}
-              />
+                    multiline
+                    numberOfLines={3}
+                  />
             </ScrollView>
 
             <View style={styles.modalFooter}>
-              <TouchableOpacity 
+                    <TouchableOpacity
                 style={styles.cancelButton} 
                 onPress={resetSubAssessmentModal}
               >
@@ -855,11 +878,11 @@ export default function AssessmentManagementScreen() {
               {['Task', 'Quiz', 'Assignment', 'Project', 'Presentation', 'Lab', 'Exam', 'Other'].map((type) => (
                 <TouchableOpacity
                   key={type}
-                  style={[
+                      style={[
                     styles.typeOption,
                     subAssessmentData.type === type && styles.selectedTypeOption
-                  ]}
-                  onPress={() => {
+                      ]}
+                      onPress={() => {
                     setSubAssessmentData(prev => ({ ...prev, type }));
                     setShowTypePicker(false);
                   }}
@@ -872,9 +895,9 @@ export default function AssessmentManagementScreen() {
                   </Text>
                   {subAssessmentData.type === type && (
                     <Ionicons name="checkmark" size={20} color="#DC2626" />
-                  )}
-                </TouchableOpacity>
-              ))}
+                      )}
+                    </TouchableOpacity>
+                  ))}
             </ScrollView>
           </View>
         </View>
@@ -1008,20 +1031,20 @@ export default function AssessmentManagementScreen() {
                   <Text style={styles.selectedDateValue}>{subAssessmentData.dueDate}</Text>
                 </View>
               )}
-              
-              <View style={styles.modalFooter}>
-                <TouchableOpacity 
-                  style={styles.cancelButton} 
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity 
+                style={styles.cancelButton} 
                   onPress={() => setShowDatePicker(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.createAssessmentButton} 
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.createAssessmentButton} 
                   onPress={() => setShowDatePicker(false)}
-                >
+              >
                   <Text style={styles.createAssessmentButtonText}>Set Date</Text>
-                </TouchableOpacity>
+              </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -1034,7 +1057,7 @@ export default function AssessmentManagementScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F9FAFB',
   },
   content: {
     flex: 1,
@@ -1047,12 +1070,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#353A40',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1F2937',
     marginBottom: 16,
   },
 
@@ -1065,6 +1088,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -1154,83 +1182,121 @@ const styles = StyleSheet.create({
     width: '48%',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   selectedAssessmentCard: {
     borderColor: '#DC2626',
     backgroundColor: '#FEF2F2',
+    shadowOpacity: 0.1,
   },
   assessmentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   assessmentInfo: {
     flex: 1,
   },
   assessmentTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#353A40',
-    marginBottom: 4,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 6,
+  },
+  assessmentTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   assessmentType: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#6B7280',
+    fontWeight: '500',
   },
   statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
-  assessmentDescription: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 8,
-  },
-  assessmentMeta: {
-    marginBottom: 8,
-  },
-  assessmentDate: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginBottom: 2,
-  },
-  assessmentPoints: {
+  statusText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#DC2626',
+  },
+  assessmentDescription: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  assessmentMeta: {
+    marginBottom: 12,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  weightContainer: {
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 6,
+  },
+  weightText: {
+    fontSize: 11,
+    color: '#374151',
+    fontWeight: '600',
   },
   assessmentActions: {
     flexDirection: 'row',
-    gap: 4,
+    gap: 6,
   },
   publishButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    borderRadius: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 6,
     backgroundColor: '#F0FDF4',
-    gap: 2,
+    gap: 4,
+    flex: 1,
+    justifyContent: 'center',
   },
   publishButtonText: {
-    fontSize: 10,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
     color: '#10B981',
   },
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    borderRadius: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 6,
     backgroundColor: '#EFF6FF',
-    gap: 2,
+    gap: 4,
+    flex: 1,
+    justifyContent: 'center',
   },
   editButtonText: {
-    fontSize: 10,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
     color: '#3B82F6',
   },
   assessmentDetailsContainer: {
