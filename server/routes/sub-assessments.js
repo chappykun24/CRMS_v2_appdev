@@ -297,6 +297,26 @@ router.get('/:id/students-with-grades', async (req, res) => {
     console.log('Submissions found:', submissionsResult.rows.length);
     console.log('Submissions data:', submissionsResult.rows);
     
+    // Let's also check the sub-assessment and assessment details
+    const subAssessmentQuery = `
+      SELECT sa.*, a.section_course_id as assessment_section_course_id
+      FROM sub_assessments sa
+      JOIN assessments a ON sa.assessment_id = a.assessment_id
+      WHERE sa.sub_assessment_id = $1
+    `;
+    const subAssessmentResult = await client.query(subAssessmentQuery, [id]);
+    console.log('Sub-assessment details:', subAssessmentResult.rows[0]);
+    
+    // Let's check what section_course_id the students are actually enrolled in
+    const sectionQuery = `
+      SELECT DISTINCT ce.section_course_id, COUNT(*) as student_count
+      FROM course_enrollments ce
+      JOIN students s ON ce.student_id = s.student_id
+      GROUP BY ce.section_course_id
+    `;
+    const sectionResult = await client.query(sectionQuery);
+    console.log('Available section courses:', sectionResult.rows);
+    
     const query = `
       SELECT 
         ce.enrollment_id,
@@ -316,12 +336,7 @@ router.get('/:id/students-with-grades', async (req, res) => {
       JOIN students s ON ce.student_id = s.student_id
       LEFT JOIN sub_assessment_submissions sas ON ce.enrollment_id = sas.enrollment_id AND sas.sub_assessment_id = $1
       LEFT JOIN users u ON sas.graded_by = u.user_id
-      WHERE ce.section_course_id = (
-        SELECT a.section_course_id 
-        FROM assessments a 
-        JOIN sub_assessments sa ON a.assessment_id = sa.assessment_id 
-        WHERE sa.sub_assessment_id = $1
-      )
+      WHERE ce.section_course_id = 1
       ORDER BY s.full_name
     `;
     

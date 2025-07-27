@@ -27,6 +27,7 @@ export default function SubAssessmentGradeManagementScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'graded', 'not_graded'
   const [showGradingModal, setShowGradingModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [gradingData, setGradingData] = useState({
@@ -415,10 +416,19 @@ export default function SubAssessmentGradeManagementScreen() {
     }
   };
 
-  const filteredStudents = students.filter(student =>
-    student.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.student_number.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredStudents = students.filter(student => {
+    // First apply search filter
+    const matchesSearch = student.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         student.student_number.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    // Then apply status filter
+    const isGraded = student.status === 'graded' || student.total_score !== null;
+    if (filterStatus === 'graded') return isGraded;
+    if (filterStatus === 'not_graded') return !isGraded;
+    return true; // 'all'
+  });
 
   const renderStudentCard = (student) => {
     const currentScore = student.total_score || 0;
@@ -536,18 +546,77 @@ export default function SubAssessmentGradeManagementScreen() {
 
         {/* Students List */}
         <View style={styles.studentsSection}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>
-                Students ({filteredStudents.length}) - Total: {students.length}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>
+              Students ({filteredStudents.length}) - Total: {students.length}
+            </Text>
+            <TouchableOpacity
+              style={styles.refreshButton}
+              onPress={fetchStudentsWithGrades}
+            >
+              <Ionicons name="refresh" size={20} color="#DC2626" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Filter Buttons */}
+          <View style={styles.filterContainer}>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                filterStatus === 'all' && styles.filterButtonActive
+              ]}
+              onPress={() => setFilterStatus('all')}
+            >
+              <Ionicons 
+                name="list" 
+                size={16} 
+                color={filterStatus === 'all' ? '#DC2626' : '#6B7280'} 
+              />
+              <Text style={[
+                styles.filterButtonText,
+                filterStatus === 'all' && styles.filterButtonTextActive
+              ]}>
+                All ({students.length})
               </Text>
-              <TouchableOpacity 
-                style={styles.refreshButton}
-                onPress={fetchStudentsWithGrades}
-              >
-                <Ionicons name="refresh" size={20} color="#DC2626" />
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                filterStatus === 'graded' && styles.filterButtonActive
+              ]}
+              onPress={() => setFilterStatus('graded')}
+            >
+              <Ionicons 
+                name="checkmark-circle" 
+                size={16} 
+                color={filterStatus === 'graded' ? '#DC2626' : '#6B7280'} 
+              />
+              <Text style={[
+                styles.filterButtonText,
+                filterStatus === 'graded' && styles.filterButtonTextActive
+              ]}>
+                Graded ({students.filter(s => s.status === 'graded' || s.total_score !== null).length})
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                filterStatus === 'not_graded' && styles.filterButtonActive
+              ]}
+              onPress={() => setFilterStatus('not_graded')}
+            >
+              <Ionicons 
+                name="time" 
+                size={16} 
+                color={filterStatus === 'not_graded' ? '#DC2626' : '#6B7280'} 
+              />
+              <Text style={[
+                styles.filterButtonText,
+                filterStatus === 'not_graded' && styles.filterButtonTextActive
+              ]}>
+                Not Graded ({students.filter(s => !(s.status === 'graded' || s.total_score !== null)).length})
+              </Text>
+            </TouchableOpacity>
           </View>
           
           {loading ? (
@@ -1079,5 +1148,36 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 2,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    paddingVertical: 4,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 6,
+  },
+  filterButtonActive: {
+    borderColor: '#DC2626',
+    backgroundColor: '#FEF2F2',
+  },
+  filterButtonText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  filterButtonTextActive: {
+    color: '#DC2626',
+    fontWeight: '600',
   },
 }); 
