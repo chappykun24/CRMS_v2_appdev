@@ -21,11 +21,12 @@ export default function GradeManagementScreen() {
   const params = useLocalSearchParams();
   const [selectedClass, setSelectedClass] = useState(null);
   const [selectedAssessment, setSelectedAssessment] = useState(null);
+  const [selectedSubAssessment, setSelectedSubAssessment] = useState(null);
   const [showGradeModal, setShowGradeModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [gradeValue, setGradeValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentView, setCurrentView] = useState('classes'); // 'classes', 'classDetails', or 'assessmentDetails'
+  const [currentView, setCurrentView] = useState('classes'); // 'classes', 'classDetails', 'assessmentDetails', 'subAssessmentDetails'
   const [showSearch, setShowSearch] = useState(false);
   const [showAssessmentSearch, setShowAssessmentSearch] = useState(false);
   const [showStudentSearch, setShowStudentSearch] = useState(false);
@@ -34,6 +35,7 @@ export default function GradeManagementScreen() {
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [classData, setClassData] = useState(null);
   const [assessments, setAssessments] = useState([]);
+  const [subAssessments, setSubAssessments] = useState([]);
   const [students, setStudents] = useState([]);
   const [studentsWithGrades, setStudentsWithGrades] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +83,7 @@ export default function GradeManagementScreen() {
   const handleClassSelect = (cls) => {
     setSelectedClass(cls);
     setSelectedAssessment(null);
+    setSelectedSubAssessment(null);
     setSearchQuery('');
     setShowAssessmentSearch(false);
     setCurrentView('classDetails');
@@ -90,6 +93,7 @@ export default function GradeManagementScreen() {
     setCurrentView('classes');
     setSelectedClass(null);
     setSelectedAssessment(null);
+    setSelectedSubAssessment(null);
     setSearchQuery('');
     setShowAssessmentSearch(false);
   };
@@ -104,23 +108,31 @@ export default function GradeManagementScreen() {
 
   const handleBackNavigation = () => {
     if (currentView === 'classes') {
-      handleBackToMyClasses(); // Always go to MyClasses
+      handleBackToMyClasses();
     } else if (currentView === 'classDetails') {
-      handleBackToMyClasses(); // Always go to MyClasses
+      handleBackToMyClasses();
     } else if (currentView === 'assessmentDetails') {
       setCurrentView('classDetails');
       setSelectedAssessment(null);
+      setSelectedSubAssessment(null);
+      setShowStudentSearch(false);
+      setStudentSearchQuery('');
+      setStudentViewMode('card');
+    } else if (currentView === 'subAssessmentDetails') {
+      setCurrentView('assessmentDetails');
+      setSelectedSubAssessment(null);
       setShowStudentSearch(false);
       setStudentSearchQuery('');
       setStudentViewMode('card');
     } else {
-      handleBackToMyClasses(); // Fallback
+      handleBackToMyClasses();
     }
   };
 
   const handleBackToClassDetails = () => {
     setCurrentView('classDetails');
     setSelectedAssessment(null);
+    setSelectedSubAssessment(null);
     setShowStudentSearch(false);
     setStudentSearchQuery('');
     setStudentViewMode('card');
@@ -128,14 +140,32 @@ export default function GradeManagementScreen() {
 
   const handleAssessmentSelect = async (assessment) => {
     setSelectedAssessment(assessment);
+    setSelectedSubAssessment(null);
     setShowStudentSearch(false);
     setStudentSearchQuery('');
     setStudentViewMode('card');
     setCurrentView('assessmentDetails');
     
-    // Fetch students with grades for this assessment
+    // Fetch sub-assessments for this assessment
     try {
-      const studentsWithGradesRes = await apiClient.get(`/assessments/${assessment.assessment_id}/students-with-grades`);
+      const subAssessmentsRes = await apiClient.get(`/sub-assessments/assessment/${assessment.assessment_id}`);
+      setSubAssessments(Array.isArray(subAssessmentsRes) ? subAssessmentsRes : []);
+    } catch (err) {
+      console.error('Error fetching sub-assessments:', err);
+      setSubAssessments([]);
+    }
+  };
+
+  const handleSubAssessmentSelect = async (subAssessment) => {
+    setSelectedSubAssessment(subAssessment);
+    setShowStudentSearch(false);
+    setStudentSearchQuery('');
+    setStudentViewMode('card');
+    setCurrentView('subAssessmentDetails');
+    
+    // Fetch students with grades for this sub-assessment
+    try {
+      const studentsWithGradesRes = await apiClient.get(`/sub-assessments/${subAssessment.sub_assessment_id}/students-with-grades`);
       setStudentsWithGrades(Array.isArray(studentsWithGradesRes) ? studentsWithGradesRes : []);
     } catch (err) {
       console.error('Error fetching students with grades:', err);
@@ -145,7 +175,8 @@ export default function GradeManagementScreen() {
 
   const handleAddGrade = (student) => {
     setSelectedStudent(student);
-    setGradeValue(student.total_score ? student.total_score.toString() : '');
+    const currentGrade = selectedSubAssessment ? student.total_score : student.total_score;
+    setGradeValue(currentGrade ? currentGrade.toString() : '');
     setShowGradeModal(true);
   };
 
@@ -156,44 +187,69 @@ export default function GradeManagementScreen() {
     }
 
     const grade = parseFloat(gradeValue);
-    if (isNaN(grade) || grade < 0 || grade > selectedAssessment.total_points) {
-      Alert.alert('Error', `Grade must be between 0 and ${selectedAssessment.total_points}`);
+    const maxPoints = selectedSubAssessment ? selectedSubAssessment.total_points : selectedAssessment.total_points;
+    
+    if (isNaN(grade) || grade < 0 || grade > maxPoints) {
+      Alert.alert('Error', `Grade must be between 0 and ${maxPoints}`);
       return;
     }
 
     try {
-      // Check if submission exists, if not create one
       let submissionExists = selectedStudent.submission_id;
       
-      if (!submissionExists) {
-        // Create a new submission
-        const newSubmission = await apiClient.post(`/assessments/${selectedAssessment.assessment_id}/submissions`, {
-          enrollment_id: selectedStudent.enrollment_id,
-          submission_type: 'manual',
-          submission_data: { manually_graded: true },
-          file_urls: []
+      if (selectedSubAssessment) {
+        // Grading a sub-assessment (task)
+        if (!submissionExists) {
+          const newSubmission = await apiClient.post(`/sub-assessments/${selectedSubAssessment.sub_assessment_id}/submissions`, {
+            enrollment_id: selectedStudent.enrollment_id,
+            submission_type: 'manual',
+            submission_data: { manually_graded: true },
+            file_urls: []
+          });
+          submissionExists = newSubmission.submission_id;
+        }
+
+        await apiClient.put(`/sub-assessments/${selectedSubAssessment.sub_assessment_id}/submissions/${selectedStudent.enrollment_id}`, {
+          total_score: grade,
+          status: 'graded',
+          graded_by: currentUser.user_id,
+          remarks: `Task graded by ${currentUser.full_name}`
         });
-        submissionExists = newSubmission.submission_id;
+
+        Alert.alert('Success', `Task grade ${grade}/${maxPoints} saved for ${selectedStudent.full_name}`);
+        
+        // Refresh the students with grades list
+        const updatedStudentsWithGrades = await apiClient.get(`/sub-assessments/${selectedSubAssessment.sub_assessment_id}/students-with-grades`);
+        setStudentsWithGrades(Array.isArray(updatedStudentsWithGrades) ? updatedStudentsWithGrades : []);
+      } else {
+        // Grading main assessment
+        if (!submissionExists) {
+          const newSubmission = await apiClient.post(`/assessments/${selectedAssessment.assessment_id}/submissions`, {
+            enrollment_id: selectedStudent.enrollment_id,
+            submission_type: 'manual',
+            submission_data: { manually_graded: true },
+            file_urls: []
+          });
+          submissionExists = newSubmission.submission_id;
+        }
+
+        await apiClient.put(`/assessments/${selectedAssessment.assessment_id}/submissions/${selectedStudent.enrollment_id}`, {
+          total_score: grade,
+          status: 'graded',
+          graded_by: currentUser.user_id,
+          remarks: `Graded by ${currentUser.full_name}`
+        });
+
+        Alert.alert('Success', `Grade ${grade}/${maxPoints} saved for ${selectedStudent.full_name}`);
+        
+        // Refresh the students with grades list
+        const updatedStudentsWithGrades = await apiClient.get(`/assessments/${selectedAssessment.assessment_id}/students-with-grades`);
+        setStudentsWithGrades(Array.isArray(updatedStudentsWithGrades) ? updatedStudentsWithGrades : []);
       }
 
-      // Update the submission with the grade
-      await apiClient.put(`/assessments/${selectedAssessment.assessment_id}/submissions/${selectedStudent.enrollment_id}`, {
-        total_score: grade,
-        raw_score: grade,
-        adjusted_score: grade,
-        status: 'graded',
-        graded_by: currentUser.user_id,
-        remarks: `Graded by ${currentUser.full_name}`
-      });
-
-      Alert.alert('Success', `Grade ${grade}/${selectedAssessment.total_points} saved for ${selectedStudent.full_name}`);
       setShowGradeModal(false);
       setGradeValue('');
       setSelectedStudent(null);
-      
-      // Refresh the students with grades list
-      const updatedStudentsWithGrades = await apiClient.get(`/assessments/${selectedAssessment.assessment_id}/students-with-grades`);
-      setStudentsWithGrades(Array.isArray(updatedStudentsWithGrades) ? updatedStudentsWithGrades : []);
     } catch (err) {
       console.error('Error saving grade:', err);
       Alert.alert('Error', 'Failed to save grade. Please try again.');
@@ -224,6 +280,11 @@ export default function GradeManagementScreen() {
   const filteredAssessments = assessments.filter(assessment =>
     assessment.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     assessment.type.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredSubAssessments = subAssessments.filter(subAssessment =>
+    subAssessment.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    subAssessment.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredStudentsWithGrades = studentsWithGrades.filter(student =>
@@ -293,8 +354,49 @@ export default function GradeManagementScreen() {
     </TouchableOpacity>
   );
 
+  const renderSubAssessmentCard = (subAssessment) => (
+    <TouchableOpacity
+      key={subAssessment.sub_assessment_id}
+      style={[styles.subAssessmentCard, selectedSubAssessment?.sub_assessment_id === subAssessment.sub_assessment_id && styles.selectedSubAssessmentCard]}
+      onPress={() => handleSubAssessmentSelect(subAssessment)}
+    >
+      <View style={styles.subAssessmentHeader}>
+        <View style={styles.subAssessmentInfo}>
+          <Text style={styles.subAssessmentTitle}>{subAssessment.title}</Text>
+          <View style={styles.subAssessmentTypeContainer}>
+            <Ionicons 
+              name={subAssessment.type === 'Task' ? 'checkmark-circle-outline' : 
+                    subAssessment.type === 'Exercise' ? 'fitness-outline' : 
+                    subAssessment.type === 'Activity' ? 'play-circle-outline' : 'document-text-outline'} 
+              size={16} 
+              color="#6B7280" 
+            />
+            <Text style={styles.subAssessmentType}>{subAssessment.type}</Text>
+          </View>
+        </View>
+      </View>
+      
+      <View style={styles.subAssessmentMeta}>
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <Ionicons name="calendar-outline" size={14} color="#6B7280" />
+            <Text style={styles.metaText}>{formatDate(subAssessment.due_date)}</Text>
+          </View>
+          <View style={styles.metaItem}>
+            <Ionicons name="star-outline" size={14} color="#6B7280" />
+            <Text style={styles.metaText}>{subAssessment.total_points} pts</Text>
+          </View>
+        </View>
+        <View style={styles.weightContainer}>
+          <Text style={styles.weightText}>{subAssessment.weight_percentage}% of assessment</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
   const renderStudentGradeRow = (student) => {
-    const gradeColor = getGradeColor(student.total_score, student.total_points);
+    const maxPoints = selectedSubAssessment ? selectedSubAssessment.total_points : selectedAssessment.total_points;
+    const gradeColor = getGradeColor(student.total_score, maxPoints);
     
     return (
       <View key={student.enrollment_id} style={styles.studentGradeRow}>
@@ -309,7 +411,7 @@ export default function GradeManagementScreen() {
               onPress={() => handleAddGrade(student)}
             >
               <Text style={[styles.studentScore, { color: gradeColor }]}>
-                {student.total_score}/{student.total_points}
+                {student.total_score}/{maxPoints}
               </Text>
             </TouchableOpacity>
           ) : (
@@ -334,7 +436,8 @@ export default function GradeManagementScreen() {
         <Text style={styles.studentTableHeaderCell}>Score</Text>
       </View>
       {filteredStudentsWithGrades.map((student) => {
-        const gradeColor = getGradeColor(student.total_score, student.total_points);
+        const maxPoints = selectedSubAssessment ? selectedSubAssessment.total_points : selectedAssessment.total_points;
+        const gradeColor = getGradeColor(student.total_score, maxPoints);
         return (
           <View key={student.enrollment_id} style={styles.studentTableRow}>
             <Text style={styles.studentTableCell}>{student.full_name}</Text>
@@ -344,7 +447,7 @@ export default function GradeManagementScreen() {
               onPress={() => handleAddGrade(student)}
             >
               <Text style={[styles.studentTableScoreText, { color: gradeColor }]}>
-                {student.total_score !== null ? `${student.total_score}/${student.total_points}` : '--'}
+                {student.total_score !== null ? `${student.total_score}/${maxPoints}` : '--'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -359,6 +462,7 @@ export default function GradeManagementScreen() {
         currentView={currentView}
         selectedClass={selectedClass}
         selectedAssessment={selectedAssessment}
+        selectedSubAssessment={selectedSubAssessment}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         showSearch={showSearch}
@@ -402,6 +506,27 @@ export default function GradeManagementScreen() {
         {currentView === 'assessmentDetails' && (
           /* Assessment Details View */
           <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Tasks & Activities</Text>
+            
+            {subAssessments.length > 0 ? (
+              <View style={styles.subAssessmentsContainer}>
+                {filteredSubAssessments.map(renderSubAssessmentCard)}
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="document-text-outline" size={48} color="#9CA3AF" />
+                <Text style={styles.emptyStateTitle}>No Tasks Available</Text>
+                <Text style={styles.emptyStateText}>
+                  This assessment doesn't have any individual tasks or activities to grade.
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {currentView === 'subAssessmentDetails' && (
+          /* Sub-Assessment Details View */
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>Students</Text>
             
             {studentViewMode === 'card' ? (
@@ -425,7 +550,9 @@ export default function GradeManagementScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Grade</Text>
+              <Text style={styles.modalTitle}>
+                {selectedSubAssessment ? 'Grade Task' : 'Add Grade'}
+              </Text>
               <TouchableOpacity onPress={() => setShowGradeModal(false)}>
                 <Ionicons name="close" size={24} color="#374151" />
               </TouchableOpacity>
@@ -433,10 +560,10 @@ export default function GradeManagementScreen() {
 
             <View style={styles.modalBody}>
               <Text style={styles.modalSubtitle}>
-                {selectedStudent?.full_name} - {selectedAssessment?.title}
+                {selectedStudent?.full_name} - {selectedSubAssessment ? selectedSubAssessment.title : selectedAssessment?.title}
               </Text>
               <Text style={styles.modalInfo}>
-                Total Points: {selectedAssessment?.total_points}
+                Total Points: {selectedSubAssessment ? selectedSubAssessment.total_points : selectedAssessment?.total_points}
               </Text>
               
               <View style={styles.gradeInputContainer}>
@@ -445,10 +572,12 @@ export default function GradeManagementScreen() {
                   style={styles.gradeInput}
                   value={gradeValue}
                   onChangeText={setGradeValue}
-                  placeholder={`0-${selectedAssessment?.total_points}`}
+                  placeholder={`0-${selectedSubAssessment ? selectedSubAssessment.total_points : selectedAssessment?.total_points}`}
                   keyboardType="numeric"
                 />
-                <Text style={styles.gradeInputSuffix}>/ {selectedAssessment?.total_points}</Text>
+                <Text style={styles.gradeInputSuffix}>
+                  / {selectedSubAssessment ? selectedSubAssessment.total_points : selectedAssessment?.total_points}
+                </Text>
               </View>
             </View>
 
@@ -628,11 +757,80 @@ const styles = StyleSheet.create({
     color: '#374151',
     fontWeight: '600',
   },
+  subAssessmentsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  subAssessmentCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    width: '48%',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  selectedSubAssessmentCard: {
+    borderColor: '#3B82F6',
+    backgroundColor: '#EFF6FF',
+    shadowOpacity: 0.1,
+  },
+  subAssessmentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  subAssessmentInfo: {
+    flex: 1,
+  },
+  subAssessmentTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 6,
+  },
+  subAssessmentTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  subAssessmentType: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  subAssessmentMeta: {
+    marginBottom: 8,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   studentsList: {
     maxHeight: 300,
   },
   studentsListContainer: {
-    paddingBottom: 100, // Add space at bottom for navigation bar
+    paddingBottom: 100,
   },
   studentGradeRow: {
     flexDirection: 'row',

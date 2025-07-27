@@ -155,54 +155,56 @@ export default function MyClassesScreen() {
         </View>
 
         <View style={styles.cardActions}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleAttendancePress(cls)}
-          >
-            <Ionicons name="people-outline" size={16} color="#475569" />
-            <Text style={styles.actionButtonText}>Attendance</Text>
-          </TouchableOpacity>
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleAttendancePress(cls)}
+            >
+              <Ionicons name="people-outline" size={18} color="#6B7280" />
+              <Text style={styles.actionButtonText}>Attendance</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push({
-              pathname: '/users/faculty/AssessmentManagement',
-              params: { 
-                section_course_id: cls.section_course_id,
-                syllabus_id: cls.syllabus_id
-              }
-            })}
-          >
-            <Ionicons name="clipboard-outline" size={16} color="#475569" />
-            <Text style={styles.actionButtonText}>Assessments</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push({
+                pathname: '/users/faculty/AssessmentManagement',
+                params: { 
+                  section_course_id: cls.section_course_id,
+                  syllabus_id: cls.syllabus_id
+                }
+              })}
+            >
+              <Ionicons name="clipboard-outline" size={18} color="#6B7280" />
+              <Text style={styles.actionButtonText}>Assessments</Text>
+            </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push({
-              pathname: '/users/faculty/GradeManagement',
-              params: { 
-                section_course_id: cls.section_course_id,
-                syllabus_id: cls.syllabus_id
-              }
-            })}
-          >
-            <Ionicons name="document-text-outline" size={16} color="#475569" />
-            <Text style={styles.actionButtonText}>Grades</Text>
-          </TouchableOpacity>
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push({
+                pathname: '/users/faculty/GradeManagement',
+                params: { 
+                  section_course_id: cls.section_course_id,
+                  syllabus_id: cls.syllabus_id
+                }
+              })}
+            >
+              <Ionicons name="document-text-outline" size={18} color="#6B7280" />
+              <Text style={styles.actionButtonText}>Grades</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push({
-              pathname: '/users/faculty/ClassStudents',
-              params: { section_course_id: cls.section_course_id }
-            })}
-          >
-            <Ionicons name="eye-outline" size={16} color="#475569" />
-            <Text style={styles.actionButtonText}>Students</Text>
-          </TouchableOpacity>
-
-
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push({
+                pathname: '/users/faculty/ClassStudents',
+                params: { section_course_id: cls.section_course_id }
+              })}
+            >
+              <Ionicons name="eye-outline" size={18} color="#6B7280" />
+              <Text style={styles.actionButtonText}>Students</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -370,26 +372,29 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   cardActions: {
+    gap: 12,
+  },
+  actionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: 8,
+    gap: 12,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    gap: 6,
+    gap: 8,
     flex: 1,
     justifyContent: 'center',
+    minHeight: 48,
   },
   actionButtonText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#475569',
   },
 }); 

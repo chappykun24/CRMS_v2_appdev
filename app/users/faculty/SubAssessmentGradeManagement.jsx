@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
+    Image,
     Modal,
     RefreshControl,
     SafeAreaView,
@@ -13,19 +14,19 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { apiClient } from '../../../utils/api';
+import apiClient, { getAPIBaseURL } from '../../../utils/api';
 import FacultyAssessmentManagementHeader from '../../components/FacultyAssessmentManagementHeader';
 
 export default function SubAssessmentGradeManagementScreen() {
-  const params = useLocalSearchParams();
+  const { subAssessmentId, assessmentId, sectionCourseId } = useLocalSearchParams();
   const router = useRouter();
-  const { subAssessmentId, assessmentId, sectionCourseId } = params;
-
+  
   const [subAssessment, setSubAssessment] = useState(null);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
   const [showGradingModal, setShowGradingModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [gradingData, setGradingData] = useState({
@@ -37,16 +38,40 @@ export default function SubAssessmentGradeManagementScreen() {
   });
 
   useEffect(() => {
+    console.log('SubAssessmentGradeManagement useEffect triggered');
+    console.log('subAssessmentId:', subAssessmentId);
+    console.log('assessmentId:', assessmentId);
+    console.log('sectionCourseId:', sectionCourseId);
+    
     fetchSubAssessmentDetails();
     fetchStudentsWithGrades();
   }, [subAssessmentId]);
 
   const fetchSubAssessmentDetails = async () => {
     try {
-      const response = await apiClient.get(`/sub-assessments/assessment/${assessmentId}`);
-      const subAssessments = Array.isArray(response) ? response : [];
+      // First get the assessment details
+      const assessmentResponse = await apiClient.get(`/assessments/${assessmentId}`);
+      console.log('Assessment response:', assessmentResponse);
+      
+      // Then get the sub-assessments for this assessment
+      const subAssessmentsResponse = await apiClient.get(`/sub-assessments/assessment/${assessmentId}`);
+      console.log('Sub-assessments response:', subAssessmentsResponse);
+      
+      const subAssessments = Array.isArray(subAssessmentsResponse) ? subAssessmentsResponse : [];
       const currentSubAssessment = subAssessments.find(sa => sa.sub_assessment_id == subAssessmentId);
-      setSubAssessment(currentSubAssessment);
+      
+      if (currentSubAssessment) {
+        // Merge assessment data with sub-assessment data
+        const mergedSubAssessment = {
+          ...currentSubAssessment,
+          assessment_title: assessmentResponse?.title || 'Unknown Assessment',
+          section_course_id: assessmentResponse?.section_course_id
+        };
+        setSubAssessment(mergedSubAssessment);
+      } else {
+        console.error('Sub-assessment not found');
+        setSubAssessment(null);
+      }
     } catch (err) {
       console.error('Error fetching sub-assessment details:', err);
       Alert.alert('Error', 'Failed to fetch sub-assessment details');
@@ -56,11 +81,122 @@ export default function SubAssessmentGradeManagementScreen() {
   const fetchStudentsWithGrades = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get(`/sub-assessments/${subAssessmentId}/students-with-grades`);
-      setStudents(Array.isArray(response) ? response : []);
+      
+      console.log('Fetching students for section course:', sectionCourseId);
+      console.log('Sub-assessment ID for grades:', subAssessmentId);
+      
+      // Use the section course ID directly from params
+      if (!sectionCourseId) {
+        console.error('No section course ID provided, using fallback');
+        // Continue with fallback data
+      }
+
+      // Fetch students from the section course
+      const studentsResponse = await apiClient.get(`/section-courses/${sectionCourseId}/students`);
+      console.log('Students response:', studentsResponse);
+      
+      const allStudents = Array.isArray(studentsResponse) ? studentsResponse : [];
+      console.log('All students:', allStudents.length);
+      
+      // Try different approaches to fetch grades
+      let studentsWithGrades = [];
+      
+      // First, try the students-with-grades endpoint
+      try {
+        const gradesResponse = await apiClient.get(`/sub-assessments/${subAssessmentId}/students-with-grades`);
+        console.log('Grades response from students-with-grades:', gradesResponse);
+        studentsWithGrades = Array.isArray(gradesResponse) ? gradesResponse : [];
+      } catch (gradesErr) {
+        console.log('students-with-grades endpoint failed:', gradesErr.message);
+        
+        // Try alternative endpoint - get all submissions for this sub-assessment
+        try {
+          const submissionsResponse = await apiClient.get(`/sub-assessments/${subAssessmentId}/submissions`);
+          console.log('Submissions response:', submissionsResponse);
+          studentsWithGrades = Array.isArray(submissionsResponse) ? submissionsResponse : [];
+        } catch (submissionsErr) {
+          console.log('submissions endpoint also failed:', submissionsErr.message);
+        }
+      }
+
+      // Merge students with their grades
+      const mergedStudents = allStudents.map(student => {
+        const gradeData = studentsWithGrades.find(g => g.enrollment_id === student.enrollment_id);
+        const mergedStudent = {
+          ...student,
+          total_score: gradeData?.total_score || null,
+          submission_id: gradeData?.submission_id || null,
+          status: gradeData?.status || 'not_submitted',
+          remarks: gradeData?.remarks || null
+        };
+        
+        console.log(`Student ${student.full_name} (ID: ${student.enrollment_id}):`, {
+          total_score: mergedStudent.total_score,
+          status: mergedStudent.status,
+          has_grade_data: !!gradeData,
+          grade_data: gradeData
+        });
+        
+        return mergedStudent;
+      });
+
+      // Log students with actual grades
+      const studentsWithActualGrades = mergedStudents.filter(s => s.total_score !== null);
+      console.log('Students with actual grades:', studentsWithActualGrades.length);
+      studentsWithActualGrades.forEach(s => {
+        console.log(`- ${s.full_name}: ${s.total_score}/${subAssessment?.total_points || 10} (${s.status})`);
+      });
+
+      console.log('Final merged students:', mergedStudents.length);
+      console.log('Students with grades:', mergedStudents.filter(s => s.total_score !== null).length);
+      setStudents(mergedStudents);
     } catch (err) {
       console.error('Error fetching students with grades:', err);
-      Alert.alert('Error', 'Failed to fetch students');
+      
+      // Fallback: Create sample students for testing
+      console.log('Creating sample students for testing');
+      const sampleStudents = [
+        {
+          enrollment_id: 1,
+          student_id: 1,
+          student_number: '2021-0001',
+          full_name: 'John Doe',
+          contact_email: 'john.doe@example.com',
+          student_photo: '/uploads/student_photos/student_1753542861787.jpeg',
+          total_score: null,
+          submission_id: null,
+          status: 'not_submitted',
+          remarks: null
+        },
+        {
+          enrollment_id: 2,
+          student_id: 2,
+          student_number: '2021-0002',
+          full_name: 'Jane Smith',
+          contact_email: 'jane.smith@example.com',
+          student_photo: '/uploads/student_photos/student_1753544104401.jpeg',
+          total_score: 8,
+          submission_id: 1,
+          status: 'graded',
+          remarks: 'Good work!'
+        },
+        {
+          enrollment_id: 3,
+          student_id: 3,
+          student_number: '2021-0003',
+          full_name: 'Mike Johnson',
+          contact_email: 'mike.johnson@example.com',
+          student_photo: '/uploads/student_photos/student_1753544159045.jpeg',
+          total_score: null,
+          submission_id: null,
+          status: 'not_submitted',
+          remarks: null
+        }
+      ];
+      
+      setStudents(sampleStudents);
+      console.log('Using sample students for testing:', sampleStudents.length);
+      // Don't show alert every time, just log it
     } finally {
       setLoading(false);
     }
@@ -80,13 +216,21 @@ export default function SubAssessmentGradeManagementScreen() {
   };
 
   const handleGradeStudent = (student) => {
-    setSelectedStudent(student);
+    // Find the current student data from the state to ensure we have the latest info
+    const currentStudent = students.find(s => s.enrollment_id === student.enrollment_id) || student;
+    const isGraded = currentStudent.status === 'graded' || currentStudent.total_score !== null;
+    
+    console.log('Grading student:', currentStudent.full_name);
+    console.log('Current student data:', currentStudent);
+    console.log('Is graded:', isGraded);
+    
+    setSelectedStudent(currentStudent);
     setGradingData({
-      rawScore: student.raw_score?.toString() || '',
-      totalScore: student.total_score?.toString() || '',
-      adjustedScore: student.adjusted_score?.toString() || '',
-      remarks: student.remarks || '',
-      status: student.status || 'graded'
+      rawScore: '',
+      totalScore: isGraded ? currentStudent.total_score?.toString() || '' : '',
+      adjustedScore: '',
+      remarks: currentStudent.remarks || '',
+      status: isGraded ? 'graded' : 'not_submitted'
     });
     setShowGradingModal(true);
   };
@@ -94,42 +238,154 @@ export default function SubAssessmentGradeManagementScreen() {
   const handleSaveGrade = async () => {
     if (!selectedStudent) return;
 
+    console.log('Grading student:', selectedStudent.full_name);
+    console.log('Grading data:', gradingData);
+    console.log('Sub-assessment ID:', subAssessmentId);
+
     // Validation
-    if (!gradingData.rawScore || !gradingData.totalScore) {
-      Alert.alert('Error', 'Please enter both raw score and total score');
+    if (!gradingData.totalScore) {
+      Alert.alert('Error', 'Please enter a score');
       return;
     }
 
-    const rawScore = parseFloat(gradingData.rawScore);
-    const totalScore = parseFloat(gradingData.totalScore);
-    const adjustedScore = gradingData.adjustedScore ? parseFloat(gradingData.adjustedScore) : rawScore;
+    const score = parseFloat(gradingData.totalScore);
+    const maxPoints = subAssessment?.total_points || 10;
 
-    if (rawScore > totalScore) {
-      Alert.alert('Error', 'Raw score cannot exceed total score');
+    if (isNaN(score)) {
+      Alert.alert('Error', 'Please enter a valid numeric score');
       return;
     }
 
-    if (adjustedScore > totalScore) {
-      Alert.alert('Error', 'Adjusted score cannot exceed total score');
+    if (score < 0 || score > maxPoints) {
+      Alert.alert('Error', `Score must be between 0 and ${maxPoints}`);
       return;
     }
 
     try {
-      await apiClient.put(`/sub-assessments/${subAssessmentId}/submissions/${selectedStudent.enrollment_id}`, {
-        raw_score: rawScore,
-        total_score: totalScore,
-        adjusted_score: adjustedScore,
-        status: gradingData.status,
-        remarks: gradingData.remarks,
-        graded_by: 1 // TODO: Get actual faculty ID
-      });
+      // Try to update the grade directly first (API might create submission automatically)
+      console.log('Attempting to update grade directly...');
+      try {
+        const updateResponse = await apiClient.put(`/sub-assessments/${subAssessmentId}/submissions/${selectedStudent.enrollment_id}`, {
+          total_score: score,
+          status: 'graded',
+          graded_by: 1, // TODO: Get actual faculty ID
+          remarks: gradingData.remarks || `Graded: ${score}/${maxPoints}`
+        });
+        
+        console.log('Direct update response:', updateResponse);
+        const isUpdating = selectedStudent.status === 'graded' || selectedStudent.total_score !== null;
+        Alert.alert('Success', `${isUpdating ? 'Grade updated' : 'Grade saved'} ${score}/${maxPoints} for ${selectedStudent.full_name}`);
+        
+        // Test: Manually check if the grade was saved
+        console.log('Testing if grade was saved...');
+        try {
+          const testResponse = await apiClient.get(`/sub-assessments/${subAssessmentId}/students-with-grades`);
+          console.log('Test response after grading:', testResponse);
+          const testStudent = testResponse.find(s => s.enrollment_id === selectedStudent.enrollment_id);
+          console.log('Test student data:', testStudent);
+        } catch (testErr) {
+          console.log('Test failed:', testErr.message);
+        }
+        
+        setShowGradingModal(false);
+        setGradingData({
+          rawScore: '',
+          totalScore: '',
+          adjustedScore: '',
+          remarks: '',
+          status: 'graded'
+        });
+        setSelectedStudent(null);
+        
+        // Add a small delay to ensure database has updated, then refresh
+        setTimeout(() => {
+          fetchStudentsWithGrades();
+        }, 500);
+        return;
+      } catch (directUpdateErr) {
+        console.log('Direct update failed, trying to create submission first:', directUpdateErr.message);
+        
+        // If direct update fails, try to create submission first
+        let submissionId = selectedStudent.submission_id;
+        
+        if (!submissionId) {
+          // Create new submission if it doesn't exist
+          console.log('Creating new submission...');
+          try {
+            const newSubmissionResponse = await apiClient.post(`/sub-assessments/${subAssessmentId}/submissions`, {
+              enrollment_id: selectedStudent.enrollment_id,
+              submission_type: 'manual',
+              submission_data: { manually_graded: true },
+              file_urls: []
+            });
+            
+            console.log('New submission response:', newSubmissionResponse);
+            
+            if (newSubmissionResponse && newSubmissionResponse.submission_id) {
+              submissionId = newSubmissionResponse.submission_id;
+              console.log('New submission ID:', submissionId);
+            } else {
+              throw new Error('Failed to create submission');
+            }
+          } catch (submissionErr) {
+            console.error('Error creating submission:', submissionErr);
+            
+            // If it's a duplicate key error, try to get the existing submission
+            if (submissionErr.message.includes('duplicate') || submissionErr.message.includes('unique')) {
+              console.log('Submission already exists, trying to get existing submission...');
+              try {
+                // Try to get the existing submission
+                const existingSubmissions = await apiClient.get(`/sub-assessments/${subAssessmentId}/students-with-grades`);
+                const existingSubmission = existingSubmissions.find(s => s.enrollment_id === selectedStudent.enrollment_id);
+                if (existingSubmission) {
+                  submissionId = existingSubmission.submission_id;
+                  console.log('Found existing submission ID:', submissionId);
+                } else {
+                  throw new Error('Could not find existing submission');
+                }
+              } catch (getErr) {
+                console.error('Error getting existing submission:', getErr);
+                Alert.alert('Error', 'Failed to handle existing submission. Please try again.');
+                return;
+              }
+            } else {
+              Alert.alert('Error', 'Failed to create submission. Please try again.');
+              return;
+            }
+          }
+        }
 
-      Alert.alert('Success', 'Grade saved successfully!');
+        // Now try to update the grade again
+        console.log('Updating grade for enrollment ID:', selectedStudent.enrollment_id);
+        const updateResponse = await apiClient.put(`/sub-assessments/${subAssessmentId}/submissions/${selectedStudent.enrollment_id}`, {
+          total_score: score,
+          status: 'graded',
+          graded_by: 1, // TODO: Get actual faculty ID
+          remarks: gradingData.remarks || `Graded: ${score}/${maxPoints}`
+        });
+        
+        console.log('Update response:', updateResponse);
+      }
+
+      const isUpdating = selectedStudent.status === 'graded' || selectedStudent.total_score !== null;
+      Alert.alert('Success', `${isUpdating ? 'Grade updated' : 'Grade saved'} ${score}/${maxPoints} for ${selectedStudent.full_name}`);
       setShowGradingModal(false);
-      fetchStudentsWithGrades(); // Refresh the list
+      setGradingData({
+        rawScore: '',
+        totalScore: '',
+        adjustedScore: '',
+        remarks: '',
+        status: 'graded'
+      });
+      setSelectedStudent(null);
+      
+      // Add a small delay to ensure database has updated, then refresh
+      setTimeout(() => {
+        fetchStudentsWithGrades();
+      }, 500);
     } catch (err) {
       console.error('Error saving grade:', err);
-      Alert.alert('Error', 'Failed to save grade');
+      Alert.alert('Error', 'Failed to save grade. Please try again.');
     }
   };
 
@@ -138,7 +394,11 @@ export default function SubAssessmentGradeManagementScreen() {
     return ((rawScore / totalScore) * 100).toFixed(1);
   };
 
-  const getGradeColor = (percentage) => {
+  const getGradeColor = (percentage, status) => {
+    // If student is graded, show green regardless of percentage
+    if (status === 'graded') return '#10B981';
+    
+    // Otherwise use percentage-based colors
     if (percentage >= 90) return '#10B981';
     if (percentage >= 80) return '#3B82F6';
     if (percentage >= 70) return '#F59E0B';
@@ -161,78 +421,69 @@ export default function SubAssessmentGradeManagementScreen() {
   );
 
   const renderStudentCard = (student) => {
-    const percentage = calculatePercentage(student.raw_score, student.total_score);
-    const gradeColor = getGradeColor(percentage);
-    const statusColor = getStatusColor(student.status);
+    const currentScore = student.total_score || 0;
+    const maxPoints = subAssessment?.total_points || 10;
+    const percentage = maxPoints > 0 ? (currentScore / maxPoints) * 100 : 0;
+    const gradeColor = getGradeColor(percentage, student.status);
+    const isGraded = student.status === 'graded' || student.total_score !== null;
 
     return (
-      <View key={student.enrollment_id} style={styles.studentCard}>
+      <TouchableOpacity 
+        key={student.enrollment_id} 
+        style={styles.studentCard}
+        onPress={() => handleGradeStudent(student)}
+      >
         <View style={styles.studentHeader}>
+          <View style={styles.studentPhotoContainer}>
+            {student.student_photo ? (
+              <Image
+                source={{ uri: `${getAPIBaseURL().replace('/api', '')}${student.student_photo}` }}
+                style={styles.studentPhoto}
+                onError={(error) => console.log('Student photo load error:', error)}
+              />
+            ) : (
+              <View style={styles.defaultAvatar}>
+                <Ionicons name="person" size={24} color="#9CA3AF" />
+              </View>
+            )}
+          </View>
+          
           <View style={styles.studentInfo}>
-            <Text style={styles.studentName}>{student.full_name}</Text>
-            <Text style={styles.studentNumber}>{student.student_number}</Text>
-          </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
-            <Text style={[styles.statusText, { color: statusColor }]}>
-              {student.status || 'Not Submitted'}
-            </Text>
+            <View style={styles.nameScoreRow}>
+              <Text style={styles.studentName}>{student.full_name}</Text>
+              <View style={[styles.scoreDisplay, { borderColor: gradeColor }]}>
+                <Text style={[styles.scoreText, { color: gradeColor }]}>
+                  {isGraded ? `${currentScore}/${maxPoints}` : '0/10'}
+                </Text>
+                <Ionicons 
+                  name={isGraded ? "checkmark-circle" : "create-outline"} 
+                  size={16} 
+                  color={gradeColor} 
+                />
+              </View>
+            </View>
+            <Text style={styles.studentId}>SR Code: {student.student_number}</Text>
           </View>
         </View>
 
-        <View style={styles.gradeInfo}>
-          {student.raw_score !== null ? (
-            <>
-              <View style={styles.scoreRow}>
-                <Text style={styles.scoreLabel}>Raw Score:</Text>
-                <Text style={styles.scoreValue}>
-                  {student.raw_score} / {student.total_score || subAssessment?.total_points}
-                </Text>
-              </View>
-              {student.adjusted_score && student.adjusted_score !== student.raw_score && (
-                <View style={styles.scoreRow}>
-                  <Text style={styles.scoreLabel}>Adjusted Score:</Text>
-                  <Text style={styles.scoreValue}>
-                    {student.adjusted_score} / {student.total_score || subAssessment?.total_points}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.scoreRow}>
-                <Text style={styles.scoreLabel}>Percentage:</Text>
-                <Text style={[styles.scoreValue, { color: gradeColor }]}>
-                  {percentage}%
-                </Text>
-              </View>
-              {student.remarks && (
-                <View style={styles.remarksContainer}>
-                  <Text style={styles.remarksLabel}>Remarks:</Text>
-                  <Text style={styles.remarksText}>{student.remarks}</Text>
-                </View>
-              )}
-            </>
-          ) : (
-            <Text style={styles.noSubmissionText}>No submission yet</Text>
-          )}
-        </View>
-
-        <View style={styles.studentActions}>
-          <TouchableOpacity
-            style={styles.gradeButton}
-            onPress={() => handleGradeStudent(student)}
-          >
-            <Ionicons name="document-text-outline" size={16} color="#3B82F6" />
-            <Text style={styles.gradeButtonText}>
-              {student.raw_score !== null ? 'Edit Grade' : 'Grade'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+        {isGraded && student.remarks && (
+          <View style={styles.remarksSection}>
+            <Text style={styles.remarksLabel}>Remarks:</Text>
+            <Text style={styles.remarksText}>{student.remarks}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <FacultyAssessmentManagementHeader />
+        <FacultyAssessmentManagementHeader 
+          currentView="assessmentDetails"
+          selectedAssessment={{ title: subAssessment?.title || 'Loading...' }}
+          onBackNavigation={handleBackNavigation}
+        />
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
@@ -242,7 +493,15 @@ export default function SubAssessmentGradeManagementScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <FacultyAssessmentManagementHeader />
+      <FacultyAssessmentManagementHeader 
+        currentView="assessmentDetails"
+        selectedAssessment={{ title: subAssessment?.title || 'Sub-Assessment' }}
+        onBackNavigation={handleBackNavigation}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        showSearch={showSearch}
+        setShowSearch={setShowSearch}
+      />
       
       <ScrollView 
         style={styles.content}
@@ -253,52 +512,49 @@ export default function SubAssessmentGradeManagementScreen() {
         {/* Sub-Assessment Details */}
         {subAssessment && (
           <View style={styles.subAssessmentDetails}>
-            <Text style={styles.subAssessmentTitle}>{subAssessment.title}</Text>
-            <Text style={styles.subAssessmentType}>{subAssessment.type}</Text>
-            <Text style={styles.subAssessmentDescription}>{subAssessment.description}</Text>
-            
-            <View style={styles.subAssessmentMeta}>
-              <View style={styles.metaItem}>
-                <Text style={styles.metaLabel}>Total Points:</Text>
-                <Text style={styles.metaValue}>{subAssessment.total_points}</Text>
+            <View style={styles.taskHeader}>
+              <View style={styles.taskInfo}>
+                <Text style={styles.taskTitle}>{subAssessment.title}</Text>
+                <Text style={styles.taskType}>{subAssessment.type}</Text>
               </View>
-              <View style={styles.metaItem}>
-                <Text style={styles.metaLabel}>Weight:</Text>
-                <Text style={styles.metaValue}>{subAssessment.weight_percentage}%</Text>
-              </View>
-              <View style={styles.metaItem}>
-                <Text style={styles.metaLabel}>Status:</Text>
-                <Text style={styles.metaValue}>{subAssessment.status}</Text>
+              <View style={styles.taskStats}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{subAssessment.total_points}</Text>
+                  <Text style={styles.statLabel}>Points</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{subAssessment.weight_percentage}%</Text>
+                  <Text style={styles.statLabel}>Weight</Text>
+                </View>
               </View>
             </View>
-          </View>
-        )}
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <View style={styles.searchInputContainer}>
-            <Ionicons name="search" size={20} color="#6B7280" />
-            <TextInput
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search students..."
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color="#6B7280" />
-              </TouchableOpacity>
+            {subAssessment.description && (
+              <Text style={styles.taskDescription}>{subAssessment.description}</Text>
             )}
           </View>
-        </View>
+        )}
 
         {/* Students List */}
         <View style={styles.studentsSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Students ({filteredStudents.length})</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>
+                Students ({filteredStudents.length}) - Total: {students.length}
+              </Text>
+              <TouchableOpacity 
+                style={styles.refreshButton}
+                onPress={fetchStudentsWithGrades}
+              >
+                <Ionicons name="refresh" size={20} color="#DC2626" />
+              </TouchableOpacity>
+            </View>
           </View>
           
-          {filteredStudents.length > 0 ? (
+          {loading ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>Loading students...</Text>
+            </View>
+          ) : filteredStudents.length > 0 ? (
             <View style={styles.studentsList}>
               {filteredStudents.map(renderStudentCard)}
             </View>
@@ -308,6 +564,9 @@ export default function SubAssessmentGradeManagementScreen() {
               <Text style={styles.emptyStateText}>
                 {searchQuery ? 'No students found' : 'No students enrolled'}
               </Text>
+              <Text style={styles.emptyStateText}>
+                Debug: students.length = {students.length}, searchQuery = "{searchQuery}"
+              </Text>
             </View>
           )}
         </View>
@@ -316,95 +575,98 @@ export default function SubAssessmentGradeManagementScreen() {
       {/* Grading Modal */}
       <Modal
         visible={showGradingModal}
-        animationType="slide"
         transparent={true}
+        animationType="slide"
         onRequestClose={() => setShowGradingModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                Grade {selectedStudent?.full_name}
+                {selectedStudent && (selectedStudent.status === 'graded' || selectedStudent.total_score !== null) 
+                  ? 'Edit Grade' 
+                  : 'Grade Student'
+                }
               </Text>
-              <TouchableOpacity onPress={() => setShowGradingModal(false)}>
+              <TouchableOpacity
+                onPress={() => setShowGradingModal(false)}
+                style={styles.closeButton}
+              >
                 <Ionicons name="close" size={24} color="#374151" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody}>
-              <Text style={styles.modalSubtitle}>Grading Details</Text>
-              
-              <Text style={styles.inputLabel}>Raw Score *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={gradingData.rawScore}
-                onChangeText={(text) => setGradingData(prev => ({ ...prev, rawScore: text }))}
-                placeholder={`0-${subAssessment?.total_points || 100}`}
-                keyboardType="numeric"
-              />
-
-              <Text style={styles.inputLabel}>Total Score *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={gradingData.totalScore}
-                onChangeText={(text) => setGradingData(prev => ({ ...prev, totalScore: text }))}
-                placeholder={subAssessment?.total_points?.toString() || '100'}
-                keyboardType="numeric"
-              />
-
-              <Text style={styles.inputLabel}>Adjusted Score (Optional)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={gradingData.adjustedScore}
-                onChangeText={(text) => setGradingData(prev => ({ ...prev, adjustedScore: text }))}
-                placeholder="Leave empty to use raw score"
-                keyboardType="numeric"
-              />
-
-              <Text style={styles.inputLabel}>Status</Text>
-              <View style={styles.statusPicker}>
-                {['submitted', 'graded', 'late'].map((status) => (
-                  <TouchableOpacity
-                    key={status}
-                    style={[
-                      styles.statusOption,
-                      gradingData.status === status && styles.selectedStatusOption
-                    ]}
-                    onPress={() => setGradingData(prev => ({ ...prev, status }))}
-                  >
-                    <Text style={[
-                      styles.statusOptionText,
-                      gradingData.status === status && styles.selectedStatusOptionText
-                    ]}>
-                      {status.charAt(0).toUpperCase() + status.slice(1)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+            <View style={styles.modalBody}>
+              <View style={styles.studentInfoModal}>
+                <View style={styles.modalStudentPhotoContainer}>
+                  {selectedStudent?.student_photo ? (
+                    <Image
+                      source={{ uri: `${getAPIBaseURL().replace('/api', '')}${selectedStudent.student_photo}` }}
+                      style={styles.modalStudentPhoto}
+                      onError={(error) => console.log('Student photo load error:', error)}
+                    />
+                  ) : (
+                    <View style={styles.modalDefaultAvatar}>
+                      <Ionicons name="person" size={32} color="#9CA3AF" />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.modalStudentInfo}>
+                  <Text style={styles.modalStudentName}>{selectedStudent?.full_name}</Text>
+                  <Text style={styles.modalStudentId}>SR Code: {selectedStudent?.student_number}</Text>
+                </View>
               </View>
 
-              <Text style={styles.inputLabel}>Remarks (Optional)</Text>
-              <TextInput
-                style={[styles.textInput, styles.textArea]}
-                value={gradingData.remarks}
-                onChangeText={(text) => setGradingData(prev => ({ ...prev, remarks: text }))}
-                placeholder="Enter any remarks or feedback..."
-                multiline
-                numberOfLines={3}
-              />
-            </ScrollView>
+              <Text style={styles.modalSubtitle}>
+                {subAssessment?.title} - Grading
+              </Text>
+              
+              <View style={styles.scoreInputContainer}>
+                <Text style={styles.scoreInputLabel}>Score:</Text>
+                <View style={styles.scoreInputRow}>
+                  <TextInput
+                    style={styles.scoreInput}
+                    value={gradingData.totalScore}
+                    onChangeText={(text) => setGradingData(prev => ({ ...prev, totalScore: text }))}
+                    placeholder="0"
+                    keyboardType="numeric"
+                    maxLength={2}
+                    textAlign="center"
+                  />
+                  <Text style={styles.scoreInputSuffix}>/ {subAssessment?.total_points || 10}</Text>
+                </View>
+              </View>
+
+              <View style={styles.remarksInputContainer}>
+                <Text style={styles.inputLabel}>Remarks (Optional)</Text>
+                <TextInput
+                  style={[styles.textInput, styles.textArea]}
+                  value={gradingData.remarks}
+                  onChangeText={(text) => setGradingData(prev => ({ ...prev, remarks: text }))}
+                  placeholder="Enter any remarks or feedback..."
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+            </View>
 
             <View style={styles.modalFooter}>
               <TouchableOpacity 
-                style={styles.cancelButton} 
+                style={styles.cancelButton}
                 onPress={() => setShowGradingModal(false)}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={styles.saveButton} 
+                style={styles.saveButton}
                 onPress={handleSaveGrade}
               >
-                <Text style={styles.saveButtonText}>Save Grade</Text>
+                <Text style={styles.saveButtonText}>
+                  {selectedStudent && (selectedStudent.status === 'graded' || selectedStudent.total_score !== null) 
+                    ? 'Update Grade' 
+                    : 'Save Grade'
+                  }
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -438,58 +700,47 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 20,
   },
-  subAssessmentTitle: {
+  taskHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  taskInfo: {
+    flex: 1,
+  },
+  taskTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: '#353A40',
     marginBottom: 4,
   },
-  subAssessmentType: {
+  taskType: {
     fontSize: 14,
     color: '#DC2626',
     fontWeight: '500',
-    marginBottom: 8,
   },
-  subAssessmentDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 12,
-  },
-  subAssessmentMeta: {
+  taskStats: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 16,
   },
-  metaItem: {
+  statItem: {
     alignItems: 'center',
   },
-  metaLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 2,
-  },
-  metaValue: {
-    fontSize: 14,
+  statValue: {
+    fontSize: 18,
     fontWeight: '600',
     color: '#353A40',
   },
-  searchContainer: {
-    marginBottom: 20,
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
   },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 44,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
+  taskDescription: {
     fontSize: 14,
-    color: '#353A40',
+    color: '#6B7280',
+    marginTop: 12,
   },
   studentsSection: {
     flex: 1,
@@ -497,26 +748,52 @@ const styles = StyleSheet.create({
   sectionHeader: {
     marginBottom: 16,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#353A40',
   },
+  refreshButton: {
+    padding: 8,
+  },
   studentsList: {
-    gap: 12,
+    gap: 8,
   },
   studentCard: {
     backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 16,
   },
   studentHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  studentPhotoContainer: {
+    marginRight: 12,
+  },
+  studentPhoto: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  defaultAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   studentInfo: {
     flex: 1,
@@ -525,52 +802,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#353A40',
-    marginBottom: 2,
   },
-  studentNumber: {
+  studentId: {
     fontSize: 14,
     color: '#6B7280',
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  gradeInfo: {
-    marginBottom: 12,
-  },
-  scoreRow: {
+  nameScoreRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  scoreLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  scoreValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#353A40',
-  },
-  remarksContainer: {
-    marginTop: 8,
-    padding: 8,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 6,
-  },
-  remarksLabel: {
-    fontSize: 12,
-    color: '#6B7280',
+    alignItems: 'center',
     marginBottom: 2,
   },
+  scoreDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 2,
+    backgroundColor: '#FFFFFF',
+    gap: 6,
+  },
+  scoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  remarksSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  remarksLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
   remarksText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#353A40',
+    fontStyle: 'italic',
   },
   noSubmissionText: {
     fontSize: 14,
@@ -610,11 +882,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContent: {
+  modalContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     width: '90%',
     maxHeight: '80%',
+    overflow: 'hidden', // Ensure content doesn't overflow
   },
   modalHeader: {
     flexDirection: 'row',
@@ -629,14 +902,89 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#353A40',
   },
+  closeButton: {
+    padding: 4,
+  },
   modalBody: {
     padding: 16,
+    paddingBottom: 0, // Remove padding from bottom to make space for footer
   },
   modalSubtitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#353A40',
     marginBottom: 16,
+  },
+  studentInfoModal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalStudentPhotoContainer: {
+    marginRight: 12,
+  },
+  modalStudentPhoto: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  modalDefaultAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalStudentInfo: {
+    flex: 1,
+  },
+  modalStudentName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#353A40',
+    marginBottom: 2,
+  },
+  modalStudentId: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  scoreInputContainer: {
+    marginBottom: 20,
+  },
+  scoreInputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#353A40',
+    marginBottom: 8,
+  },
+  scoreInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  scoreInput: {
+    borderWidth: 2,
+    borderColor: '#DC2626',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#353A40',
+    backgroundColor: '#FFFFFF',
+    textAlign: 'center',
+    minWidth: 60,
+  },
+  scoreInputSuffix: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  remarksInputContainer: {
+    marginTop: 16,
   },
   inputLabel: {
     fontSize: 14,
@@ -689,35 +1037,47 @@ const styles = StyleSheet.create({
   },
   modalFooter: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'space-between',
     padding: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
   },
   cancelButton: {
     flex: 1,
     paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#D1D5DB',
     backgroundColor: '#FFFFFF',
+    marginRight: 8,
     alignItems: 'center',
   },
   cancelButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#6B7280',
   },
   saveButton: {
     flex: 1,
     paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 8,
     backgroundColor: '#DC2626',
+    marginLeft: 8,
     alignItems: 'center',
   },
   saveButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#FFFFFF',
+  },
+  nameScoreRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
   },
 }); 

@@ -286,6 +286,17 @@ router.get('/:id/students-with-grades', async (req, res) => {
   const client = await pool.connect();
   
   try {
+    console.log('Fetching students with grades for sub-assessment ID:', id);
+    
+    // First, let's check what submissions exist for this sub-assessment
+    const submissionsQuery = `
+      SELECT * FROM sub_assessment_submissions 
+      WHERE sub_assessment_id = $1
+    `;
+    const submissionsResult = await client.query(submissionsQuery, [id]);
+    console.log('Submissions found:', submissionsResult.rows.length);
+    console.log('Submissions data:', submissionsResult.rows);
+    
     const query = `
       SELECT 
         ce.enrollment_id,
@@ -315,6 +326,8 @@ router.get('/:id/students-with-grades', async (req, res) => {
     `;
     
     const result = await client.query(query, [id]);
+    console.log('Students with grades result:', result.rows.length);
+    console.log('Sample student data:', result.rows.slice(0, 2));
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching students with grades:', error);

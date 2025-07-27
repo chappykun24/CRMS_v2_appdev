@@ -31,14 +31,14 @@ export default function FacultyAssessmentManagementHeader({
   };
 
   const renderSearchBar = () => {
-    if (currentView === 'classDetails' && showSearch) {
+    if ((currentView === 'classDetails' || currentView === 'assessmentDetails') && showSearch) {
       return (
         <View style={styles.searchContainer}>
           <View style={styles.searchInputContainer}>
             <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search assessments..."
+              placeholder={currentView === 'classDetails' ? "Search assessments..." : "Search students by name or ID..."}
               placeholderTextColor="#9CA3AF"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -79,12 +79,10 @@ export default function FacultyAssessmentManagementHeader({
           
           {currentView === 'assessmentDetails' && (
             <TouchableOpacity 
-              style={styles.toggleButton}
-              onPress={() => {
-                // Show more options menu
-              }}
+              style={styles.toggleButton} 
+              onPress={() => setShowSearch(!showSearch)}
             >
-              <Ionicons name="ellipsis-vertical" size={20} color="#dc2626" />
+              <Ionicons name={showSearch ? 'close-outline' : 'search-outline'} size={20} color="#dc2626" />
             </TouchableOpacity>
           )}
         </View>
