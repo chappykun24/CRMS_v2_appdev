@@ -768,23 +768,49 @@ router.post('/:section_course_id/sessions', async (req, res) => {
 
 // PUT /api/section-courses/:section_course_id/sessions/:session_id/attendance/:enrollment_id - update attendance status and remarks
 router.put('/:section_course_id/sessions/:session_id/attendance/:enrollment_id', async (req, res) => {
+  console.log('--- Attendance Update Request ---');
   const { section_course_id, session_id, enrollment_id } = req.params;
   const { status, remarks } = req.body;
+  console.log('Params:', { section_course_id, session_id, enrollment_id });
+  console.log('Body:', { status, remarks });
+  
   if (!status) {
+    console.log('Missing status in request');
     return res.status(400).json({ error: 'Missing status' });
   }
+  
   try {
-    // Update attendance_logs for the given session and enrollment
-    const result = await pool.query(
-      `UPDATE attendance_logs SET status = $1, remarks = $2, recorded_at = NOW()
-       WHERE session_id = $3 AND enrollment_id = $4 RETURNING *`,
-      [status, remarks || null, session_id, enrollment_id]
+    // First, check if the attendance log exists
+    console.log('Checking if attendance log exists...');
+    const checkResult = await pool.query(
+      'SELECT * FROM attendance_logs WHERE session_id = $1 AND enrollment_id = $2',
+      [session_id, enrollment_id]
     );
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Attendance log not found' });
+    console.log('Existing attendance log:', checkResult.rows[0]);
+    
+    if (checkResult.rowCount === 0) {
+      console.log('No existing attendance log found, creating new one...');
+      // Create a new attendance log if it doesn't exist
+      const insertResult = await pool.query(
+        `INSERT INTO attendance_logs (enrollment_id, session_id, status, remarks, recorded_at)
+         VALUES ($1, $2, $3, $4, NOW()) RETURNING *`,
+        [enrollment_id, session_id, status, remarks || null]
+      );
+      console.log('Created new attendance log:', insertResult.rows[0]);
+      res.json({ message: 'Attendance created', attendance: insertResult.rows[0] });
+    } else {
+      console.log('Updating existing attendance log...');
+      // Update attendance_logs for the given session and enrollment
+      const result = await pool.query(
+        `UPDATE attendance_logs SET status = $1, remarks = $2, recorded_at = NOW()
+         WHERE session_id = $3 AND enrollment_id = $4 RETURNING *`,
+        [status, remarks || null, session_id, enrollment_id]
+      );
+      console.log('Updated attendance log:', result.rows[0]);
+      res.json({ message: 'Attendance updated', attendance: result.rows[0] });
     }
-    res.json({ message: 'Attendance updated', attendance: result.rows[0] });
   } catch (err) {
+    console.error('Error in attendance update:', err);
     res.status(500).json({ error: 'Server error', details: err.message });
   }
 });

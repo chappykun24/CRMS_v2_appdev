@@ -55,7 +55,15 @@ export default function CreateSessionScreen() {
     <SafeAreaView style={styles.container}>
       <FacultyCreateSessionHeader />
       
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        bounces={true}
+        alwaysBounceVertical={false}
+      >
         <View style={styles.formContainer}>
           <View style={styles.headerSection}>
             <Ionicons name="calendar-outline" size={32} color="#DC2626" style={styles.headerIcon} />
@@ -168,7 +176,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100, // Add padding for bottom navigation
+    flexGrow: 1,
+    paddingBottom: 120, // Increased padding for better bottom spacing
   },
   formContainer: {
     paddingHorizontal: 20,

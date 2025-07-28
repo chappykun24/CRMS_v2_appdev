@@ -32,6 +32,16 @@ export const ROUTES = {
     SYLLABI_CREATION: '/users/faculty/SyllabiCreation',
     PROFILE: '/users/faculty/Profile',
     COURSE_MANAGEMENT: '/pages/CourseManagement/CourseManagement',
+    // Add missing faculty routes
+    ASSESSMENT_MANAGEMENT: '/users/faculty/AssessmentManagement',
+    ATTENDANCE_MANAGEMENT: '/users/faculty/AttendanceManagement',
+    GRADE_MANAGEMENT: '/users/faculty/GradeManagement',
+    ANALYTICS_DASHBOARD: '/users/faculty/AnalyticsDashboard',
+    ASSESSMENT_TEMPLATES: '/users/faculty/AssessmentTemplates',
+    CLASS_STUDENTS: '/users/faculty/ClassStudents',
+    CREATE_SESSION: '/users/faculty/CreateSession',
+    SUB_ASSESSMENT_GRADE_MANAGEMENT: '/users/faculty/SubAssessmentGradeManagement',
+    SLIDESHOW_PAGE: '/users/faculty/SlideshowPage',
   },
   
   STAFF: {

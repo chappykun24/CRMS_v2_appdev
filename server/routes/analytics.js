@@ -581,4 +581,175 @@ router.post('/metrics/calculate', async (req, res) => {
   }
 });
 
+// GET /api/analytics/clusters/faculty/:facultyId - Get clusters for a faculty member's classes
+router.get('/clusters/faculty/:facultyId', async (req, res) => {
+  const { facultyId } = req.params;
+  const client = await pool.connect();
+  
+  try {
+    const query = `
+      SELECT 
+        ac.cluster_id,
+        ac.enrollment_id,
+        ac.cluster_label,
+        ac.cluster_type,
+        ac.based_on,
+        ac.algorithm_used,
+        ac.model_version,
+        ac.confidence_score,
+        ac.cluster_characteristics,
+        ac.recommendations,
+        ac.generated_at,
+        ac.is_active,
+        s.student_number,
+        s.full_name,
+        c.title as course_title,
+        c.course_code,
+        sc.section_code
+      FROM analytics_clusters ac
+      JOIN course_enrollments ce ON ac.enrollment_id = ce.enrollment_id
+      JOIN students s ON ce.student_id = s.student_id
+      JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
+      JOIN courses c ON sc.course_id = c.course_id
+      WHERE sc.instructor_id = $1 AND ac.is_active = true
+      ORDER BY ac.generated_at DESC
+    `;
+    
+    const result = await client.query(query, [facultyId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching faculty clusters:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
+// GET /api/analytics/insights/faculty/:facultyId - Get insights for a faculty member
+router.get('/insights/faculty/:facultyId', async (req, res) => {
+  const { facultyId } = req.params;
+  const client = await pool.connect();
+  
+  try {
+    // Get performance insights for faculty's classes
+    const performanceQuery = `
+      SELECT 
+        'performance' as insight_type,
+        sc.section_course_id,
+        c.course_code,
+        c.title as course_title,
+        COUNT(DISTINCT ce.enrollment_id) as total_students,
+        COUNT(DISTINCT CASE WHEN sas.total_score / sa.total_points < 0.75 THEN ce.enrollment_id END) as at_risk_students,
+        AVG(CASE WHEN sas.total_score IS NOT NULL THEN sas.total_score / sa.total_points * 100 END) as average_performance,
+        COUNT(DISTINCT sa.sub_assessment_id) as total_assessments,
+        COUNT(DISTINCT CASE WHEN sa.is_published = true THEN sa.sub_assessment_id END) as published_assessments
+      FROM section_courses sc
+      JOIN courses c ON sc.course_id = c.course_id
+      LEFT JOIN course_enrollments ce ON sc.section_course_id = ce.section_course_id
+      LEFT JOIN sub_assessments sa ON sc.section_course_id = sa.section_course_id
+      LEFT JOIN sub_assessment_submissions sas ON sa.sub_assessment_id = sas.sub_assessment_id AND ce.enrollment_id = sas.enrollment_id
+      WHERE sc.instructor_id = $1
+      GROUP BY sc.section_course_id, c.course_code, c.title
+    `;
+    
+    const performanceResult = await client.query(performanceQuery, [facultyId]);
+    
+    // Get attendance insights
+    const attendanceQuery = `
+      SELECT 
+        'attendance' as insight_type,
+        sc.section_course_id,
+        c.course_code,
+        c.title as course_title,
+        COUNT(DISTINCT ce.enrollment_id) as total_students,
+        COUNT(DISTINCT CASE WHEN a.attendance_status = 'absent' THEN ce.enrollment_id END) as absent_students,
+        COUNT(DISTINCT CASE WHEN a.attendance_status = 'present' THEN ce.enrollment_id END) as present_students,
+        AVG(CASE WHEN a.attendance_status = 'present' THEN 1 WHEN a.attendance_status = 'absent' THEN 0 END) * 100 as attendance_rate
+      FROM section_courses sc
+      JOIN courses c ON sc.course_id = c.course_id
+      LEFT JOIN course_enrollments ce ON sc.section_course_id = ce.section_course_id
+      LEFT JOIN attendance a ON ce.enrollment_id = a.enrollment_id
+      WHERE sc.instructor_id = $1
+      GROUP BY sc.section_course_id, c.course_code, c.title
+    `;
+    
+    const attendanceResult = await client.query(attendanceQuery, [facultyId]);
+    
+    const insights = [
+      ...performanceResult.rows.map(row => ({
+        type: row.insight_type,
+        details: {
+          courseCode: row.course_code,
+          courseTitle: row.course_title,
+          totalStudents: parseInt(row.total_students) || 0,
+          atRiskStudents: parseInt(row.at_risk_students) || 0,
+          averagePerformance: parseFloat(row.average_performance) || 0,
+          totalAssessments: parseInt(row.total_assessments) || 0,
+          publishedAssessments: parseInt(row.published_assessments) || 0
+        }
+      })),
+      ...attendanceResult.rows.map(row => ({
+        type: row.insight_type,
+        details: {
+          courseCode: row.course_code,
+          courseTitle: row.course_title,
+          totalStudents: parseInt(row.total_students) || 0,
+          absentStudents: parseInt(row.absent_students) || 0,
+          presentStudents: parseInt(row.present_students) || 0,
+          attendanceRate: parseFloat(row.attendance_rate) || 0
+        }
+      }))
+    ];
+    
+    res.json(insights);
+  } catch (error) {
+    console.error('Error fetching faculty insights:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
+// GET /api/analytics/performance/faculty/:facultyId - Get performance metrics for a faculty member
+router.get('/performance/faculty/:facultyId', async (req, res) => {
+  const { facultyId } = req.params;
+  const client = await pool.connect();
+  
+  try {
+    const query = `
+      SELECT 
+        COUNT(DISTINCT sc.section_course_id) as total_courses,
+        COUNT(DISTINCT ce.enrollment_id) as total_students,
+        COUNT(DISTINCT CASE WHEN sas.total_score / sa.total_points < 0.75 THEN ce.enrollment_id END) as at_risk_students,
+        AVG(CASE WHEN sas.total_score IS NOT NULL THEN sas.total_score / sa.total_points * 100 END) as average_grade,
+        COUNT(DISTINCT sa.sub_assessment_id) as total_assessments,
+        COUNT(DISTINCT CASE WHEN sa.is_published = true THEN sa.sub_assessment_id END) as published_assessments,
+        COUNT(DISTINCT CASE WHEN sa.is_graded = true THEN sa.sub_assessment_id END) as graded_assessments
+      FROM section_courses sc
+      LEFT JOIN course_enrollments ce ON sc.section_course_id = ce.section_course_id
+      LEFT JOIN sub_assessments sa ON sc.section_course_id = sa.section_course_id
+      LEFT JOIN sub_assessment_submissions sas ON sa.sub_assessment_id = sas.sub_assessment_id AND ce.enrollment_id = sas.enrollment_id
+      WHERE sc.instructor_id = $1
+    `;
+    
+    const result = await client.query(query, [facultyId]);
+    const performance = result.rows[0] || {};
+    
+    res.json({
+      totalCourses: parseInt(performance.total_courses) || 0,
+      totalStudents: parseInt(performance.total_students) || 0,
+      atRiskStudents: parseInt(performance.at_risk_students) || 0,
+      averageGrade: parseFloat(performance.average_grade) || 0,
+      totalAssessments: parseInt(performance.total_assessments) || 0,
+      publishedAssessments: parseInt(performance.published_assessments) || 0,
+      gradedAssessments: parseInt(performance.graded_assessments) || 0
+    });
+  } catch (error) {
+    console.error('Error fetching faculty performance:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router; 

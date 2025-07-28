@@ -505,4 +505,57 @@ router.get('/:id/rubrics', async (req, res) => {
   }
 });
 
+// GET /api/assessments/section-course/:sectionCourseId - Get all assessments for a section course
+router.get('/section-course/:sectionCourseId', async (req, res) => {
+  const { sectionCourseId } = req.params;
+  const client = await pool.connect();
+  
+  try {
+    const query = `
+      SELECT 
+        a.assessment_id,
+        a.syllabus_id,
+        a.section_course_id,
+        a.title,
+        a.description,
+        a.type,
+        a.category,
+        a.total_points,
+        a.weight_percentage,
+        a.due_date,
+        a.submission_deadline,
+        a.is_published,
+        a.is_graded,
+        a.grading_method,
+        a.instructions,
+        a.content_data,
+        a.ilo_codes,
+        a.assessment_structure,
+        a.rubric_criteria,
+        a.status,
+        a.total_submissions,
+        a.graded_submissions,
+        a.created_at,
+        a.updated_at,
+        s.title as syllabus_title,
+        c.title as course_title,
+        c.course_code
+      FROM assessments a
+      LEFT JOIN syllabi s ON a.syllabus_id = s.syllabus_id
+      LEFT JOIN section_courses sc ON COALESCE(a.section_course_id, s.section_course_id) = sc.section_course_id
+      LEFT JOIN courses c ON sc.course_id = c.course_id
+      WHERE a.section_course_id = $1 OR s.section_course_id = $1
+      ORDER BY a.created_at DESC
+    `;
+    
+    const result = await client.query(query, [sectionCourseId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching section course assessments:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router; 

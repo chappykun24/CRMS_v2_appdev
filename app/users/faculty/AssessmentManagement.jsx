@@ -222,6 +222,24 @@ export default function AssessmentManagementScreen() {
     return today;
   };
 
+  // Clear selected date
+  const clearDate = () => {
+    if (showAssessmentModal) {
+      setAssessmentData(prev => ({ ...prev, dueDate: '' }));
+    } else {
+      setSubAssessmentData(prev => ({ ...prev, dueDate: '' }));
+    }
+  };
+
+  // Get date validation message
+  const getDateValidationMessage = (dateString) => {
+    if (!dateString) return '';
+    if (!validateDate(dateString)) {
+      return 'Date must be today or later';
+    }
+    return '';
+  };
+
   const calculateSubAssessmentTotals = () => {
     const publishedCount = subAssessments.filter(sa => sa.is_published).length;
     const gradedCount = subAssessments.filter(sa => sa.is_graded).length;
@@ -1024,19 +1042,34 @@ export default function AssessmentManagementScreen() {
               </TouchableOpacity>
 
               <Text style={styles.inputLabel}>Due Date</Text>
-              <TouchableOpacity 
-                style={[styles.pickerContainer, subAssessmentData.dueDate && styles.pickerContainerSelected]}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Text style={[styles.pickerText, subAssessmentData.dueDate && styles.pickerTextSelected]}>
-                  {subAssessmentData.dueDate ? formatDate(subAssessmentData.dueDate) : 'Select due date'}
+              <View style={styles.datePickerRow}>
+                <TouchableOpacity 
+                  style={[styles.pickerContainer, styles.datePickerContainer, subAssessmentData.dueDate && styles.pickerContainerSelected]}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={[styles.pickerText, subAssessmentData.dueDate && styles.pickerTextSelected]}>
+                    {subAssessmentData.dueDate ? formatDate(subAssessmentData.dueDate) : 'Select due date'}
+                  </Text>
+                  <Ionicons 
+                    name="calendar-outline" 
+                    size={20} 
+                    color={subAssessmentData.dueDate ? "#DC2626" : "#6B7280"} 
+                  />
+                </TouchableOpacity>
+                {subAssessmentData.dueDate && (
+                  <TouchableOpacity 
+                    style={styles.clearDateButton}
+                    onPress={clearDate}
+                  >
+                    <Ionicons name="close-circle" size={20} color="#EF4444" />
+                  </TouchableOpacity>
+                )}
+              </View>
+              {subAssessmentData.dueDate && (
+                <Text style={styles.dateValidationText}>
+                  {getDateValidationMessage(subAssessmentData.dueDate)}
                 </Text>
-                <Ionicons 
-                  name="calendar-outline" 
-                  size={20} 
-                  color={subAssessmentData.dueDate ? "#DC2626" : "#6B7280"} 
-                />
-              </TouchableOpacity>
+              )}
 
                   <Text style={styles.inputLabel}>Instructions</Text>
                   <TextInput
@@ -1185,15 +1218,34 @@ export default function AssessmentManagementScreen() {
               />
 
               <Text style={styles.inputLabel}>Due Date</Text>
-              <TouchableOpacity 
-                style={styles.pickerContainer}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Text style={styles.pickerText}>
-                  {assessmentData.dueDate ? formatDate(assessmentData.dueDate) : 'Select due date'}
+              <View style={styles.datePickerRow}>
+                <TouchableOpacity 
+                  style={[styles.pickerContainer, styles.datePickerContainer, assessmentData.dueDate && styles.pickerContainerSelected]}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={[styles.pickerText, assessmentData.dueDate && styles.pickerTextSelected]}>
+                    {assessmentData.dueDate ? formatDate(assessmentData.dueDate) : 'Select due date'}
+                  </Text>
+                  <Ionicons 
+                    name="calendar-outline" 
+                    size={20} 
+                    color={assessmentData.dueDate ? "#DC2626" : "#6B7280"} 
+                  />
+                </TouchableOpacity>
+                {assessmentData.dueDate && (
+                  <TouchableOpacity 
+                    style={styles.clearDateButton}
+                    onPress={clearDate}
+                  >
+                    <Ionicons name="close-circle" size={20} color="#EF4444" />
+                  </TouchableOpacity>
+                )}
+              </View>
+              {assessmentData.dueDate && (
+                <Text style={styles.dateValidationText}>
+                  {getDateValidationMessage(assessmentData.dueDate)}
                 </Text>
-                <Ionicons name="calendar-outline" size={20} color="#6B7280" />
-              </TouchableOpacity>
+              )}
 
               <Text style={styles.inputLabel}>Instructions</Text>
               <TextInput
@@ -1602,6 +1654,37 @@ const styles = StyleSheet.create({
   pickerText: {
     fontSize: 14,
     color: '#1F2937',
+  },
+  pickerTextSelected: {
+    color: '#DC2626',
+    fontWeight: '500',
+  },
+  pickerContainerSelected: {
+    borderColor: '#DC2626',
+    backgroundColor: '#FEF2F2',
+  },
+  datePickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  datePickerContainer: {
+    flex: 1,
+  },
+  clearDateButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+  },
+  dateValidationText: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginTop: -12,
+    marginBottom: 16,
+    fontStyle: 'italic',
   },
   cancelButton: {
     flex: 1,

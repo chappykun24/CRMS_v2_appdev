@@ -1,7 +1,7 @@
 import NetInfo from '@react-native-community/netinfo';
 import { router, Stack, usePathname } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Alert, BackHandler, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollProvider, useScrollContext } from '../contexts/ScrollContext';
 import { UserProvider, useUser } from '../contexts/UserContext';
@@ -256,29 +256,23 @@ function AppContent() {
     return <IPDetectionLoadingScreen triedIPs={[]} currentIP={''} status={ipDetection.status} onManualIPSubmit={handleManualIPSubmit} />;
   }
   
-  // For logged-in users, wrap with SafeAreaView and make scrollable
+  // For logged-in users, use regular View with bottom navigation
   if (isLoggedIn) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
-        <ScrollView 
-          style={{ flex: 1, backgroundColor: 'transparent' }}
-          contentContainerStyle={{ flexGrow: 1, backgroundColor: 'transparent', paddingBottom: 80 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Always show the Stack to prevent content from disappearing */}
-          <Stack
-            screenOptions={{
-              headerStyle: {
-                backgroundColor: '#FFFFFF',
-              },
-              headerTintColor: '#353A40',
-              headerTitleStyle: {
-                fontWeight: 'bold',
-              },
-              headerShown: false, // Hide default Stack headers for logged-in users
-            }}
-          />
-        </ScrollView>
+        {/* Stack for navigation */}
+        <Stack
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: '#FFFFFF',
+            },
+            headerTintColor: '#353A40',
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
+            headerShown: false, // Hide default Stack headers for logged-in users
+          }}
+        />
         
         {/* Show bottom navigation */}
         {renderBottomNav()}
@@ -286,7 +280,7 @@ function AppContent() {
     );
   }
   
-  // For public pages, use regular View with GlobalHeader and make scrollable
+  // For public pages, use regular View with GlobalHeader
   return (
     <View style={{ flex: 1 }}>
       {/* Show header only on public pages when not logged in, but exclude faculty-signup */}
@@ -308,29 +302,23 @@ function AppContent() {
         </View>
       )}
       
-      <ScrollView 
-        style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 80 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Always show the Stack to prevent content from disappearing */}
-        <Stack
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: '#FFFFFF',
-            },
-            headerTintColor: '#353A40',
-            headerTitleStyle: {
-              fontWeight: 'bold',
-            },
-            headerShown: false, // Hide default Stack headers for public pages
-            contentStyle: {
-              paddingTop: (!isWelcomePage && !isLoggedIn && !normalizedPathname.includes('/faculty-signup')) ? 100 : 0, // Add top padding only when GlobalHeader is shown
-              backgroundColor: 'transparent', // Make sure background is transparent
-            },
-          }}
-        />
-      </ScrollView>
+      {/* Stack for navigation */}
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#FFFFFF',
+          },
+          headerTintColor: '#353A40',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          headerShown: false, // Hide default Stack headers for public pages
+          contentStyle: {
+            paddingTop: (!isWelcomePage && !isLoggedIn && !normalizedPathname.includes('/faculty-signup')) ? 100 : 0, // Add top padding only when GlobalHeader is shown
+            backgroundColor: 'transparent', // Make sure background is transparent
+          },
+        }}
+      />
       
       {/* Show bottom navigation, but exclude faculty-signup */}
       {!normalizedPathname.includes('/faculty-signup') && renderBottomNav()}

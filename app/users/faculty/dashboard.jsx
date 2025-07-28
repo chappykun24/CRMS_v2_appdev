@@ -10,15 +10,12 @@ export default function FacultyDashboard() {
   const [dashboardStats, setDashboardStats] = useState({
     activeCourses: 0,
     totalStudents: 0,
-    pendingSyllabi: 0,
-    averageGrade: 0,
-    completionRate: 0,
-    atRiskStudents: 0
+    pendingSyllabi: 0
   });
   const [loading, setLoading] = useState(true);
   const firstName = currentUser?.firstName || 'Faculty';
 
-  // Fetch dashboard analytics
+  // Fetch dashboard stats
   const fetchDashboardStats = async () => {
     if (!currentUser?.user_id) return;
     
@@ -30,11 +27,8 @@ export default function FacultyDashboard() {
       const classes = Array.isArray(classesRes) ? classesRes : [];
       
       let totalStudents = 0;
-      let totalGrades = 0;
-      let gradeCount = 0;
-      let atRiskCount = 0;
       
-      // Calculate statistics across all classes
+      // Calculate basic statistics across all classes
       for (const cls of classes) {
         if (cls.section_course_id) {
           try {
@@ -42,65 +36,42 @@ export default function FacultyDashboard() {
             const studentsRes = await apiClient.get(`/section-courses/${cls.section_course_id}/students`);
             const students = Array.isArray(studentsRes) ? studentsRes : [];
             totalStudents += students.length;
-            
-            // Get assessments for this class
-            const assessmentsRes = await apiClient.get(`/assessments/section-course/${cls.section_course_id}`);
-            const assessments = Array.isArray(assessmentsRes) ? assessmentsRes : [];
-            
-            // Calculate grades and identify at-risk students
-            for (const assessment of assessments) {
-              const subAssessmentsRes = await apiClient.get(`/sub-assessments/assessment/${assessment.assessment_id}`);
-              const subAssessments = Array.isArray(subAssessmentsRes) ? subAssessmentsRes : [];
-              
-              for (const subAssessment of subAssessments) {
-                if (subAssessment.is_published) {
-                  const gradesRes = await apiClient.get(`/sub-assessments/${subAssessment.sub_assessment_id}/students-with-grades`);
-                  const grades = Array.isArray(gradesRes) ? gradesRes : [];
-                  
-                  for (const grade of grades) {
-                    if (grade.total_score !== null) {
-                      totalGrades += grade.total_score;
-                      gradeCount++;
-                      
-                      // Identify at-risk students (score < 75% of total points)
-                      const percentage = (grade.total_score / subAssessment.total_points) * 100;
-                      if (percentage < 75) {
-                        atRiskCount++;
-                      }
-                    }
-                  }
-                }
-              }
-            }
           } catch (error) {
-            console.error(`Error fetching stats for class ${cls.section_course_id}:`, error);
+            console.log(`Error fetching stats for class ${cls.section_course_id}:`, error.message);
           }
         }
       }
       
-      // Calculate averages
-      const averageGrade = gradeCount > 0 ? Math.round((totalGrades / gradeCount) * 100) / 100 : 0;
-      const completionRate = totalStudents > 0 ? Math.round((gradeCount / (totalStudents * 4)) * 100) : 0; // Assuming 4 assessments per student
-      
       setDashboardStats({
         activeCourses: classes.length,
         totalStudents,
-        pendingSyllabi: classes.filter(cls => cls.review_status === 'pending').length,
-        averageGrade,
-        completionRate,
-        atRiskStudents: atRiskCount
+        pendingSyllabi: classes.filter(cls => cls.review_status === 'pending').length
       });
       
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
+      console.log('Error fetching dashboard stats:', error.message);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDashboardStats();
+    if (currentUser?.user_id) {
+      fetchDashboardStats();
+    }
   }, [currentUser]);
+
+  // Add error state for better user feedback
+  const [error, setError] = useState(null);
+
+  // Enhanced error handling
+  const handleError = (error, context) => {
+    console.log(`Dashboard error in ${context}:`, error.message);
+    setError(`Unable to load ${context}. Please try again later.`);
+  };
+
+  // Helper function to format average grade percentage
+
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -143,27 +114,25 @@ export default function FacultyDashboard() {
         </View>
       </View>
 
-      {/* Performance Analytics Section */}
-      <View style={styles.analyticsSection}>
-        <Text style={styles.sectionTitle}>Performance Analytics</Text>
-        <View style={styles.analyticsRow}>
-          <View style={styles.analyticsCard}>
-            <Ionicons name="trending-up-outline" size={24} color="#10B981" style={styles.analyticsIcon} />
-            <Text style={styles.analyticsNumber}>{loading ? '...' : dashboardStats.averageGrade}</Text>
-            <Text style={styles.analyticsLabel}>Average Grade</Text>
-          </View>
-          <View style={styles.analyticsCard}>
-            <Ionicons name="checkmark-circle-outline" size={24} color="#3B82F6" style={styles.analyticsIcon} />
-            <Text style={styles.analyticsNumber}>{loading ? '...' : dashboardStats.completionRate}%</Text>
-            <Text style={styles.analyticsLabel}>Completion Rate</Text>
-          </View>
-          <View style={styles.analyticsCard}>
-            <Ionicons name="alert-circle-outline" size={24} color="#EF4444" style={styles.analyticsIcon} />
-            <Text style={styles.analyticsNumber}>{loading ? '...' : dashboardStats.atRiskStudents}</Text>
-            <Text style={styles.analyticsLabel}>At-Risk Students</Text>
-          </View>
+      {/* Loading Indicator */}
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading dashboard data...</Text>
         </View>
-      </View>
+      )}
+
+      {/* Error Display */}
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => {
+            setError(null);
+            fetchDashboardStats();
+          }}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Divider */}
       <View style={styles.divider} />
@@ -309,38 +278,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     marginLeft: 2,
   },
-  analyticsSection: {
-    marginBottom: 32,
-  },
-  analyticsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  analyticsCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 15,
-    alignItems: 'center',
-    marginHorizontal: 6,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  analyticsIcon: {
-    marginBottom: 10,
-  },
-  analyticsNumber: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#DC2626',
-    marginBottom: 5,
-  },
-  analyticsLabel: {
-    fontSize: 13,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
+
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -375,6 +313,46 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: '#353A40',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    backgroundColor: '#FFE5E5',
+    borderRadius: 12,
+    padding: 15,
+    marginTop: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 15,
+    marginTop: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  loadingText: {
+    color: '#6B7280',
+    fontSize: 14,
     textAlign: 'center',
   },
 }); 

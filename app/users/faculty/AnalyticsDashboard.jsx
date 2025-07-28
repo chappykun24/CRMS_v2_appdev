@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -31,17 +30,14 @@ export default function AnalyticsDashboard() {
     try {
       setLoading(true);
       
-      // Fetch clustering data
-      const clusteringRes = await apiClient.get(`/analytics/clusters/faculty/${currentUser.user_id}`);
-      const clustering = Array.isArray(clusteringRes) ? clusteringRes : [];
+      // Calculate comprehensive performance metrics
+      let performance = await calculatePerformanceMetrics();
       
-      // Fetch insights
-      const insightsRes = await apiClient.get(`/analytics/insights/faculty/${currentUser.user_id}`);
-      const insights = Array.isArray(insightsRes) ? insightsRes : [];
+      // Generate mock clustering data based on performance metrics
+      let clustering = generateMockClusteringData(performance);
       
-      // Fetch performance metrics
-      const performanceRes = await apiClient.get(`/analytics/performance/faculty/${currentUser.user_id}`);
-      const performance = performanceRes || {};
+      // Generate mock insights based on performance metrics
+      let insights = generateMockInsightsData(performance);
       
       setAnalyticsData({
         clustering,
@@ -51,11 +47,229 @@ export default function AnalyticsDashboard() {
       });
       
     } catch (error) {
-      console.error('Error fetching analytics data:', error);
-      Alert.alert('Error', 'Failed to load analytics data');
+      console.log('Error fetching analytics data:', error.message);
+      // Set default data on error
+      setAnalyticsData({
+        clustering: [],
+        insights: [],
+        recommendations: [],
+        performance: {
+          averageGrade: 0,
+          completionRate: 0,
+          totalStudents: 0,
+          atRiskStudents: 0,
+          activeCourses: 0
+        }
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  // Calculate comprehensive performance metrics
+  const calculatePerformanceMetrics = async () => {
+    try {
+      // Fetch approved classes for the faculty
+      const classesRes = await apiClient.get(`/syllabus/approved?facultyId=${currentUser.user_id}`);
+      const classes = Array.isArray(classesRes) ? classesRes : [];
+      
+      let totalStudents = 0;
+      let totalGradePercentages = 0;
+      let gradeCount = 0;
+      let atRiskCount = 0;
+      
+      // Calculate statistics across all classes
+      for (const cls of classes) {
+        if (cls.section_course_id) {
+          try {
+            // Get students in this class
+            const studentsRes = await apiClient.get(`/section-courses/${cls.section_course_id}/students`);
+            const students = Array.isArray(studentsRes) ? studentsRes : [];
+            totalStudents += students.length;
+            
+            // Get assessments for this class using syllabus_id instead of section-course endpoint
+            let assessments = [];
+            if (cls.syllabus_id) {
+              try {
+                const assessmentsRes = await apiClient.get(`/assessments/syllabus/${cls.syllabus_id}`);
+                assessments = Array.isArray(assessmentsRes) ? assessmentsRes : [];
+              } catch (assessmentError) {
+                console.log(`No assessments found for syllabus ${cls.syllabus_id}:`, assessmentError.message);
+              }
+            }
+            
+            // Fallback: try section-course endpoint if no assessments found via syllabus
+            if (assessments.length === 0) {
+              try {
+                const assessmentsRes = await apiClient.get(`/assessments/section-course/${cls.section_course_id}`);
+                assessments = Array.isArray(assessmentsRes) ? assessmentsRes : [];
+              } catch (sectionCourseError) {
+                console.log(`No assessments found for section course ${cls.section_course_id}:`, sectionCourseError.message);
+              }
+            }
+            
+            // Calculate grades and identify at-risk students
+            for (const assessment of assessments) {
+              try {
+                const subAssessmentsRes = await apiClient.get(`/sub-assessments/assessment/${assessment.assessment_id}`);
+                const subAssessments = Array.isArray(subAssessmentsRes) ? subAssessmentsRes : [];
+                
+                for (const subAssessment of subAssessments) {
+                  if (subAssessment.is_published) {
+                    try {
+                      const gradesRes = await apiClient.get(`/sub-assessments/${subAssessment.sub_assessment_id}/students-with-grades`);
+                      const grades = Array.isArray(gradesRes) ? gradesRes : [];
+                      
+                      for (const grade of grades) {
+                        if (grade.total_score !== null && subAssessment.total_points > 0) {
+                          // Calculate percentage for this grade
+                          const percentage = (grade.total_score / subAssessment.total_points) * 100;
+                          
+                          // Validate percentage is within reasonable range (0-100)
+                          if (percentage >= 0 && percentage <= 100) {
+                            totalGradePercentages += percentage;
+                            gradeCount++;
+                            
+                            // Identify at-risk students (score < 75% of total points)
+                            if (percentage < 75) {
+                              atRiskCount++;
+                            }
+                          } else {
+                            console.log(`Invalid percentage calculated: ${percentage}% for grade ${grade.total_score}/${subAssessment.total_points}`);
+                          }
+                        }
+                      }
+                    } catch (gradesError) {
+                      console.log(`Error fetching grades for sub-assessment ${subAssessment.sub_assessment_id}:`, gradesError.message);
+                    }
+                  }
+                }
+              } catch (subAssessmentError) {
+                console.log(`Error fetching sub-assessments for assessment ${assessment.assessment_id}:`, subAssessmentError.message);
+              }
+            }
+          } catch (error) {
+            console.log(`Error fetching stats for class ${cls.section_course_id}:`, error.message);
+          }
+        }
+      }
+      
+      // Calculate averages
+      const averageGrade = gradeCount > 0 ? Math.round((totalGradePercentages / gradeCount) * 100) / 100 : 0;
+      const completionRate = totalStudents > 0 ? Math.round((gradeCount / (totalStudents * 4)) * 100) : 0; // Assuming 4 assessments per student
+      
+      return {
+        averageGrade,
+        completionRate,
+        totalStudents,
+        atRiskStudents: atRiskCount,
+        activeCourses: classes.length
+      };
+    } catch (error) {
+      console.log('Error calculating performance metrics:', error.message);
+      return {
+        averageGrade: 0,
+        completionRate: 0,
+        totalStudents: 0,
+        atRiskStudents: 0,
+        activeCourses: 0
+      };
+    }
+  };
+
+  // Generate mock clustering data based on performance metrics
+  const generateMockClusteringData = (performance) => {
+    if (!performance || performance.totalStudents === 0) {
+      return [];
+    }
+
+    const clusters = [];
+    const totalStudents = performance.totalStudents;
+    const atRiskStudents = performance.atRiskStudents;
+    const averageGrade = performance.averageGrade;
+
+    // Calculate cluster distribution based on performance
+    if (atRiskStudents > 0) {
+      clusters.push({
+        cluster_label: 'At-Risk',
+        student_count: atRiskStudents,
+        based_on: {
+          grade_average: averageGrade * 0.6, // At-risk students have lower average
+          attendance_rate: 75.0
+        }
+      });
+    }
+
+    // Consistent performers (students with good grades)
+    const consistentCount = Math.max(0, Math.floor(totalStudents * 0.4));
+    if (consistentCount > 0) {
+      clusters.push({
+        cluster_label: 'Consistent',
+        student_count: consistentCount,
+        based_on: {
+          grade_average: averageGrade * 1.2, // Consistent students have higher average
+          attendance_rate: 95.0
+        }
+      });
+    }
+
+    // Improving students (middle performers)
+    const improvingCount = totalStudents - atRiskStudents - consistentCount;
+    if (improvingCount > 0) {
+      clusters.push({
+        cluster_label: 'Improving',
+        student_count: improvingCount,
+        based_on: {
+          grade_average: averageGrade * 0.9, // Improving students have slightly lower average
+          attendance_rate: 85.0
+        }
+      });
+    }
+
+    return clusters;
+  };
+
+  // Generate mock insights data based on performance metrics
+  const generateMockInsightsData = (performance) => {
+    const insights = [];
+
+    if (performance.atRiskStudents > 0) {
+      insights.push({
+        type: 'performance',
+        title: 'At-Risk Students Detected',
+        description: `${performance.atRiskStudents} students are performing below the 75% threshold`,
+        details: {
+          atRiskStudents: performance.atRiskStudents,
+          threshold: 75
+        }
+      });
+    }
+
+    if (performance.averageGrade < 80) {
+      insights.push({
+        type: 'performance',
+        title: 'Below Average Performance',
+        description: `Class average is ${performance.averageGrade.toFixed(1)}%, which is below the target of 80%`,
+        details: {
+          currentAverage: performance.averageGrade,
+          targetAverage: 80
+        }
+      });
+    }
+
+    if (performance.completionRate < 70) {
+      insights.push({
+        type: 'engagement',
+        title: 'Low Assignment Completion',
+        description: `Only ${performance.completionRate}% of assignments are being completed`,
+        details: {
+          completionRate: performance.completionRate,
+          targetRate: 70
+        }
+      });
+    }
+
+    return insights;
   };
 
   // Generate recommendations based on clustering and insights
@@ -74,7 +288,7 @@ export default function AnalyticsDashboard() {
       });
     }
     
-    // Add more recommendations based on insights
+    // Add recommendations based on insights
     insights.forEach(insight => {
       if (insight.type === 'performance' && insight.details?.atRiskStudents > 0) {
         recommendations.push({
@@ -83,6 +297,26 @@ export default function AnalyticsDashboard() {
           title: 'Academic Performance Alert',
           description: `${insight.details.atRiskStudents} students performing below expectations`,
           action: 'Review assessment strategies and provide additional support'
+        });
+      }
+      
+      if (insight.type === 'performance' && insight.details?.currentAverage < 80) {
+        recommendations.push({
+          type: 'academic',
+          priority: 'medium',
+          title: 'Improve Class Performance',
+          description: `Class average is below target. Consider adjusting teaching methods.`,
+          action: 'Review and enhance instructional strategies'
+        });
+      }
+      
+      if (insight.type === 'engagement' && insight.details?.completionRate < 70) {
+        recommendations.push({
+          type: 'engagement',
+          priority: 'medium',
+          title: 'Increase Assignment Completion',
+          description: `Low assignment completion rate detected`,
+          action: 'Implement engagement strategies and follow up with students'
         });
       }
     });
@@ -119,6 +353,22 @@ export default function AnalyticsDashboard() {
     }
   };
 
+  // Helper function to format average grade percentage
+  const formatAverageGrade = (grade) => {
+    if (grade === null || grade === undefined || isNaN(grade) || !isFinite(grade)) {
+      return '0%';
+    }
+    return `${Math.round(grade * 100) / 100}%`;
+  };
+
+  // Helper function to format student count
+  const formatStudentCount = (count) => {
+    if (count === null || count === undefined || isNaN(count)) {
+      return '0';
+    }
+    return count.toString();
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -140,33 +390,33 @@ export default function AnalyticsDashboard() {
           <Ionicons name="arrow-back" size={24} color="#DC2626" />
         </TouchableOpacity>
         <Text style={styles.title}>Analytics Dashboard</Text>
-        <TouchableOpacity onPress={() => router.push('/users/faculty/GenerateReport')} style={styles.reportButton}>
-          <Ionicons name="document-text-outline" size={24} color="#DC2626" />
+        <TouchableOpacity onPress={() => router.push('/users/faculty/dashboard')} style={styles.reportButton}>
+          <Ionicons name="home-outline" size={24} color="#DC2626" />
         </TouchableOpacity>
       </View>
 
       {/* Performance Overview */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Performance Overview</Text>
+        <Text style={styles.sectionTitle}>Performance Analytics</Text>
         <View style={styles.performanceGrid}>
           <View style={styles.performanceCard}>
             <Ionicons name="trending-up-outline" size={24} color="#10B981" />
             <Text style={styles.performanceNumber}>
-              {analyticsData.performance.averageGrade || '0'}%
+              {formatAverageGrade(analyticsData.performance.averageGrade)}
             </Text>
             <Text style={styles.performanceLabel}>Average Grade</Text>
           </View>
           <View style={styles.performanceCard}>
-            <Ionicons name="people-outline" size={24} color="#3B82F6" />
+            <Ionicons name="checkmark-circle-outline" size={24} color="#3B82F6" />
             <Text style={styles.performanceNumber}>
-              {analyticsData.performance.totalStudents || '0'}
+              {analyticsData.performance.completionRate}%
             </Text>
-            <Text style={styles.performanceLabel}>Total Students</Text>
+            <Text style={styles.performanceLabel}>Completion Rate</Text>
           </View>
           <View style={styles.performanceCard}>
             <Ionicons name="alert-circle-outline" size={24} color="#EF4444" />
             <Text style={styles.performanceNumber}>
-              {analyticsData.performance.atRiskStudents || '0'}
+              {formatStudentCount(analyticsData.performance.atRiskStudents)}
             </Text>
             <Text style={styles.performanceLabel}>At-Risk Students</Text>
           </View>
@@ -209,6 +459,36 @@ export default function AnalyticsDashboard() {
             <Ionicons name="analytics-outline" size={48} color="#9CA3AF" />
             <Text style={styles.emptyStateText}>No clustering data available</Text>
             <Text style={styles.emptyStateSubtext}>Run clustering algorithm to see results</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Key Insights */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Key Insights</Text>
+        <Text style={styles.sectionDescription}>
+          Automated analysis of your class performance
+        </Text>
+        
+        {analyticsData.insights.length > 0 ? (
+          analyticsData.insights.map((insight, index) => (
+            <View key={index} style={styles.insightCard}>
+              <View style={styles.insightHeader}>
+                <Ionicons 
+                  name={insight.type === 'performance' ? 'trending-down-outline' : 'people-outline'} 
+                  size={20} 
+                  color="#DC2626" 
+                />
+                <Text style={styles.insightTitle}>{insight.title}</Text>
+              </View>
+              <Text style={styles.insightDescription}>{insight.description}</Text>
+            </View>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="bulb-outline" size={48} color="#9CA3AF" />
+            <Text style={styles.emptyStateText}>No insights available</Text>
+            <Text style={styles.emptyStateSubtext}>Performance data will generate insights automatically</Text>
           </View>
         )}
       </View>
@@ -276,10 +556,10 @@ export default function AnalyticsDashboard() {
           
           <TouchableOpacity 
             style={styles.actionCard}
-            onPress={() => router.push('/users/faculty/GenerateReport')}
+            onPress={() => router.push('/users/faculty/MyClasses')}
           >
-            <Ionicons name="document-text-outline" size={24} color="#DC2626" />
-            <Text style={styles.actionText}>Generate Report</Text>
+            <Ionicons name="school-outline" size={24} color="#DC2626" />
+            <Text style={styles.actionText}>My Classes</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -290,13 +570,13 @@ export default function AnalyticsDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
   },
   loadingText: {
     fontSize: 16,
@@ -310,7 +590,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#F3F4F6',
   },
   backButton: {
     padding: 8,
@@ -318,7 +598,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
+    color: '#353A40',
   },
   reportButton: {
     padding: 8,
@@ -328,16 +608,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '600',
+    color: '#353A40',
     marginBottom: 8,
   },
   sectionDescription: {
@@ -356,11 +633,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
     backgroundColor: '#F9FAFB',
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   performanceNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
+    color: '#DC2626',
     marginTop: 8,
   },
   performanceLabel: {
@@ -370,10 +649,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   clusterCard: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   clusterHeader: {
     flexDirection: 'row',
@@ -394,7 +675,7 @@ const styles = StyleSheet.create({
   clusterCount: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: '#353A40',
   },
   clusterDetails: {
     flexDirection: 'row',
@@ -404,11 +685,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
   },
-  recommendationCard: {
-    backgroundColor: '#F9FAFB',
+  insightCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  insightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  insightTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#353A40',
+    marginLeft: 8,
+  },
+  insightDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    lineHeight: 16,
+  },
+  recommendationCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   recommendationHeader: {
     flexDirection: 'row',
@@ -434,7 +741,7 @@ const styles = StyleSheet.create({
   recommendationTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: '#353A40',
     marginBottom: 4,
   },
   recommendationDescription: {
@@ -444,7 +751,7 @@ const styles = StyleSheet.create({
   },
   recommendationAction: {
     fontSize: 12,
-    color: '#059669',
+    color: '#DC2626',
     fontStyle: 'italic',
   },
   actionGrid: {
@@ -454,17 +761,20 @@ const styles = StyleSheet.create({
   },
   actionCard: {
     width: '48%',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   actionText: {
     fontSize: 12,
-    color: '#111827',
+    color: '#353A40',
     marginTop: 8,
     textAlign: 'center',
+    fontWeight: '500',
   },
   emptyState: {
     alignItems: 'center',

@@ -308,7 +308,7 @@ export default function AttendanceManagementScreen() {
 
   const handleMarkAttendance = (student) => {
     setSelectedStudent(student);
-    setAttendanceStatus(student.status || student.attendance || 'present');
+    setAttendanceStatus(student.attendance_status || 'present');
     setRemarks(student.remarks || '');
     if (!selectedSession && sessions && sessions.length === 1) {
       setSelectedSession(sessions[0]);
@@ -321,14 +321,28 @@ export default function AttendanceManagementScreen() {
       Alert.alert('Error', 'No student or session selected');
       return;
     }
+    
+    console.log('--- Attendance Update Request ---');
+    console.log('Selected Student:', selectedStudent);
+    console.log('Selected Session:', selectedSession);
+    console.log('Selected Class:', selectedClass);
+    console.log('Attendance Status:', attendanceStatus);
+    console.log('Remarks:', remarks);
+    
     try {
-      const res = await apiClient.put(
-        `/section-courses/${selectedClass.section_course_id}/sessions/${selectedSession.session_id}/attendance/${selectedStudent.enrollment_id}`,
-        {
-          status: attendanceStatus,
-          remarks: remarks,
-        }
-      );
+      const url = `/section-courses/${selectedClass.section_course_id}/sessions/${selectedSession.session_id}/attendance/${selectedStudent.enrollment_id}`;
+      const payload = {
+        status: attendanceStatus,
+        remarks: remarks,
+      };
+      
+      console.log('Making PUT request to:', url);
+      console.log('With payload:', payload);
+      
+      const res = await apiClient.put(url, payload);
+      
+      console.log('Attendance update response:', res);
+      
       // Optionally update local state here to reflect the change
       Alert.alert('Success', `Attendance marked as ${attendanceStatus} for ${selectedStudent.full_name}`);
       setShowAttendanceModal(false);
@@ -351,6 +365,7 @@ export default function AttendanceManagementScreen() {
       }
     } catch (err) {
       console.error('Attendance update error:', err);
+      console.error('Error details:', err.response?.data || err.message);
       Alert.alert('Error', 'Failed to update attendance');
     }
   };
