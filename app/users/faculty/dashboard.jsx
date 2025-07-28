@@ -149,7 +149,7 @@ export default function FacultyDashboard() {
           <View style={styles.quickActionIconCircle}>
             <Ionicons name="book-outline" size={26} color="#DC2626" />
           </View>
-          <Text style={styles.quickActionText}>My Syllabi</Text>
+          <Text style={styles.quickActionText}>My Syllabus</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push({
           pathname: '/users/faculty/GradeManagement',
