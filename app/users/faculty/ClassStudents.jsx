@@ -206,7 +206,7 @@ export default function FacultyClassStudents() {
         title="Student Details"
       >
         {selectedStudent && (
-          <ScrollView style={styles.modalContent}>
+          <View style={styles.modalContent}>
             <View style={styles.modalStudentHeader}>
               <View style={styles.modalStudentPhotoContainer}>
                 {selectedStudent.student_photo ? (
@@ -306,36 +306,82 @@ export default function FacultyClassStudents() {
                   </View>
                 )}
 
-                {/* Assessment Grades Section */}
-                {studentData.grades.assessments && studentData.grades.assessments.length > 0 && (
+                {/* Sub-Assessment Grades Section */}
+                {studentData.grades.sub_assessments && studentData.grades.sub_assessments.length > 0 ? (
                   <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Assessment Grades</Text>
-                    {studentData.grades.assessments.map((assessment, index) => (
-                      <View key={index} style={styles.assessmentCard}>
-                        <View style={styles.assessmentHeader}>
-                          <Text style={styles.assessmentTitle}>{assessment.assessment_title}</Text>
-                          <Text style={styles.assessmentType}>{assessment.assessment_type}</Text>
-                        </View>
-                        {assessment.total_score !== null ? (
-                          <View style={styles.gradeInfo}>
-                            <Text style={styles.gradeText}>
-                              Score: {assessment.total_score}/{assessment.total_points} 
-                              ({assessment.percentage_score}%)
-                            </Text>
-                            <View style={[styles.gradeBadge, { backgroundColor: getGradeColor(assessment.percentage_score) + '20' }]}>
-                              <Text style={[styles.gradeBadgeText, { color: getGradeColor(assessment.percentage_score) }]}>
-                                {assessment.percentage_score >= 90 ? 'Excellent' : 
-                                 assessment.percentage_score >= 80 ? 'Good' : 
-                                 assessment.percentage_score >= 70 ? 'Fair' : 'Needs Improvement'}
-                              </Text>
+                    <View style={styles.gradesContainer}>
+                      {studentData.grades.sub_assessments.map((subAssessment, index) => (
+                        <View key={index} style={styles.gradeCard}>
+                          <View style={styles.gradeHeader}>
+                            <View style={styles.gradeTitleContainer}>
+                              <Text style={styles.gradeTitle}>{subAssessment.sub_assessment_title}</Text>
+                              <Text style={styles.gradeParent}>Part of: {subAssessment.parent_assessment_title}</Text>
                             </View>
+                            {subAssessment.total_score !== null && (
+                              <View style={[styles.gradeBadge, { backgroundColor: getGradeColor(subAssessment.percentage_score) + '15' }]}>
+                                <Text style={[styles.gradeBadgeText, { color: getGradeColor(subAssessment.percentage_score) }]}>
+                                  {subAssessment.percentage_score >= 90 ? 'A' : 
+                                   subAssessment.percentage_score >= 80 ? 'B' : 
+                                   subAssessment.percentage_score >= 70 ? 'C' : 'D'}
+                                </Text>
+                              </View>
+                            )}
                           </View>
-                        ) : (
-                          <Text style={styles.noGradeText}>Not submitted</Text>
-                        )}
-                        {assessment.remarks && <Text style={styles.assessmentRemarks}>Remarks: {assessment.remarks}</Text>}
-                      </View>
-                    ))}
+                          
+                          {subAssessment.total_score !== null ? (
+                            <View style={styles.gradeDetails}>
+                              <View style={styles.scoreRow}>
+                                <Text style={styles.scoreLabel}>Score:</Text>
+                                <Text style={styles.scoreValue}>
+                                  {subAssessment.total_score}/{subAssessment.total_points}
+                                </Text>
+                              </View>
+                              <View style={styles.percentageRow}>
+                                <Text style={styles.percentageLabel}>Percentage:</Text>
+                                <Text style={[styles.percentageValue, { color: getGradeColor(subAssessment.percentage_score) }]}>
+                                  {subAssessment.percentage_score}%
+                                </Text>
+                              </View>
+                              <View style={styles.progressBarContainer}>
+                                <View style={styles.progressBar}>
+                                  <View 
+                                    style={[
+                                      styles.progressFill, 
+                                      { 
+                                        width: `${Math.min(subAssessment.percentage_score, 100)}%`, 
+                                        backgroundColor: getGradeColor(subAssessment.percentage_score) 
+                                      }
+                                    ]} 
+                                  />
+                                </View>
+                              </View>
+                            </View>
+                          ) : (
+                            <View style={styles.noSubmissionContainer}>
+                              <Ionicons name="time-outline" size={20} color="#9CA3AF" />
+                              <Text style={styles.noSubmissionText}>Not submitted</Text>
+                            </View>
+                          )}
+                          
+                          {subAssessment.remarks && (
+                            <View style={styles.remarksContainer}>
+                              <Ionicons name="chatbubble-outline" size={16} color="#6B7280" />
+                              <Text style={styles.remarksText}>{subAssessment.remarks}</Text>
+                            </View>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Assessment Grades</Text>
+                    <View style={styles.emptyGradesContainer}>
+                      <Ionicons name="document-text-outline" size={48} color="#D1D5DB" />
+                      <Text style={styles.emptyGradesText}>No assessments found for this student</Text>
+                      <Text style={styles.emptyGradesSubtext}>Assessment grades will appear here once submitted</Text>
+                    </View>
                   </View>
                 )}
 
@@ -358,7 +404,7 @@ export default function FacultyClassStudents() {
                 <Text style={styles.errorText}>Failed to load student data</Text>
               </View>
             )}
-          </ScrollView>
+          </View>
         )}
       </ModalContainer>
     </View>
@@ -490,7 +536,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     flex: 1,
-    paddingBottom: 20,
+    paddingBottom: 40,
   },
   modalStudentHeader: {
     flexDirection: 'row',
@@ -754,5 +800,124 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: '#EF4444',
+  },
+  // New improved grade styles
+  gradesContainer: {
+    gap: 12,
+  },
+  gradeCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  gradeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  gradeTitleContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  gradeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  gradeParent: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+  gradeDetails: {
+    gap: 8,
+  },
+  scoreRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  scoreLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  scoreValue: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '600',
+  },
+  percentageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  percentageLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  percentageValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  noSubmissionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    gap: 8,
+  },
+  noSubmissionText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+  },
+  remarksContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    gap: 6,
+  },
+  remarksText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    flex: 1,
+  },
+  emptyGradesContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+  },
+  emptyGradesText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  emptyGradesSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
   },
 }); 

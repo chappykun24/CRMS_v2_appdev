@@ -24,7 +24,7 @@ const ModalContainer = ({
   headerStyle,
   bodyStyle,
   footer,
-  maxHeight = screenHeight * 0.8
+  maxHeight = screenHeight * 0.9
 }) => {
   const handleOverlayPress = () => {
     if (closeOnOverlayPress) {
@@ -62,8 +62,12 @@ const ModalContainer = ({
           {/* Body */}
           <ScrollView 
             style={[styles.body, bodyStyle, { maxHeight }]}
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={true}
             contentContainerStyle={styles.bodyContent}
+            nestedScrollEnabled={true}
+            bounces={true}
+            alwaysBounceVertical={false}
+            keyboardShouldPersistTaps="handled"
           >
             {children}
           </ScrollView>
