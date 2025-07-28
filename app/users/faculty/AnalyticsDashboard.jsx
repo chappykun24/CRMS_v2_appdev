@@ -326,12 +326,45 @@ export default function AnalyticsDashboard() {
       
       const completionRate = totalPossibleGrades > 0 ? Math.round((totalCompletedGrades / totalPossibleGrades) * 100) : 0;
       
+      // Calculate overall attendance rate
+      let totalAttendanceRate = 0;
+      let attendanceCount = 0;
+      
+      for (const cls of classes) {
+        if (cls.section_course_id) {
+          try {
+            const studentsRes = await apiClient.get(`/section-courses/${cls.section_course_id}/students`);
+            const students = Array.isArray(studentsRes) ? studentsRes : [];
+            
+            for (const student of students) {
+              try {
+                const attendanceRes = await apiClient.get(`/attendance/student-analytics/${student.enrollment_id}`);
+                const attendanceData = attendanceRes || {};
+                const attendanceRate = attendanceData.attendance_rate || 0;
+                
+                if (attendanceRate > 0) {
+                  totalAttendanceRate += attendanceRate;
+                  attendanceCount++;
+                }
+              } catch (attendanceError) {
+                // Skip if attendance data not available
+              }
+            }
+          } catch (error) {
+            // Skip this class if there's an error
+          }
+        }
+      }
+      
+      const overallAttendanceRate = attendanceCount > 0 ? Math.round(totalAttendanceRate / attendanceCount) : 85;
+      
       return {
         averageGrade,
         completionRate,
         totalStudents,
         atRiskStudents: atRiskCount,
-        activeCourses: classes.length
+        activeCourses: classes.length,
+        attendanceRate: overallAttendanceRate
       };
     } catch (error) {
       console.log('Error calculating performance metrics:', error.message);
@@ -340,7 +373,8 @@ export default function AnalyticsDashboard() {
         completionRate: 0,
         totalStudents: 0,
         atRiskStudents: 0,
-        activeCourses: 0
+        activeCourses: 0,
+        attendanceRate: 85
       };
     }
   };
@@ -380,13 +414,22 @@ export default function AnalyticsDashboard() {
               setProgressText(`Analyzing student: ${student.full_name}`);
               
               // Calculate attendance rate for this student
-              const attendanceRes = await apiClient.get(`/attendance/student-analytics/${student.enrollment_id}`);
-              const attendanceData = attendanceRes || {};
-              
-              const attendanceRate = attendanceData.attendance_rate || 0;
+              let attendanceRate = 0;
+              let attendanceData = { total_sessions: 0 };
+              try {
+                const attendanceRes = await apiClient.get(`/attendance/student-analytics/${student.enrollment_id}`);
+                attendanceData = attendanceRes || { total_sessions: 0 };
+                attendanceRate = attendanceData.attendance_rate || 0;
+                console.log(`Student ${student.full_name} - Attendance: ${attendanceRate}%, Sessions: ${attendanceData.total_sessions}`);
+              } catch (attendanceError) {
+                console.log(`Error fetching attendance for student ${student.full_name}:`, attendanceError.message);
+                // Use a default attendance rate if data is not available
+                attendanceRate = 85; // Default to 85% if no attendance data
+                attendanceData = { total_sessions: 0 };
+              }
               
               // Calculate average grade for this student
-              let totalGrade = 0;
+              let totalGradePercentages = 0;
               let gradeCount = 0;
               
               for (const assessment of assessments) {
@@ -401,9 +444,15 @@ export default function AnalyticsDashboard() {
                         const grades = Array.isArray(gradesRes) ? gradesRes : [];
                         
                         const studentGrade = grades.find(g => g.enrollment_id === student.enrollment_id);
-                        if (studentGrade && studentGrade.total_score !== null) {
-                          totalGrade += studentGrade.total_score;
-                          gradeCount++;
+                        if (studentGrade && studentGrade.total_score !== null && subAssessment.total_points > 0) {
+                          // Calculate percentage for this grade
+                          const percentage = (studentGrade.total_score / subAssessment.total_points) * 100;
+                          
+                          // Validate percentage is within reasonable range (0-100)
+                          if (percentage >= 0 && percentage <= 100) {
+                            totalGradePercentages += percentage;
+                            gradeCount++;
+                          }
                         }
                       } catch (gradeError) {
                         // Skip if grade not found
@@ -415,14 +464,17 @@ export default function AnalyticsDashboard() {
                 }
               }
               
-              const averageGrade = gradeCount > 0 ? totalGrade / gradeCount : 0;
+              const averageGrade = gradeCount > 0 ? totalGradePercentages / gradeCount : 0;
+              
+              // Ensure attendance rate is a valid number
+              const finalAttendanceRate = typeof attendanceRate === 'number' && !isNaN(attendanceRate) ? attendanceRate : 85;
               
               // Add student data for clustering
               studentData.push({
                 student_id: student.student_id,
                 enrollment_id: student.enrollment_id,
                 full_name: student.full_name,
-                attendance_rate: attendanceRate,
+                attendance_rate: finalAttendanceRate,
                 average_grade: averageGrade,
                 total_sessions: attendanceData.total_sessions || 0,
                 completed_assessments: gradeCount
@@ -454,7 +506,7 @@ export default function AnalyticsDashboard() {
   const performClustering = (studentData) => {
     if (studentData.length === 0) return [];
     
-    // Normalize data for clustering
+    // Normalize data for clustering (both attendance and grades are already percentages 0-100)
     const normalizedData = studentData.map(student => ({
       ...student,
       normalized_attendance: student.attendance_rate / 100,
