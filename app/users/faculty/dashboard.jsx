@@ -166,12 +166,6 @@ export default function FacultyDashboard() {
           </View>
           <Text style={styles.quickActionText}>Attendance</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push('/users/faculty/AnalyticsDashboard')}>
-          <View style={styles.quickActionIconCircle}>
-            <Ionicons name="analytics-outline" size={26} color="#DC2626" />
-          </View>
-          <Text style={styles.quickActionText}>Analytics</Text>
-        </TouchableOpacity>
       </View>
 
     </ScrollView>
