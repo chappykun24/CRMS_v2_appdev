@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -1593,3 +1594,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 }); 
+=======
+import AnalyticsDashboard from '../faculty/AnalyticsDashboard';
+
+export default function DeanAnalyticsPage() {
+  return <AnalyticsDashboard />;
+} 
+>>>>>>> 0088e4062f42f44098ba298e2d0c443f15018bb8

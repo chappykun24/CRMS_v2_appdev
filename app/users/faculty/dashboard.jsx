@@ -149,7 +149,7 @@ export default function FacultyDashboard() {
           <View style={styles.quickActionIconCircle}>
             <Ionicons name="book-outline" size={26} color="#DC2626" />
           </View>
-          <Text style={styles.quickActionText}>My Syllabi</Text>
+          <Text style={styles.quickActionText}>My Syllabus</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push({
           pathname: '/users/faculty/GradeManagement',
@@ -165,12 +165,6 @@ export default function FacultyDashboard() {
             <Ionicons name="checkmark-circle-outline" size={26} color="#DC2626" />
           </View>
           <Text style={styles.quickActionText}>Attendance</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push('/users/faculty/AnalyticsDashboard')}>
-          <View style={styles.quickActionIconCircle}>
-            <Ionicons name="analytics-outline" size={26} color="#DC2626" />
-          </View>
-          <Text style={styles.quickActionText}>Analytics</Text>
         </TouchableOpacity>
       </View>
 
