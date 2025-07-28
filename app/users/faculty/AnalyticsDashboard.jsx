@@ -2,14 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    FlatList,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  FlatList,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useUser } from '../../../contexts/UserContext';
 import { apiClient } from '../../../utils/api';
@@ -803,11 +803,11 @@ export default function AnalyticsDashboard() {
                 <Text style={styles.performanceLabel}>Completion Rate</Text>
               </View>
               <View style={styles.performanceCard}>
-                <Ionicons name="alert-circle-outline" size={24} color="#EF4444" />
+                <Ionicons name="people-outline" size={24} color="#8B5CF6" />
                 <Text style={styles.performanceNumber}>
-                  {formatStudentCount(analyticsData.performance.atRiskStudents)}
+                  {analyticsData.performance.attendanceRate || 85}%
                 </Text>
-                <Text style={styles.performanceLabel}>At-Risk Students</Text>
+                <Text style={styles.performanceLabel}>Attendance Rate</Text>
               </View>
             </View>
           </View>
@@ -997,7 +997,8 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#475569',
+    fontWeight: '500',
   },
   header: {
     flexDirection: 'row',
@@ -1006,15 +1007,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     backgroundColor: '#FFFFFF',
+    position: 'sticky',
+    top: 0,
     zIndex: 1000,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   scrollView: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   headerSpacer: {
     width: 40,
@@ -1025,7 +1024,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#353A40',
+    color: '#1E293B',
   },
   reportButton: {
     padding: 8,
@@ -1034,34 +1033,35 @@ const styles = StyleSheet.create({
     margin: 16,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 16,
+    padding: 20,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E2E8F0',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#353A40',
+    color: '#1E293B',
     marginBottom: 8,
   },
   sectionDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#64748B',
     marginBottom: 16,
+    lineHeight: 20,
   },
   performanceGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
   },
   performanceCard: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 16,
-    marginHorizontal: 4,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
+    paddingVertical: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E2E8F0',
   },
   performanceNumber: {
     fontSize: 24,
@@ -1071,50 +1071,28 @@ const styles = StyleSheet.create({
   },
   performanceLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#64748B',
     marginTop: 4,
     textAlign: 'center',
+    fontWeight: '500',
   },
   clusterCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E2E8F0',
   },
   clusterHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  clusterBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  clusterLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  clusterCount: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#353A40',
-  },
-  clusterDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  clusterDetailText: {
-    fontSize: 12,
-    color: '#6B7280',
+    marginBottom: 12,
   },
   clusterBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 6,
     borderRadius: 16,
   },
   clusterLabel: {
@@ -1125,57 +1103,59 @@ const styles = StyleSheet.create({
   clusterCount: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#353A40',
+    color: '#1E293B',
   },
   clusterDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 12,
   },
   clusterDetailText: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
   },
   insightCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E2E8F0',
   },
   insightHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   insightTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#353A40',
+    color: '#1E293B',
     marginLeft: 8,
   },
   insightDescription: {
-    fontSize: 12,
-    color: '#6B7280',
-    lineHeight: 16,
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
   },
   recommendationCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E2E8F0',
   },
   recommendationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 12,
   },
   priorityText: {
@@ -1185,24 +1165,27 @@ const styles = StyleSheet.create({
   },
   recommendationType: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#64748B',
     textTransform: 'capitalize',
+    fontWeight: '500',
   },
   recommendationTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#353A40',
-    marginBottom: 4,
+    color: '#1E293B',
+    marginBottom: 6,
   },
   recommendationDescription: {
     fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 8,
+    color: '#64748B',
+    marginBottom: 10,
+    lineHeight: 20,
   },
   recommendationAction: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#DC2626',
     fontStyle: 'italic',
+    fontWeight: '500',
   },
   actionGrid: {
     flexDirection: 'row',
@@ -1212,34 +1195,36 @@ const styles = StyleSheet.create({
   actionCard: {
     width: '48%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 12,
+    padding: 20,
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E2E8F0',
   },
   actionText: {
     fontSize: 12,
-    color: '#353A40',
+    color: '#1E293B',
     marginTop: 8,
     textAlign: 'center',
     fontWeight: '500',
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 40,
   },
   emptyStateText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#64748B',
     marginTop: 16,
+    fontWeight: '500',
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#94A3B8',
     marginTop: 4,
     textAlign: 'center',
+    lineHeight: 20,
   },
   computeSection: {
     margin: 16,
@@ -1247,18 +1232,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 24,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E2E8F0',
     alignItems: 'center',
   },
   computeTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#353A40',
+    color: '#1E293B',
     marginBottom: 8,
   },
   computeDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#64748B',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 20,
@@ -1283,20 +1268,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 24,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E2E8F0',
   },
   progressTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#353A40',
+    color: '#1E293B',
     marginBottom: 8,
     textAlign: 'center',
   },
   progressText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#64748B',
     marginBottom: 16,
     textAlign: 'center',
+    lineHeight: 20,
   },
   progressBarContainer: {
     flexDirection: 'row',
@@ -1306,7 +1292,7 @@ const styles = StyleSheet.create({
   progressBar: {
     flex: 1,
     height: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F1F5F9',
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -1318,7 +1304,7 @@ const styles = StyleSheet.create({
   progressPercentage: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#353A40',
+    color: '#1E293B',
     minWidth: 40,
     textAlign: 'right',
   },
@@ -1329,11 +1315,12 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: '#E2E8F0',
   },
   clusterFooterText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#64748B',
+    fontWeight: '500',
   },
   modalOverlay: {
     flex: 1,
@@ -1347,6 +1334,8 @@ const styles = StyleSheet.create({
     margin: 20,
     maxHeight: '80%',
     width: '90%',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1354,15 +1343,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#E2E8F0',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#353A40',
+    color: '#1E293B',
   },
   modalCloseButton: {
     padding: 4,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
   },
   studentList: {
     maxHeight: 400,
@@ -1370,12 +1361,12 @@ const styles = StyleSheet.create({
   studentItem: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#E2E8F0',
   },
   studentName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#353A40',
+    color: '#1E293B',
     marginBottom: 4,
   },
   studentStats: {
@@ -1384,7 +1375,8 @@ const styles = StyleSheet.create({
   },
   studentStat: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#64748B',
+    fontWeight: '500',
   },
   emptyModalState: {
     alignItems: 'center',
@@ -1392,8 +1384,9 @@ const styles = StyleSheet.create({
   },
   emptyModalText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#64748B',
     marginTop: 16,
+    fontWeight: '500',
   },
   cacheSection: {
     margin: 16,
@@ -1401,7 +1394,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E2E8F0',
   },
   cacheInfo: {
     flexDirection: 'row',
@@ -1410,7 +1403,8 @@ const styles = StyleSheet.create({
   },
   cacheText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#64748B',
+    fontWeight: '500',
   },
   refreshButton: {
     flexDirection: 'row',
@@ -1421,6 +1415,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DC2626',
     gap: 4,
+    backgroundColor: '#FEF2F2',
   },
   refreshButtonText: {
     fontSize: 12,
