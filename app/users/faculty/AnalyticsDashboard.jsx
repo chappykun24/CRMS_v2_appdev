@@ -156,7 +156,49 @@ export default function AnalyticsDashboard() {
       
       // Calculate averages
       const averageGrade = gradeCount > 0 ? Math.round((totalGradePercentages / gradeCount) * 100) / 100 : 0;
-      const completionRate = totalStudents > 0 ? Math.round((gradeCount / (totalStudents * 4)) * 100) : 0; // Assuming 4 assessments per student
+      
+      // Calculate completion rate based on actual assessment completion
+      let totalPossibleGrades = 0;
+      let totalCompletedGrades = 0;
+      
+      // Recalculate completion rate more accurately
+      for (const cls of classes) {
+        if (cls.section_course_id && cls.syllabus_id) {
+          try {
+            const studentsRes = await apiClient.get(`/section-courses/${cls.section_course_id}/students`);
+            const students = Array.isArray(studentsRes) ? studentsRes : [];
+            
+            const assessmentsRes = await apiClient.get(`/assessments/syllabus/${cls.syllabus_id}`);
+            const assessments = Array.isArray(assessmentsRes) ? assessmentsRes : [];
+            
+            for (const assessment of assessments) {
+              const subAssessmentsRes = await apiClient.get(`/sub-assessments/assessment/${assessment.assessment_id}`);
+              const subAssessments = Array.isArray(subAssessmentsRes) ? subAssessmentsRes : [];
+              
+              for (const subAssessment of subAssessments) {
+                if (subAssessment.is_published) {
+                  totalPossibleGrades += students.length; // Each student should complete this sub-assessment
+                  
+                  try {
+                    const gradesRes = await apiClient.get(`/sub-assessments/${subAssessment.sub_assessment_id}/students-with-grades`);
+                    const grades = Array.isArray(gradesRes) ? gradesRes : [];
+                    
+                    // Count completed grades (where total_score is not null)
+                    const completedGrades = grades.filter(grade => grade.total_score !== null).length;
+                    totalCompletedGrades += completedGrades;
+                  } catch (gradesError) {
+                    // If we can't fetch grades, assume none completed
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            // Skip this class if there's an error
+          }
+        }
+      }
+      
+      const completionRate = totalPossibleGrades > 0 ? Math.round((totalCompletedGrades / totalPossibleGrades) * 100) : 0;
       
       return {
         averageGrade,

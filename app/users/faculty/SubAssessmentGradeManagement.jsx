@@ -39,10 +39,7 @@ export default function SubAssessmentGradeManagementScreen() {
   });
 
   useEffect(() => {
-    console.log('SubAssessmentGradeManagement useEffect triggered');
-    console.log('subAssessmentId:', subAssessmentId);
-    console.log('assessmentId:', assessmentId);
-    console.log('sectionCourseId:', sectionCourseId);
+    
     
     fetchSubAssessmentDetails();
     fetchStudentsWithGrades();
@@ -52,11 +49,11 @@ export default function SubAssessmentGradeManagementScreen() {
     try {
       // First get the assessment details
       const assessmentResponse = await apiClient.get(`/assessments/${assessmentId}`);
-      console.log('Assessment response:', assessmentResponse);
+
       
       // Then get the sub-assessments for this assessment
       const subAssessmentsResponse = await apiClient.get(`/sub-assessments/assessment/${assessmentId}`);
-      console.log('Sub-assessments response:', subAssessmentsResponse);
+
       
       const subAssessments = Array.isArray(subAssessmentsResponse) ? subAssessmentsResponse : [];
       const currentSubAssessment = subAssessments.find(sa => sa.sub_assessment_id == subAssessmentId);
@@ -83,8 +80,7 @@ export default function SubAssessmentGradeManagementScreen() {
     try {
       setLoading(true);
       
-      console.log('Fetching students for section course:', sectionCourseId);
-      console.log('Sub-assessment ID for grades:', subAssessmentId);
+
       
       // Use the section course ID directly from params
       if (!sectionCourseId) {

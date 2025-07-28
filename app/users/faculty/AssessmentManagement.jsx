@@ -544,16 +544,16 @@ export default function AssessmentManagementScreen() {
     if (!assessment || !selectedClass) return 'Unknown';
     
     try {
-      console.log(`\n=== Calculating status for assessment: ${assessment.title} ===`);
+
       
       // Get all sub-assessments for this assessment
       const subAssessmentsRes = await apiClient.get(`/sub-assessments/assessment/${assessment.assessment_id}`);
       const subAssessments = Array.isArray(subAssessmentsRes) ? subAssessmentsRes : [];
       
-      console.log(`Sub-assessments found: ${subAssessments.length}`);
+      
       
       if (subAssessments.length === 0) {
-        console.log('Status: No Tasks (no sub-assessments)');
+        
         return 'No Tasks';
       }
 
@@ -563,10 +563,10 @@ export default function AssessmentManagementScreen() {
         students = await fetchStudentData(selectedClass.id);
       }
 
-      console.log(`Students found: ${students.length}`);
+      
 
       if (students.length === 0) {
-        console.log('Status: No Students');
+        
         return 'No Students';
       }
 
@@ -579,7 +579,7 @@ export default function AssessmentManagementScreen() {
 
       for (const subAssessment of subAssessments) {
         totalSubAssessments++;
-        console.log(`\nSub-assessment: ${subAssessment.title} (Published: ${subAssessment.is_published})`);
+
         
         if (subAssessment.is_published) {
           publishedSubAssessments++;
@@ -587,12 +587,12 @@ export default function AssessmentManagementScreen() {
           // Check student submissions and grades for this sub-assessment
           try {
             const studentsWithGrades = await apiClient.get(`/sub-assessments/${subAssessment.sub_assessment_id}/students-with-grades`);
-            console.log(`Students with grades for ${subAssessment.title}:`, studentsWithGrades.length);
+  
             
             for (const student of studentsWithGrades) {
               if (student.submission_id) {
                 totalStudentSubmissions++;
-                console.log(`  Student ${student.full_name}: submission_id=${student.submission_id}, total_score=${student.total_score}`);
+
                 if (student.total_score !== null) {
                   totalStudentGrades++;
                 }
@@ -604,11 +604,7 @@ export default function AssessmentManagementScreen() {
         }
       }
 
-      console.log(`\n=== Summary ===`);
-      console.log(`Total sub-assessments: ${totalSubAssessments}`);
-      console.log(`Published sub-assessments: ${publishedSubAssessments}`);
-      console.log(`Total student submissions: ${totalStudentSubmissions}`);
-      console.log(`Total student grades: ${totalStudentGrades}`);
+      
 
       // Determine assessment status
       let status;
@@ -624,7 +620,7 @@ export default function AssessmentManagementScreen() {
         status = 'Partially Graded';
       }
 
-      console.log(`Final status: ${status}`);
+      
       return status;
 
     } catch (error) {

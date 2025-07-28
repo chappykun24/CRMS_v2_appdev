@@ -34,7 +34,7 @@ export default function MySyllabiScreen() {
     try {
       setLoading(true);
       const data = await apiClient.get(`/syllabus/my?facultyId=${currentUser.user_id}`);
-      console.log('Fetched syllabi:', data);
+      
       
       const mapped = (Array.isArray(data) ? data : []).map(syl => ({
         id: syl.syllabus_id,
@@ -67,10 +67,10 @@ export default function MySyllabiScreen() {
         courseObjectives: syl.course_objectives || ''
       }));
       
-      console.log('Mapped syllabi:', mapped);
+      
       setSyllabi(mapped);
     } catch (err) {
-      console.log('Error fetching syllabi:', err);
+      
       setSyllabi([]);
     } finally {
       setLoading(false);

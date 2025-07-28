@@ -41,7 +41,7 @@ function AppContent() {
           AsyncStorage.setItem('API_BASE_URL', `http://${ip}:3001/api`);
         });
         initializeAPI().then((apiBaseURL) => {
-          console.log('[Layout] 🚦 Detected API Base URL (manual):', apiBaseURL);
+  
         });
         setManualIPTesting(false);
         return;
@@ -108,7 +108,7 @@ function AppContent() {
   
   // Minimal logging for debugging
   if (__DEV__) {
-    console.log('[Layout] pathname:', pathname, 'isLoggedIn:', isLoggedIn, 'role:', currentUser?.role);
+
   }
   
   // Normalize pathname to ensure consistent matching
@@ -134,7 +134,7 @@ function AppContent() {
           text: 'Logout',
           style: 'destructive',
           onPress: async () => {
-            console.log('[Layout] User confirmed logout');
+      
             await logout();
           },
         },
@@ -167,13 +167,13 @@ function AppContent() {
         case UserRole.STAFF:
           return <BottomNavStaff {...commonProps} />;
         default:
-          console.log('MainLayout - Unknown role, not showing nav');
+  
           return null;
       }
     }
     
     // For public pages, render public navigation
-    console.log('MainLayout - Showing public nav');
+    
     return <PublicBottomNav activeRoute={normalizedPathname} />;
   };
 

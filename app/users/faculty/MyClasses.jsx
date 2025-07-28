@@ -46,7 +46,6 @@ export default function MyClassesScreen() {
               const sessions = await apiClient.get(`/section-courses/${cls.section_course_id}/sessions`);
               sessionCounts[cls.section_course_id] = Array.isArray(sessions) ? sessions.length : 0;
             } catch (err) {
-              console.log(`Error fetching data for class ${cls.section_course_id}:`, err);
               studentCounts[cls.section_course_id] = 0;
               sessionCounts[cls.section_course_id] = 0;
             }
@@ -58,7 +57,6 @@ export default function MyClassesScreen() {
         setLoading(false);
       })
       .catch((err) => {
-        console.log('Error fetching approved classes:', err);
         setApprovedClasses([]);
         setLoading(false);
       });

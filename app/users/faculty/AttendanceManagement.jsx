@@ -754,7 +754,12 @@ export default function AttendanceManagementScreen() {
         onCreateNewAttendance={handleCreateNewAttendance}
       />
 
-      <View style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+        keyboardShouldPersistTaps="handled"
+      >
         {currentView === 'classes' && (
           /* Classes Selection View */
           <View style={styles.section}>
@@ -798,11 +803,7 @@ export default function AttendanceManagementScreen() {
             {/* End Student Name Carousel */}
             
             {studentViewMode === 'card' ? (
-              <ScrollView
-                style={styles.studentsList}
-                contentContainerStyle={{ paddingBottom: 16 }}
-                showsVerticalScrollIndicator={false}
-              >
+              <View style={styles.studentsList}>
                 {loading ? (
                   <Text>Loading students...</Text>
                 ) : (filteredStudents || []).length === 0 ? (
@@ -810,13 +811,9 @@ export default function AttendanceManagementScreen() {
                 ) : (
                   filteredStudents.map(renderStudentAttendanceRow)
                 )}
-              </ScrollView>
+              </View>
             ) : (
-              <ScrollView
-                style={styles.studentsList}
-                contentContainerStyle={{ paddingBottom: 16 }}
-                showsVerticalScrollIndicator={false}
-              >
+              <View style={styles.studentsList}>
                 {loading ? (
                   <Text>Loading students...</Text>
                 ) : (filteredStudents || []).length === 0 ? (
@@ -824,11 +821,11 @@ export default function AttendanceManagementScreen() {
                 ) : (
                   renderStudentAttendanceTable()
                 )}
-              </ScrollView>
+              </View>
             )}
           </View>
         )}
-      </View>
+      </ScrollView>
 
       {/* Attendance Entry Modal */}
       <Modal
@@ -1018,6 +1015,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 100, // Add padding for bottom navigation
   },
   section: {
     paddingHorizontal: 16,

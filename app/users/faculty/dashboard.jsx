@@ -37,7 +37,7 @@ export default function FacultyDashboard() {
             const students = Array.isArray(studentsRes) ? studentsRes : [];
             totalStudents += students.length;
           } catch (error) {
-            console.log(`Error fetching stats for class ${cls.section_course_id}:`, error.message);
+            // Error fetching stats for class
           }
         }
       }
@@ -49,7 +49,7 @@ export default function FacultyDashboard() {
       });
       
     } catch (error) {
-      console.log('Error fetching dashboard stats:', error.message);
+      // Error fetching dashboard stats
     } finally {
       setLoading(false);
     }
@@ -66,7 +66,6 @@ export default function FacultyDashboard() {
 
   // Enhanced error handling
   const handleError = (error, context) => {
-    console.log(`Dashboard error in ${context}:`, error.message);
     setError(`Unable to load ${context}. Please try again later.`);
   };
 
@@ -295,6 +294,11 @@ const styles = StyleSheet.create({
     paddingVertical: 22,
     alignItems: 'center',
     marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 1,
     borderWidth: 1,
     borderColor: '#F3F4F6',
   },

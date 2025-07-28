@@ -57,19 +57,48 @@ export default function GradeManagementScreen() {
         style={styles.classCard}
         onPress={() => handleClassSelect(cls)}
       >
-        <View style={styles.classHeader}>
-          <View style={styles.classInfo}>
-            <Text style={styles.classTitle}>{cls.course_code}</Text>
-            <Text style={styles.classSchedule}>{cls.course_title}</Text>
+        <View style={styles.cardHeader}>
+          <View style={styles.courseInfo}>
+            <Text style={styles.courseCode}>{cls.course_code}</Text>
+            <Text style={styles.courseTitle}>{cls.course_title}</Text>
+            <Text style={styles.sectionCode}>Section: {cls.section_code}</Text>
           </View>
-          <View style={styles.studentCountBadge}>
-            <Ionicons name="people-outline" size={16} color="#353A40" />
-            <Text style={styles.studentCountText}>{stats.studentCount} students</Text>
+          <View style={styles.statusContainer}>
+            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <Text style={styles.statusText}>Active</Text>
           </View>
         </View>
-        <View style={styles.classStats}>
-          <Text style={styles.classStatsText}>{stats.assessmentCount} assessments</Text>
+
+        <View style={styles.cardContent}>
+          {cls.schedule && (
+            <Text style={styles.scheduleText}>{cls.schedule}</Text>
+          )}
+          
+          <View style={styles.metaInfo}>
+            <Text style={styles.metaText}>Year: {cls.school_year || 'N/A'}</Text>
+            <Text style={styles.metaText}>Term: {cls.semester || 'N/A'}</Text>
+            {cls.syllabus_id && (
+              <Text style={styles.metaText}>Syllabus: Approved</Text>
+            )}
+          </View>
+
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{stats.studentCount}</Text>
+              <Text style={styles.statLabel}>Students</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{stats.assessmentCount}</Text>
+              <Text style={styles.statLabel}>Assessments</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{cls.syllabus_id ? '1' : '0'}</Text>
+              <Text style={styles.statLabel}>Syllabi</Text>
+            </View>
+          </View>
         </View>
+
+
       </TouchableOpacity>
     );
   };
@@ -103,7 +132,6 @@ export default function GradeManagementScreen() {
                 assessmentCount: Array.isArray(assessmentsRes) ? assessmentsRes.length : 0
               };
             } catch (err) {
-              console.log(`Error fetching stats for class ${cls.section_course_id}:`, err);
               stats[cls.section_course_id] = { studentCount: 0, assessmentCount: 0 };
             }
           }
@@ -113,7 +141,6 @@ export default function GradeManagementScreen() {
         setLoading(false);
       })
       .catch((err) => {
-        console.log('Error fetching approved classes:', err);
         setApprovedClasses([]);
         setLoading(false);
       });
@@ -144,9 +171,30 @@ export default function GradeManagementScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>My Classes</Text>
           
-          <View style={styles.classesContainer}>
-            {filteredClasses.map(renderClassCard)}
-          </View>
+          {loading ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="school-outline" size={64} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>Loading classes...</Text>
+              <Text style={styles.emptyStateText}>Please wait while we fetch your approved classes.</Text>
+            </View>
+          ) : filteredClasses.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="school-outline" size={64} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>
+                {classSearchQuery ? 'No classes found' : 'No classes available'}
+              </Text>
+              <Text style={styles.emptyStateText}>
+                {classSearchQuery 
+                  ? 'Try adjusting your search terms to find what you\'re looking for.'
+                  : 'You are not assigned to any approved classes yet. Check back later or contact your administrator.'
+                }
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.classesContainer}>
+              {filteredClasses.map(renderClassCard)}
+            </View>
+          )}
         </View>
       </View>
     </SafeAreaView>
@@ -156,13 +204,15 @@ export default function GradeManagementScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
   },
   content: {
     flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 80,
   },
   section: {
-    paddingHorizontal: 16,
     paddingVertical: 20,
   },
   sectionTitle: {
@@ -172,56 +222,112 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   classesContainer: {
-    gap: 12,
+    gap: 16,
   },
   classCard: {
     backgroundColor: '#FFFFFF',
-    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E2E8F0',
+    padding: 16,
+    marginBottom: 20,
   },
-  classHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 16,
   },
-  classInfo: {
+  courseInfo: {
     flex: 1,
   },
-  classTitle: {
-    fontSize: 16,
+  courseCode: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#DC2626',
     marginBottom: 4,
   },
-  classSchedule: {
-    fontSize: 14,
+  courseTitle: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#353A40',
     marginBottom: 4,
+    lineHeight: 22,
   },
-  studentCountBadge: {
+  sectionCode: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: '#F0FDF4',
     gap: 4,
   },
-  studentCountText: {
+  statusText: {
     fontSize: 12,
     fontWeight: '500',
+    color: '#10B981',
+  },
+  cardContent: {
+    marginBottom: 16,
+  },
+  scheduleText: {
+    fontSize: 14,
     color: '#353A40',
+    marginBottom: 12,
+    fontStyle: 'italic',
   },
-  classStats: {
-    marginTop: 8,
+  metaInfo: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
   },
-  classStatsText: {
+  metaText: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 24,
+    marginBottom: 16,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#DC2626',
+  },
+  statLabel: {
     fontSize: 12,
     color: '#6B7280',
+    marginTop: 2,
+  },
+
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+    paddingHorizontal: 32,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#353A40',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
   },
 }); 
