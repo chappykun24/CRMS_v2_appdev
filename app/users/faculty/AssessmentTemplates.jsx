@@ -87,7 +87,8 @@ export default function AssessmentTemplatesScreen() {
                 pathname: '/users/faculty/AssessmentManagement',
                 params: { 
                   section_course_id: selectedClass.section_course_id,
-                  syllabus_id: selectedClass.syllabus_id
+                  syllabus_id: selectedClass.syllabus_id,
+                  source: 'assessmentTemplates'
                 }
               });
             }

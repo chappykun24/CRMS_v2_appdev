@@ -532,7 +532,10 @@ export default function AnalyticsDashboard() {
         <View style={styles.actionGrid}>
           <TouchableOpacity 
             style={styles.actionCard}
-            onPress={() => router.push('/users/faculty/AssessmentManagement')}
+            onPress={() => router.push({
+              pathname: '/users/faculty/AssessmentManagement',
+              params: { source: 'analytics' }
+            })}
           >
             <Ionicons name="calculator-outline" size={24} color="#DC2626" />
             <Text style={styles.actionText}>Assessment Analytics</Text>

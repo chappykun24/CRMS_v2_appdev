@@ -99,11 +99,7 @@ const styles = StyleSheet.create({
     aspectRatio: 16 / 9, // Changed from 16/10 to 16/9 for more height
     overflow: 'hidden',
     backgroundColor: '#eee',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
+
     position: 'relative',
     marginHorizontal: 0,
     padding: 0,

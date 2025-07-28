@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ROUTES } from '../../utils/routes';
 
 // Default navigation items for public pages
@@ -45,26 +45,9 @@ export default function BottomNav({ items, onNavigate, activeRoute, onLogout }) 
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
-    ...(Platform.OS === 'web'
-      ? { boxShadow: '0px -2px 4px rgba(0,0,0,0.1)' }
-      : {
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-        }),
-    elevation: 3,
-    zIndex: 10,
+        zIndex: 10,
   };
   const activeNavStyle = {
-    ...(Platform.OS === 'web'
-      ? { boxShadow: '0px 4px 8px rgba(220,38,38,0.3)' }
-      : {
-          shadowColor: '#DC2626',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-        }),
   };
   return (
     <View style={bottomNavStyle}>
@@ -136,11 +119,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
     zIndex: 10,
   },
   bottomNavItem: {

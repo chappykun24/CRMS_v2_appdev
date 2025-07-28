@@ -21,6 +21,7 @@ import {
 
 
 
+
     StyleSheet,
     Text,
     TextInput,
@@ -438,11 +439,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: -15,
-    shadowColor: '#DC2626',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+
   },
   loginContentWrapper: {
     flex: 1,

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
-import { Platform, SafeAreaView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ROUTES } from '../../utils/routes';
 
 export default function BottomNavFaculty({ activeRoute, onLogout }) {
@@ -41,15 +41,7 @@ export default function BottomNavFaculty({ activeRoute, onLogout }) {
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
-    ...(Platform.OS === 'web'
-      ? { boxShadow: '0px -2px 4px rgba(0,0,0,0.1)' }
-      : {
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-        }),
-    elevation: 3,
+
     zIndex: 10,
   };
 

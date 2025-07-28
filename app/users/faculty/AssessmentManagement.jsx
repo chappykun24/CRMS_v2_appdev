@@ -107,7 +107,19 @@ export default function AssessmentManagementScreen() {
   }
 
   const handleBackNavigation = () => {
-    if (currentView === 'classes') {
+    // Check if we came from a specific source
+    const source = params.source;
+    
+    if (source === 'gradeManagement') {
+      // If we came from GradeManagement, go back to GradeManagement
+      router.push('/users/faculty/GradeManagement');
+    } else if (source === 'analytics') {
+      // If we came from Analytics, go back to Analytics
+      router.push('/users/faculty/AnalyticsDashboard');
+    } else if (source === 'assessmentTemplates') {
+      // If we came from AssessmentTemplates, go back to AssessmentTemplates
+      router.push('/users/faculty/AssessmentTemplates');
+    } else if (currentView === 'classes') {
       router.push('/users/faculty/MyClasses');
     } else if (currentView === 'classDetails') {
       router.push('/users/faculty/MyClasses');

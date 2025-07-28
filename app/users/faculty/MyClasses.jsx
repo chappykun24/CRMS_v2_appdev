@@ -170,7 +170,8 @@ export default function MyClassesScreen() {
                 pathname: '/users/faculty/AssessmentManagement',
                 params: { 
                   section_course_id: cls.section_course_id,
-                  syllabus_id: cls.syllabus_id
+                  syllabus_id: cls.syllabus_id,
+                  source: 'myClasses'
                 }
               })}
             >
@@ -185,8 +186,7 @@ export default function MyClassesScreen() {
               onPress={() => router.push({
                 pathname: '/users/faculty/GradeManagement',
                 params: { 
-                  section_course_id: cls.section_course_id,
-                  syllabus_id: cls.syllabus_id
+                  source: 'myClasses'
                 }
               })}
             >

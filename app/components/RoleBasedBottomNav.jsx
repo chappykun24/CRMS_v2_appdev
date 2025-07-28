@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function RoleBasedBottomNav({ items, activeRoute, onLogout }) {
   const handleNavigation = (route) => {
@@ -32,15 +32,7 @@ export default function RoleBasedBottomNav({ items, activeRoute, onLogout }) {
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
-    ...(Platform.OS === 'web'
-      ? { boxShadow: '0px -2px 4px rgba(0,0,0,0.1)' }
-      : {
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-        }),
-    elevation: 3,
+
     zIndex: 10,
   };
 

@@ -20,6 +20,9 @@ export default function GradeManagementScreen() {
   const [classStats, setClassStats] = useState({});
   const [classSearchQuery, setClassSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  
+  // Track where the user came from
+  const [sourcePage, setSourcePage] = useState('dashboard');
 
   // When a class is selected, redirect to AssessmentManagement
   const handleClassSelect = (cls) => {
@@ -27,17 +30,22 @@ export default function GradeManagementScreen() {
       pathname: '/users/faculty/AssessmentManagement',
       params: {
         section_course_id: cls.section_course_id,
-        syllabus_id: cls.syllabus_id
+        syllabus_id: cls.syllabus_id,
+        source: 'gradeManagement' // Pass source information
       }
     });
   };
 
-  const handleBackToMyClasses = () => {
-    router.push('/users/faculty/MyClasses');
-  };
-
   const handleBackNavigation = () => {
-    handleBackToMyClasses();
+    // Redirect based on where the user came from
+    if (sourcePage === 'dashboard') {
+      router.push('/users/faculty/dashboard');
+    } else if (sourcePage === 'myClasses') {
+      router.push('/users/faculty/MyClasses');
+    } else {
+      // Default fallback to dashboard
+      router.push('/users/faculty/dashboard');
+    }
   };
 
   const renderClassCard = (cls) => {
@@ -69,6 +77,11 @@ export default function GradeManagementScreen() {
   // Load approved classes on component mount
   useEffect(() => {
     if (!currentUser) return;
+    
+    // Determine source page from params or navigation state
+    const source = params.source || 'dashboard';
+    setSourcePage(source);
+    
     setLoading(true);
     apiClient.get(`/syllabus/approved?facultyId=${currentUser.user_id}`)
       .then(async data => {
@@ -104,7 +117,7 @@ export default function GradeManagementScreen() {
         setApprovedClasses([]);
         setLoading(false);
       });
-  }, [currentUser]);
+  }, [currentUser, params.source]);
 
   if (!currentUser) {
     router.replace('/');
@@ -167,11 +180,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
   classHeader: {
     flexDirection: 'row',

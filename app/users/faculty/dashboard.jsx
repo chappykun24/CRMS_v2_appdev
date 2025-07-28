@@ -152,7 +152,10 @@ export default function FacultyDashboard() {
           </View>
           <Text style={styles.quickActionText}>My Syllabi</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push('/users/faculty/GradeManagement')}>
+        <TouchableOpacity style={styles.quickActionCard} onPress={() => router.push({
+          pathname: '/users/faculty/GradeManagement',
+          params: { source: 'dashboard' }
+        })}>
           <View style={styles.quickActionIconCircle}>
             <Ionicons name="calculator-outline" size={26} color="#DC2626" />
           </View>
@@ -292,11 +295,6 @@ const styles = StyleSheet.create({
     paddingVertical: 22,
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 1,
     borderWidth: 1,
     borderColor: '#F3F4F6',
   },
