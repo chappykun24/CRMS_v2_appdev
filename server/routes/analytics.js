@@ -752,4 +752,125 @@ router.get('/performance/faculty/:facultyId', async (req, res) => {
   }
 });
 
+// GET /api/analytics/cache/faculty/:faculty_id - Get cached analytics data for faculty
+router.get('/cache/faculty/:faculty_id', async (req, res) => {
+  const { faculty_id } = req.params;
+  
+  try {
+    const client = await pool.connect();
+    
+    const query = `
+      SELECT cache_id, cache_type, data_json, last_updated
+      FROM dashboards_data_cache
+      WHERE cache_type = 'faculty_analytics' AND user_id = $1
+      ORDER BY last_updated DESC
+      LIMIT 1
+    `;
+    
+    const result = await client.query(query, [faculty_id]);
+    
+    client.release();
+    
+    if (result.rows.length > 0) {
+      const cacheData = result.rows[0];
+      const dataAge = Date.now() - new Date(cacheData.last_updated).getTime();
+      const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      
+      // Check if cache is still valid (less than 24 hours old)
+      if (dataAge < maxAge) {
+        res.json({
+          cached: true,
+          data: cacheData.data_json,
+          last_updated: cacheData.last_updated,
+          age_hours: Math.round(dataAge / (60 * 60 * 1000))
+        });
+      } else {
+        res.json({
+          cached: false,
+          message: 'Cache expired',
+          last_updated: cacheData.last_updated,
+          age_hours: Math.round(dataAge / (60 * 60 * 1000))
+        });
+      }
+    } else {
+      res.json({
+        cached: false,
+        message: 'No cached data found'
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error fetching cached analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch cached analytics' });
+  }
+});
+
+// POST /api/analytics/cache/faculty/:faculty_id - Store analytics data for faculty
+router.post('/cache/faculty/:faculty_id', async (req, res) => {
+  const { faculty_id } = req.params;
+  const { analytics_data } = req.body;
+  
+  try {
+    const client = await pool.connect();
+    
+    // First, delete any existing cache for this faculty
+    const deleteQuery = `
+      DELETE FROM dashboards_data_cache
+      WHERE cache_type = 'faculty_analytics' AND user_id = $1
+    `;
+    
+    await client.query(deleteQuery, [faculty_id]);
+    
+    // Insert new cache data
+    const insertQuery = `
+      INSERT INTO dashboards_data_cache (cache_type, user_id, data_json, last_updated)
+      VALUES ('faculty_analytics', $1, $2, NOW())
+      RETURNING cache_id, last_updated
+    `;
+    
+    const result = await client.query(insertQuery, [faculty_id, analytics_data]);
+    
+    client.release();
+    
+    res.json({
+      success: true,
+      cache_id: result.rows[0].cache_id,
+      last_updated: result.rows[0].last_updated,
+      message: 'Analytics data cached successfully'
+    });
+    
+  } catch (error) {
+    console.error('Error caching analytics data:', error);
+    res.status(500).json({ error: 'Failed to cache analytics data' });
+  }
+});
+
+// DELETE /api/analytics/cache/faculty/:faculty_id - Clear cached analytics data for faculty
+router.delete('/cache/faculty/:faculty_id', async (req, res) => {
+  const { faculty_id } = req.params;
+  
+  try {
+    const client = await pool.connect();
+    
+    const query = `
+      DELETE FROM dashboards_data_cache
+      WHERE cache_type = 'faculty_analytics' AND user_id = $1
+    `;
+    
+    const result = await client.query(query, [faculty_id]);
+    
+    client.release();
+    
+    res.json({
+      success: true,
+      deleted_count: result.rowCount,
+      message: 'Cached analytics data cleared successfully'
+    });
+    
+  } catch (error) {
+    console.error('Error clearing cached analytics:', error);
+    res.status(500).json({ error: 'Failed to clear cached analytics' });
+  }
+});
+
 module.exports = router; 

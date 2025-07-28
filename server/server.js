@@ -16,6 +16,7 @@ const subAssessmentsRoutes = require('./routes/sub-assessments');
 const ilosRoutes = require('./routes/ilos');
 const rubricsRoutes = require('./routes/rubrics');
 const analyticsRoutes = require('./routes/analytics');
+const attendanceRoutes = require('./routes/attendance');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -75,6 +76,9 @@ app.use('/api/rubrics', rubricsRoutes);
 
 // Register the analytics router
 app.use('/api/analytics', analyticsRoutes);
+
+// Register the attendance router
+app.use('/api/attendance', attendanceRoutes);
 
 const ALLOWED_IPS = [
   '::1', // IPv6 localhost

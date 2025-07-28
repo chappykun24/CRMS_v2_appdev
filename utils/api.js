@@ -4,7 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeAPIConfig } from './ipDetector';
 
 // Dynamic API base URL that will be set on app startup
-let API_BASE_URL = 'http://localhost:3001/api'; // Updated to localhost
+// IMPORTANT: Make sure this matches your backend server port!
+let API_BASE_URL = 'http://localhost:3001/api'; // Backend default port is 3001
 
 // Function to get local IP address (legacy support)
 const getLocalIP = () => {

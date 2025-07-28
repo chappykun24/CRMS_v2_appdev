@@ -52,11 +52,11 @@ export default function GradeManagementScreen() {
     const stats = classStats[cls.section_course_id] || { studentCount: 0, assessmentCount: 0 };
     
     return (
-      <TouchableOpacity
+    <TouchableOpacity
         key={cls.section_course_id}
         style={styles.classCard}
-        onPress={() => handleClassSelect(cls)}
-      >
+      onPress={() => handleClassSelect(cls)}
+    >
         <View style={styles.cardHeader}>
           <View style={styles.courseInfo}>
             <Text style={styles.courseCode}>{cls.course_code}</Text>
@@ -86,20 +86,20 @@ export default function GradeManagementScreen() {
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{stats.studentCount}</Text>
               <Text style={styles.statLabel}>Students</Text>
-            </View>
+        </View>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{stats.assessmentCount}</Text>
               <Text style={styles.statLabel}>Assessments</Text>
-            </View>
+      </View>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{cls.syllabus_id ? '1' : '0'}</Text>
               <Text style={styles.statLabel}>Syllabi</Text>
-            </View>
+          </View>
           </View>
         </View>
 
 
-      </TouchableOpacity>
+            </TouchableOpacity>
     );
   };
 
@@ -168,9 +168,9 @@ export default function GradeManagementScreen() {
       />
 
       <View style={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My Classes</Text>
-          
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>My Classes</Text>
+            
           {loading ? (
             <View style={styles.emptyState}>
               <Ionicons name="school-outline" size={64} color="#9CA3AF" />
@@ -178,7 +178,7 @@ export default function GradeManagementScreen() {
               <Text style={styles.emptyStateText}>Please wait while we fetch your approved classes.</Text>
             </View>
           ) : filteredClasses.length === 0 ? (
-            <View style={styles.emptyState}>
+              <View style={styles.emptyState}>
               <Ionicons name="school-outline" size={64} color="#9CA3AF" />
               <Text style={styles.emptyStateTitle}>
                 {classSearchQuery ? 'No classes found' : 'No classes available'}
