@@ -42,6 +42,8 @@ export default function AttendanceManagementScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentView, setCurrentView] = useState('classes'); // 'classes', 'classDetails', or 'sessionDetails'
   const [showSearch, setShowSearch] = useState(false);
+  const [studentData, setStudentData] = useState(null);
+  const [loadingStudentData, setLoadingStudentData] = useState(false);
   const [showSessionSearch, setShowSessionSearch] = useState(false);
   const [showStudentSearch, setShowStudentSearch] = useState(false);
   const [studentViewMode, setStudentViewMode] = useState('card'); // 'card' or 'table'
@@ -306,7 +308,7 @@ export default function AttendanceManagementScreen() {
     setCurrentView('sessionDetails');
   };
 
-  const handleMarkAttendance = (student) => {
+  const handleMarkAttendance = async (student) => {
     setSelectedStudent(student);
     setAttendanceStatus(student.attendance_status || 'present');
     setRemarks(student.remarks || '');
@@ -314,6 +316,18 @@ export default function AttendanceManagementScreen() {
       setSelectedSession(sessions[0]);
     }
     setShowAttendanceModal(true);
+    
+    // Fetch comprehensive student data
+    setLoadingStudentData(true);
+    try {
+      const data = await apiClient.get(`/students/${student.enrollment_id}/comprehensive-data`);
+      setStudentData(data);
+    } catch (error) {
+      console.error('Error fetching student data:', error);
+      setStudentData(null);
+    } finally {
+      setLoadingStudentData(false);
+    }
   };
 
   const handleSaveAttendance = async () => {
@@ -496,38 +510,36 @@ export default function AttendanceManagementScreen() {
     (student.studentId || student.student_number || '').toLowerCase().includes(studentSearchQuery.toLowerCase())
   );
 
-  const getAttendanceColor = (status) => {
-    switch (status) {
-      case 'present': return '#10B981';
-      case 'absent': return '#EF4444';
-      case 'late': return '#F59E0B';
-      case 'excuse': return '#6366F1';
-      case 'not-marked': return '#6B7280';
-      default: return '#6B7280';
-    }
+  const getGradeColor = (grade) => {
+    if (grade >= 90) return '#10B981'; // Green
+    if (grade >= 80) return '#3B82F6'; // Blue
+    if (grade >= 70) return '#F59E0B'; // Yellow
+    return '#EF4444'; // Red
   };
 
-  const getAttendanceText = (status) => {
-    switch (status) {
-      case 'present': return 'Present';
-      case 'absent': return 'Absent';
-      case 'late': return 'Late';
-      case 'excuse': return 'Excuse';
-      case 'not-marked': return 'Not Marked';
-      default: return 'Not Marked';
-    }
+  const getAttendanceColor = (rate) => {
+    if (rate >= 90) return '#10B981'; // Green
+    if (rate >= 80) return '#3B82F6'; // Blue
+    if (rate >= 70) return '#F59E0B'; // Yellow
+    return '#EF4444'; // Red
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
+  const renderProgressBar = (percentage, color) => (
+    <View style={styles.progressBarContainer}>
+      <View style={[styles.progressBar, { backgroundColor: '#E5E7EB' }]}>
+        <View 
+          style={[
+            styles.progressFill, 
+            { 
+              width: `${Math.min(percentage, 100)}%`, 
+              backgroundColor: color 
+            }
+          ]} 
+        />
+      </View>
+              <Text style={styles.progressText}>{typeof percentage === 'number' ? percentage.toFixed(1) : '0.0'}%</Text>
+    </View>
+  );
 
   const renderClassCard = (cls) => {
     // Get student count and session count for this class from classStats
@@ -722,6 +734,28 @@ export default function AttendanceManagementScreen() {
     </View>
   );
 
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getAttendanceText = (status) => {
+    switch (status) {
+      case 'present': return 'Present';
+      case 'absent': return 'Absent';
+      case 'late': return 'Late';
+      case 'excuse': return 'Excuse';
+      case 'not-marked': return 'Not Marked';
+      default: return 'Not Marked';
+    }
+  };
+
   const screenWidth = Dimensions.get('window').width;
   const CARD_WIDTH = 200;
   const CARD_MARGIN = 24; // 12px on each side
@@ -843,10 +877,53 @@ export default function AttendanceManagementScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.modalBody}>
+            <ScrollView style={styles.modalBody}>
               <Text style={styles.modalSubtitle}>
-                {selectedStudent?.name} - {selectedSession?.title}
+                {selectedStudent?.full_name || selectedStudent?.name} - {selectedSession?.title}
               </Text>
+              
+              {/* Student Performance Overview */}
+              {loadingStudentData ? (
+                <View style={styles.loadingContainer}>
+                  <Text style={styles.loadingText}>Loading student data...</Text>
+                </View>
+              ) : studentData ? (
+                <View style={styles.studentPerformanceSection}>
+                  <Text style={styles.performanceSectionTitle}>Student Performance</Text>
+                  <View style={styles.performanceGrid}>
+                    <View style={styles.performanceCard}>
+                      <Text style={styles.performanceLabel}>Current Grade</Text>
+                      <Text style={[styles.performanceValue, { color: getGradeColor(studentData.student.overall_grade) }]}>
+                        {studentData.student.overall_grade}%
+                      </Text>
+                      {renderProgressBar(studentData.student.overall_grade, getGradeColor(studentData.student.overall_grade))}
+                    </View>
+                    <View style={styles.performanceCard}>
+                      <Text style={styles.performanceLabel}>Attendance Rate</Text>
+                      <Text style={[styles.performanceValue, { color: getAttendanceColor(studentData.attendance.attendance_rate) }]}>
+                        {studentData.attendance.attendance_rate}%
+                      </Text>
+                      {renderProgressBar(studentData.attendance.attendance_rate, getAttendanceColor(studentData.attendance.attendance_rate))}
+                    </View>
+                  </View>
+                  
+                  {/* Quick Stats */}
+                  <View style={styles.quickStats}>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statLabel}>Assessments</Text>
+                      <Text style={styles.statValue}>{studentData.student.completed_assessments}/{studentData.student.total_assessments}</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statLabel}>Present</Text>
+                      <Text style={[styles.statValue, { color: '#10B981' }]}>{studentData.attendance.present_count}</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statLabel}>Absent</Text>
+                      <Text style={[styles.statValue, { color: '#EF4444' }]}>{studentData.attendance.absent_count}</Text>
+                    </View>
+                  </View>
+                </View>
+              ) : null}
               
               <View style={styles.attendanceOptions}>
                 <TouchableOpacity 
@@ -902,7 +979,7 @@ export default function AttendanceManagementScreen() {
                   numberOfLines={3}
                 />
               </View>
-            </View>
+            </ScrollView>
 
             <View style={styles.modalFooter}>
               <TouchableOpacity 
@@ -1598,5 +1675,89 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+  // New Styles for Student Performance Section
+  studentPerformanceSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  performanceSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#353A40',
+    marginBottom: 12,
+  },
+  performanceGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  performanceCard: {
+    alignItems: 'center',
+    width: '45%', // Adjust as needed
+  },
+  performanceLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  performanceValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#353A40',
+  },
+  progressBarContainer: {
+    width: '100%',
+    height: 10,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  quickStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#353A40',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
   },
 }); 

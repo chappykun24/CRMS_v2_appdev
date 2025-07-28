@@ -204,4 +204,194 @@ router.put('/:studentId/photo', upload.single('photo'), async (req, res) => {
   }
 });
 
+// GET /api/students/:enrollment_id/comprehensive-data - Get comprehensive student data including grades and attendance
+router.get('/:enrollment_id/comprehensive-data', async (req, res) => {
+  const { enrollment_id } = req.params;
+  
+  try {
+    const client = await pool.connect();
+    
+    // Get basic student info
+    const studentQuery = `
+      SELECT 
+        ce.enrollment_id,
+        s.student_id,
+        s.student_number,
+        s.full_name,
+        s.contact_email,
+        s.student_photo,
+        ce.status as enrollment_status,
+        sc.section_course_id,
+        c.course_code,
+        c.title as course_title
+      FROM course_enrollments ce
+      JOIN students s ON ce.student_id = s.student_id
+      JOIN section_courses sc ON ce.section_course_id = sc.section_course_id
+      JOIN courses c ON sc.course_id = c.course_id
+      WHERE ce.enrollment_id = $1
+    `;
+    
+    const studentResult = await client.query(studentQuery, [enrollment_id]);
+    if (studentResult.rows.length === 0) {
+      client.release();
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    
+    const student = studentResult.rows[0];
+    
+    // Get attendance analytics
+    const attendanceQuery = `
+      SELECT 
+        COUNT(*) as total_sessions,
+        COUNT(CASE WHEN al.status = 'present' THEN 1 END) as present_count,
+        COUNT(CASE WHEN al.status = 'absent' THEN 1 END) as absent_count,
+        COUNT(CASE WHEN al.status = 'late' THEN 1 END) as late_count,
+        COUNT(CASE WHEN al.status = 'excuse' THEN 1 END) as excused_count,
+        ROUND(
+          (COUNT(CASE WHEN al.status = 'present' THEN 1 END) * 100.0 / COUNT(*))::numeric, 1
+        ) as attendance_rate
+      FROM attendance_logs al
+      WHERE al.enrollment_id = $1
+    `;
+    
+    const attendanceResult = await client.query(attendanceQuery, [enrollment_id]);
+    const attendanceData = attendanceResult.rows[0] || {
+      total_sessions: 0,
+      present_count: 0,
+      absent_count: 0,
+      late_count: 0,
+      excused_count: 0,
+      attendance_rate: 0
+    };
+    
+    // Get recent attendance records
+    const recentAttendanceQuery = `
+      SELECT 
+        al.status,
+        al.remarks,
+        al.recorded_at,
+        s.title as session_title,
+        s.session_type,
+        s.session_date
+      FROM attendance_logs al
+      JOIN sessions s ON al.session_id = s.session_id
+      WHERE al.enrollment_id = $1
+      ORDER BY s.session_date DESC
+      LIMIT 10
+    `;
+    
+    const recentAttendanceResult = await client.query(recentAttendanceQuery, [enrollment_id]);
+    
+    // Get assessment grades
+    const gradesQuery = `
+      SELECT 
+        a.assessment_id,
+        a.title as assessment_title,
+        a.type as assessment_type,
+        COALESCE(a.total_points, 10) as total_points,
+        sub.submission_id,
+        sub.total_score,
+        sub.status as submission_status,
+        sub.submitted_at,
+        sub.remarks,
+        ROUND(((sub.total_score * 100.0 / COALESCE(a.total_points, 10))::numeric), 1) as percentage_score
+      FROM assessments a
+      LEFT JOIN submissions sub ON a.assessment_id = sub.assessment_id AND sub.enrollment_id = $1
+      WHERE a.section_course_id = $2
+      ORDER BY a.created_at DESC
+    `;
+    
+    const gradesResult = await client.query(gradesQuery, [enrollment_id, student.section_course_id]);
+    
+    // Get sub-assessment grades
+    const subGradesQuery = `
+      SELECT 
+        sa.sub_assessment_id,
+        sa.title as sub_assessment_title,
+        sa.total_points,
+        sas.submission_id,
+        sas.total_score,
+        sas.status as submission_status,
+        sas.submitted_at,
+        sas.remarks,
+        CASE 
+          WHEN sa.total_points > 0 AND sas.total_score IS NOT NULL 
+          THEN ROUND(((sas.total_score * 100.0 / sa.total_points)::numeric), 1)
+          ELSE NULL 
+        END as percentage_score,
+        a.title as parent_assessment_title
+      FROM sub_assessments sa
+      JOIN assessments a ON sa.assessment_id = a.assessment_id
+      LEFT JOIN sub_assessment_submissions sas ON sa.sub_assessment_id = sas.sub_assessment_id AND sas.enrollment_id = $1
+      WHERE a.section_course_id = $2
+      ORDER BY sa.created_at DESC
+    `;
+    
+    const subGradesResult = await client.query(subGradesQuery, [enrollment_id, student.section_course_id]);
+    
+    // Calculate overall grade average from both assessments and sub-assessments
+    const validAssessmentGrades = gradesResult.rows.filter(row => row.total_score !== null);
+    const validSubAssessmentGrades = subGradesResult.rows.filter(row => row.total_score !== null);
+    
+    const allValidGrades = [
+      ...validAssessmentGrades.map(row => parseFloat(row.percentage_score) || 0),
+      ...validSubAssessmentGrades.map(row => parseFloat(row.percentage_score) || 0)
+    ].filter(grade => !isNaN(grade) && grade > 0);
+    
+    const overallGrade = allValidGrades.length > 0 
+      ? allValidGrades.reduce((sum, grade) => sum + grade, 0) / allValidGrades.length 
+      : 0;
+    
+    // Get analytics cluster data if available
+    const clusterQuery = `
+      SELECT 
+        cluster_label,
+        based_on,
+        algorithm_used,
+        generated_at
+      FROM analytics_clusters
+      WHERE enrollment_id = $1
+      ORDER BY generated_at DESC
+      LIMIT 1
+    `;
+    
+    const clusterResult = await client.query(clusterQuery, [enrollment_id]);
+    const clusterData = clusterResult.rows[0] || null;
+    
+    client.release();
+    
+    // Compile comprehensive data
+    const comprehensiveData = {
+      student: {
+        ...student,
+        overall_grade: Math.round(overallGrade * 10) / 10, // Round to 1 decimal place
+        total_assessments: gradesResult.rows.length + subGradesResult.rows.length,
+        completed_assessments: validAssessmentGrades.length + validSubAssessmentGrades.length,
+        completion_rate: (gradesResult.rows.length + subGradesResult.rows.length) > 0 
+          ? Math.round(((validAssessmentGrades.length + validSubAssessmentGrades.length) * 100.0 / (gradesResult.rows.length + subGradesResult.rows.length)) * 10) / 10 
+          : 0
+      },
+      attendance: {
+        ...attendanceData,
+        recent_records: recentAttendanceResult.rows
+      },
+      grades: {
+        assessments: gradesResult.rows,
+        sub_assessments: subGradesResult.rows,
+        overall_average: Math.round(overallGrade * 10) / 10
+      },
+      analytics: {
+        cluster: clusterData
+      }
+    };
+    
+    res.json(comprehensiveData);
+    
+  } catch (error) {
+    console.error('Error fetching comprehensive student data:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to fetch student data', details: error.message });
+  }
+});
+
 module.exports = router; 

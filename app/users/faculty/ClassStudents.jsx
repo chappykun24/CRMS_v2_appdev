@@ -16,6 +16,8 @@ export default function FacultyClassStudents() {
   const [isTableView, setIsTableView] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showStudentModal, setShowStudentModal] = useState(false);
+  const [studentData, setStudentData] = useState(null);
+  const [loadingStudentData, setLoadingStudentData] = useState(false);
 
   useEffect(() => {
     if (!section_course_id) return;
@@ -36,14 +38,79 @@ export default function FacultyClassStudents() {
     (student.enrollment_id || '').toString().includes(search)
   );
 
-  const handleStudentPress = (student) => {
+  const handleStudentPress = async (student) => {
     setSelectedStudent(student);
     setShowStudentModal(true);
+    setLoadingStudentData(true);
+    
+    try {
+      // Fetch comprehensive student data
+      const data = await apiClient.get(`/students/${student.enrollment_id}/comprehensive-data`);
+      setStudentData(data);
+    } catch (error) {
+      console.error('Error fetching student data:', error);
+      setStudentData(null);
+    } finally {
+      setLoadingStudentData(false);
+    }
   };
+
   const closeStudentModal = () => {
     setShowStudentModal(false);
     setSelectedStudent(null);
+    setStudentData(null);
   };
+
+  const getGradeColor = (grade) => {
+    if (grade >= 90) return '#10B981'; // Green
+    if (grade >= 80) return '#3B82F6'; // Blue
+    if (grade >= 70) return '#F59E0B'; // Yellow
+    return '#EF4444'; // Red
+  };
+
+  const getAttendanceColor = (rate) => {
+    if (rate >= 90) return '#10B981'; // Green
+    if (rate >= 80) return '#3B82F6'; // Blue
+    if (rate >= 70) return '#F59E0B'; // Yellow
+    return '#EF4444'; // Red
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'present': return '#10B981';
+      case 'absent': return '#EF4444';
+      case 'late': return '#F59E0B';
+      case 'excuse': return '#8B5CF6';
+      default: return '#6B7280';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'present': return 'Present';
+      case 'absent': return 'Absent';
+      case 'late': return 'Late';
+      case 'excuse': return 'Excused';
+      default: return 'Not Marked';
+    }
+  };
+
+  const renderProgressBar = (percentage, color) => (
+    <View style={styles.progressBarContainer}>
+      <View style={[styles.progressBar, { backgroundColor: '#E5E7EB' }]}>
+        <View 
+          style={[
+            styles.progressFill, 
+            { 
+              width: `${Math.min(percentage, 100)}%`, 
+              backgroundColor: color 
+            }
+          ]} 
+        />
+      </View>
+              <Text style={styles.progressText}>{typeof percentage === 'number' ? percentage.toFixed(1) : '0.0'}%</Text>
+    </View>
+  );
 
   const renderTableView = () => (
     <View style={styles.tableViewContainer}>
@@ -139,7 +206,7 @@ export default function FacultyClassStudents() {
         title="Student Details"
       >
         {selectedStudent && (
-          <View>
+          <ScrollView style={styles.modalContent}>
             <View style={styles.modalStudentHeader}>
               <View style={styles.modalStudentPhotoContainer}>
                 {selectedStudent.student_photo ? (
@@ -155,13 +222,143 @@ export default function FacultyClassStudents() {
                 )}
               </View>
               <View style={styles.modalStudentInfo}>
-                <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 8 }}>{selectedStudent.full_name || selectedStudent.name || 'Unnamed Student'}</Text>
-                <Text style={{ fontSize: 15, marginBottom: 4 }}>SR Code: {selectedStudent.student_number || 'N/A'}</Text>
-                {selectedStudent.email && <Text style={{ fontSize: 15, marginBottom: 4 }}>Email: {selectedStudent.email}</Text>}
-                {selectedStudent.status && <Text style={{ fontSize: 15, marginBottom: 4 }}>Status: {selectedStudent.status}</Text>}
+                <Text style={styles.modalStudentName}>{selectedStudent.full_name || selectedStudent.name || 'Unnamed Student'}</Text>
+                <Text style={styles.modalStudentId}>SR Code: {selectedStudent.student_number || 'N/A'}</Text>
+                {selectedStudent.email && <Text style={styles.modalStudentEmail}>Email: {selectedStudent.email}</Text>}
+                {selectedStudent.status && <Text style={styles.modalStudentStatus}>Status: {selectedStudent.status}</Text>}
               </View>
             </View>
-          </View>
+
+            {loadingStudentData ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Loading student data...</Text>
+              </View>
+            ) : studentData ? (
+              <View style={styles.dataContainer}>
+                {/* Overall Performance Section */}
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Overall Performance</Text>
+                  <View style={styles.performanceGrid}>
+                    <View style={styles.performanceCard}>
+                      <Text style={styles.performanceLabel}>Current Grade</Text>
+                      <Text style={[styles.performanceValue, { color: getGradeColor(studentData.student.overall_grade) }]}>
+                        {studentData.student.overall_grade}%
+                      </Text>
+                      {renderProgressBar(studentData.student.overall_grade, getGradeColor(studentData.student.overall_grade))}
+                    </View>
+                    <View style={styles.performanceCard}>
+                      <Text style={styles.performanceLabel}>Attendance Rate</Text>
+                      <Text style={[styles.performanceValue, { color: getAttendanceColor(studentData.attendance.attendance_rate) }]}>
+                        {studentData.attendance.attendance_rate}%
+                      </Text>
+                      {renderProgressBar(studentData.attendance.attendance_rate, getAttendanceColor(studentData.attendance.attendance_rate))}
+                    </View>
+                  </View>
+                </View>
+
+                {/* Attendance Details Section */}
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Attendance Details</Text>
+                  <View style={styles.attendanceStats}>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statLabel}>Total Sessions</Text>
+                      <Text style={styles.statValue}>{studentData.attendance.total_sessions}</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statLabel}>Present</Text>
+                      <Text style={[styles.statValue, { color: '#10B981' }]}>{studentData.attendance.present_count}</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statLabel}>Absent</Text>
+                      <Text style={[styles.statValue, { color: '#EF4444' }]}>{studentData.attendance.absent_count}</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statLabel}>Late</Text>
+                      <Text style={[styles.statValue, { color: '#F59E0B' }]}>{studentData.attendance.late_count}</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statLabel}>Excused</Text>
+                      <Text style={[styles.statValue, { color: '#8B5CF6' }]}>{studentData.attendance.excused_count}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Recent Attendance Section */}
+                {studentData.attendance.recent_records && studentData.attendance.recent_records.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Recent Attendance</Text>
+                    {studentData.attendance.recent_records.slice(0, 5).map((record, index) => (
+                      <View key={index} style={styles.attendanceRecord}>
+                        <View style={styles.attendanceRecordHeader}>
+                          <Text style={styles.sessionTitle}>{record.session_title}</Text>
+                          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(record.status) + '20' }]}>
+                            <Text style={[styles.statusText, { color: getStatusColor(record.status) }]}>
+                              {getStatusText(record.status)}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.sessionDate}>
+                          {new Date(record.session_date).toLocaleDateString()} - {record.session_type}
+                        </Text>
+                        {record.remarks && <Text style={styles.remarks}>Remarks: {record.remarks}</Text>}
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Assessment Grades Section */}
+                {studentData.grades.assessments && studentData.grades.assessments.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Assessment Grades</Text>
+                    {studentData.grades.assessments.map((assessment, index) => (
+                      <View key={index} style={styles.assessmentCard}>
+                        <View style={styles.assessmentHeader}>
+                          <Text style={styles.assessmentTitle}>{assessment.assessment_title}</Text>
+                          <Text style={styles.assessmentType}>{assessment.assessment_type}</Text>
+                        </View>
+                        {assessment.total_score !== null ? (
+                          <View style={styles.gradeInfo}>
+                            <Text style={styles.gradeText}>
+                              Score: {assessment.total_score}/{assessment.total_points} 
+                              ({assessment.percentage_score}%)
+                            </Text>
+                            <View style={[styles.gradeBadge, { backgroundColor: getGradeColor(assessment.percentage_score) + '20' }]}>
+                              <Text style={[styles.gradeBadgeText, { color: getGradeColor(assessment.percentage_score) }]}>
+                                {assessment.percentage_score >= 90 ? 'Excellent' : 
+                                 assessment.percentage_score >= 80 ? 'Good' : 
+                                 assessment.percentage_score >= 70 ? 'Fair' : 'Needs Improvement'}
+                              </Text>
+                            </View>
+                          </View>
+                        ) : (
+                          <Text style={styles.noGradeText}>Not submitted</Text>
+                        )}
+                        {assessment.remarks && <Text style={styles.assessmentRemarks}>Remarks: {assessment.remarks}</Text>}
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Analytics Cluster Section */}
+                {studentData.analytics.cluster && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Performance Analysis</Text>
+                    <View style={styles.clusterCard}>
+                      <Text style={styles.clusterLabel}>Cluster: {studentData.analytics.cluster.cluster_label}</Text>
+                      <Text style={styles.clusterAlgorithm}>Algorithm: {studentData.analytics.cluster.algorithm_used}</Text>
+                      <Text style={styles.clusterDate}>
+                        Generated: {new Date(studentData.analytics.cluster.generated_at).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>Failed to load student data</Text>
+              </View>
+            )}
+          </ScrollView>
         )}
       </ModalContainer>
     </View>
@@ -241,55 +438,42 @@ const styles = StyleSheet.create({
   },
   scrollIndicator: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     paddingVertical: 8,
     backgroundColor: '#F9FAFB',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
   },
   scrollIndicatorText: {
     fontSize: 12,
     color: '#6B7280',
     marginHorizontal: 8,
-    fontStyle: 'italic',
   },
   tableView: {
     flex: 1,
-    paddingHorizontal: 0,
-    marginHorizontal: 0,
-    backgroundColor: '#FFFFFF',
   },
   tableHeaderRow: {
     flexDirection: 'row',
     backgroundColor: '#F9FAFB',
-    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
   tableHeaderCell: {
-    fontWeight: 'bold',
-    color: '#353A40',
+    padding: 12,
     fontSize: 14,
-    paddingHorizontal: 12,
-    textAlign: 'left',
+    fontWeight: '600',
+    color: '#374151',
   },
   tableRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
-    backgroundColor: '#FFFFFF',
-    minHeight: 48,
   },
   tableCell: {
-    fontSize: 13,
-    color: '#353A40',
-    paddingHorizontal: 12,
-    textAlign: 'left',
+    padding: 12,
+    fontSize: 14,
+    color: '#374151',
   },
   tableStudentPhoto: {
     width: 32,
@@ -303,13 +487,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+  },
+  modalContent: {
+    flex: 1,
+    paddingBottom: 20,
   },
   modalStudentHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   modalStudentPhotoContainer: {
     width: 64,
@@ -335,5 +524,235 @@ const styles = StyleSheet.create({
   },
   modalStudentInfo: {
     flex: 1,
+  },
+  modalStudentName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  modalStudentId: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  modalStudentEmail: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  modalStudentStatus: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  dataContainer: {
+    paddingHorizontal: 4,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  performanceGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  performanceCard: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  performanceLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  performanceValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  progressBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  progressBar: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+    minWidth: 40,
+  },
+  attendanceStats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  statItem: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    minWidth: 80,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  attendanceRecord: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  attendanceRecordHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  sessionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  sessionDate: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  remarks: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+  assessmentCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  assessmentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  assessmentTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+  },
+  assessmentType: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  gradeInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  gradeText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  gradeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  gradeBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  noGradeText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+  assessmentRemarks: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  clusterCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  clusterLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  clusterAlgorithm: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  clusterDate: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
   },
 }); 
